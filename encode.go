@@ -1,5 +1,7 @@
 package brotli
 
+import "io"
+
 /* Copyright 2016 Google Inc. All Rights Reserved.
 
    Distributed under MIT license.
@@ -92,7 +94,9 @@ const (
 	BROTLI_STREAM_METADATA_BODY   = 4
 )
 
-type BrotliEncoderState struct {
+type Writer struct {
+	dst io.Writer
+
 	params              BrotliEncoderParams
 	hasher_             HasherHandle
 	input_pos_          uint64
@@ -134,15 +138,15 @@ type BrotliEncoderState struct {
 	is_initialized_           bool
 }
 
-func InputBlockSize(s *BrotliEncoderState) uint {
+func InputBlockSize(s *Writer) uint {
 	return uint(1) << uint(s.params.lgblock)
 }
 
-func UnprocessedInputSize(s *BrotliEncoderState) uint64 {
+func UnprocessedInputSize(s *Writer) uint64 {
 	return s.input_pos_ - s.last_processed_pos_
 }
 
-func RemainingInputBlockSize(s *BrotliEncoderState) uint {
+func RemainingInputBlockSize(s *Writer) uint {
 	var delta uint64 = UnprocessedInputSize(s)
 	var block_size uint = InputBlockSize(s)
 	if delta >= uint64(block_size) {
@@ -151,7 +155,7 @@ func RemainingInputBlockSize(s *BrotliEncoderState) uint {
 	return block_size - uint(delta)
 }
 
-func BrotliEncoderSetParameter(state *BrotliEncoderState, p int, value uint32) bool {
+func BrotliEncoderSetParameter(state *Writer, p int, value uint32) bool {
 	/* Changing parameters on the fly is not implemented yet. */
 	if state.is_initialized_ {
 		return false
@@ -216,7 +220,7 @@ func WrapPosition(position uint64) uint32 {
 	return result
 }
 
-func GetBrotliStorage(s *BrotliEncoderState, size uint) []byte {
+func GetBrotliStorage(s *Writer, size uint) []byte {
 	if s.storage_size_ < size {
 		s.storage_ = nil
 		s.storage_ = make([]byte, size)
@@ -235,7 +239,7 @@ func HashTableSize(max_table_size uint, input_size uint) uint {
 	return htsize
 }
 
-func GetHashTable(s *BrotliEncoderState, quality int, input_size uint, table_size *uint) []int {
+func GetHashTable(s *Writer, quality int, input_size uint, table_size *uint) []int {
 	var max_table_size uint = MaxHashTableSize(quality)
 	var htsize uint = HashTableSize(max_table_size, input_size)
 	/* Use smaller hash table when input.size() is smaller, since we
@@ -1100,7 +1104,7 @@ func ChooseDistanceParams(params *BrotliEncoderParams) {
 	BrotliInitDistanceParams(params, distance_postfix_bits, num_direct_distance_codes)
 }
 
-func EnsureInitialized(s *BrotliEncoderState) bool {
+func EnsureInitialized(s *Writer) bool {
 	if s.is_initialized_ {
 		return true
 	}
@@ -1148,7 +1152,7 @@ func BrotliEncoderInitParams(params *BrotliEncoderParams) {
 	params.dist.max_distance = BROTLI_MAX_DISTANCE
 }
 
-func BrotliEncoderInitState(s *BrotliEncoderState) {
+func BrotliEncoderInitState(s *Writer) {
 	BrotliEncoderInitParams(&s.params)
 	s.input_pos_ = 0
 	s.num_commands_ = 0
@@ -1190,9 +1194,9 @@ func BrotliEncoderInitState(s *BrotliEncoderState) {
 	copy(s.saved_dist_cache_[:], s.dist_cache_[:])
 }
 
-func BrotliEncoderCreateInstance() *BrotliEncoderState {
-	var state *BrotliEncoderState = nil
-	state = new(BrotliEncoderState)
+func BrotliEncoderCreateInstance() *Writer {
+	var state *Writer = nil
+	state = new(Writer)
 	if state == nil {
 		/* BROTLI_DUMP(); */
 		return nil
@@ -1202,7 +1206,7 @@ func BrotliEncoderCreateInstance() *BrotliEncoderState {
 	return state
 }
 
-func BrotliEncoderCleanupState(s *BrotliEncoderState) {
+func BrotliEncoderCleanupState(s *Writer) {
 	s.storage_ = nil
 	s.commands_ = nil
 	RingBufferFree(&s.ringbuffer_)
@@ -1213,7 +1217,7 @@ func BrotliEncoderCleanupState(s *BrotliEncoderState) {
 }
 
 /* Deinitializes and frees BrotliEncoderState instance. */
-func BrotliEncoderDestroyInstance(state *BrotliEncoderState) {
+func BrotliEncoderDestroyInstance(state *Writer) {
 	if state == nil {
 		return
 	} else {
@@ -1228,7 +1232,7 @@ func BrotliEncoderDestroyInstance(state *BrotliEncoderState) {
    accumulated input. At most input_block_size() bytes of input data can be
    copied to the ring buffer, otherwise the next WriteBrotliData() will fail.
 */
-func CopyInputToRingBuffer(s *BrotliEncoderState, input_size uint, input_buffer []byte) {
+func CopyInputToRingBuffer(s *Writer, input_size uint, input_buffer []byte) {
 	var ringbuffer_ *RingBuffer = &s.ringbuffer_
 	RingBufferWrite(input_buffer, input_size, ringbuffer_)
 	s.input_pos_ += uint64(input_size)
@@ -1283,14 +1287,14 @@ func CopyInputToRingBuffer(s *BrotliEncoderState, input_size uint, input_buffer 
 
 /* Marks all input as processed.
    Returns true if position wrapping occurs. */
-func UpdateLastProcessedPos(s *BrotliEncoderState) bool {
+func UpdateLastProcessedPos(s *Writer) bool {
 	var wrapped_last_processed_pos uint32 = WrapPosition(s.last_processed_pos_)
 	var wrapped_input_pos uint32 = WrapPosition(s.input_pos_)
 	s.last_processed_pos_ = s.input_pos_
 	return wrapped_input_pos < wrapped_last_processed_pos
 }
 
-func ExtendLastCommand(s *BrotliEncoderState, bytes *uint32, wrapped_last_processed_pos *uint32) {
+func ExtendLastCommand(s *Writer, bytes *uint32, wrapped_last_processed_pos *uint32) {
 	var last_command *Command = &s.commands_[s.num_commands_-1]
 	var data []byte = s.ringbuffer_.buffer_
 	var mask uint32 = s.ringbuffer_.mask_
@@ -1331,7 +1335,7 @@ func ExtendLastCommand(s *BrotliEncoderState, bytes *uint32, wrapped_last_proces
    Returns false if the size of the input data is larger than
    input_block_size().
 */
-func EncodeData(s *BrotliEncoderState, is_last bool, force_flush bool, out_size *uint, output *[]byte) bool {
+func EncodeData(s *Writer, is_last bool, force_flush bool, out_size *uint, output *[]byte) bool {
 	var delta uint64 = UnprocessedInputSize(s)
 	var bytes uint32 = uint32(delta)
 	var wrapped_last_processed_pos uint32 = WrapPosition(s.last_processed_pos_)
@@ -1509,7 +1513,7 @@ func EncodeData(s *BrotliEncoderState, is_last bool, force_flush bool, out_size 
    Returns number of produced bytes.
    REQUIRED: |header| should be 8-byte aligned and at least 16 bytes long.
    REQUIRED: |block_size| <= (1 << 24). */
-func WriteMetadataHeader(s *BrotliEncoderState, block_size uint, header []byte) uint {
+func WriteMetadataHeader(s *Writer, block_size uint, header []byte) uint {
 	var storage_ix uint
 	storage_ix = uint(s.last_bytes_bits_)
 	header[0] = byte(s.last_bytes_)
@@ -1792,7 +1796,7 @@ func MakeUncompressedStream(input []byte, input_size uint, output []byte) uint {
 }
 
 func BrotliEncoderCompress(quality int, lgwin int, mode int, input_size uint, input_buffer []byte, encoded_size *uint, encoded_buffer []byte) bool {
-	var s *BrotliEncoderState
+	var s *Writer
 	var out_size uint = *encoded_size
 	var input_start []byte = input_buffer
 	var output_start []byte = encoded_buffer
@@ -1866,7 +1870,7 @@ fallback:
 	return false
 }
 
-func InjectBytePaddingBlock(s *BrotliEncoderState) {
+func InjectBytePaddingBlock(s *Writer) {
 	var seal uint32 = uint32(s.last_bytes_)
 	var seal_bits uint = uint(s.last_bytes_bits_)
 	var destination []byte
@@ -1899,7 +1903,7 @@ func InjectBytePaddingBlock(s *BrotliEncoderState) {
 
 /* Injects padding bits or pushes compressed data to output.
    Returns false if nothing is done. */
-func InjectFlushOrPushOutput(s *BrotliEncoderState, available_out *uint, next_out *[]byte, total_out *uint) bool {
+func InjectFlushOrPushOutput(s *Writer, available_out *uint, next_out *[]byte, total_out *uint) bool {
 	if s.stream_state_ == BROTLI_STREAM_FLUSH_REQUESTED && s.last_bytes_bits_ != 0 {
 		InjectBytePaddingBlock(s)
 		return true
@@ -1922,14 +1926,14 @@ func InjectFlushOrPushOutput(s *BrotliEncoderState, available_out *uint, next_ou
 	return false
 }
 
-func CheckFlushComplete(s *BrotliEncoderState) {
+func CheckFlushComplete(s *Writer) {
 	if s.stream_state_ == BROTLI_STREAM_FLUSH_REQUESTED && s.available_out_ == 0 {
 		s.stream_state_ = BROTLI_STREAM_PROCESSING
 		s.next_out_ = nil
 	}
 }
 
-func BrotliEncoderCompressStreamFast(s *BrotliEncoderState, op int, available_in *uint, next_in *[]byte, available_out *uint, next_out *[]byte, total_out *uint) bool {
+func BrotliEncoderCompressStreamFast(s *Writer, op int, available_in *uint, next_in *[]byte, available_out *uint, next_out *[]byte, total_out *uint) bool {
 	var block_size_limit uint = uint(1) << s.params.lgwin
 	var buf_size uint = brotli_min_size_t(kCompressFragmentTwoPassBlockSize, brotli_min_size_t(*available_in, block_size_limit))
 	var tmp_command_buf []uint32 = nil
@@ -2037,7 +2041,7 @@ func BrotliEncoderCompressStreamFast(s *BrotliEncoderState, op int, available_in
 	return true
 }
 
-func ProcessMetadata(s *BrotliEncoderState, available_in *uint, next_in *[]byte, available_out *uint, next_out *[]byte, total_out *uint) bool {
+func ProcessMetadata(s *Writer, available_in *uint, next_in *[]byte, available_out *uint, next_out *[]byte, total_out *uint) bool {
 	if *available_in > 1<<24 {
 		return false
 	}
@@ -2110,7 +2114,7 @@ func ProcessMetadata(s *BrotliEncoderState, available_in *uint, next_in *[]byte,
 	return true
 }
 
-func UpdateSizeHint(s *BrotliEncoderState, available_in uint) {
+func UpdateSizeHint(s *Writer, available_in uint) {
 	if s.params.size_hint == 0 {
 		var delta uint64 = UnprocessedInputSize(s)
 		var tail uint64 = uint64(available_in)
@@ -2126,7 +2130,7 @@ func UpdateSizeHint(s *BrotliEncoderState, available_in uint) {
 	}
 }
 
-func BrotliEncoderCompressStream(s *BrotliEncoderState, op int, available_in *uint, next_in *[]byte, available_out *uint, next_out *[]byte, total_out *uint) bool {
+func BrotliEncoderCompressStream(s *Writer, op int, available_in *uint, next_in *[]byte, available_out *uint, next_out *[]byte, total_out *uint) bool {
 	if !EnsureInitialized(s) {
 		return false
 	}
@@ -2202,15 +2206,15 @@ func BrotliEncoderCompressStream(s *BrotliEncoderState, op int, available_in *ui
 	return true
 }
 
-func BrotliEncoderIsFinished(s *BrotliEncoderState) bool {
+func BrotliEncoderIsFinished(s *Writer) bool {
 	return s.stream_state_ == BROTLI_STREAM_FINISHED && !BrotliEncoderHasMoreOutput(s)
 }
 
-func BrotliEncoderHasMoreOutput(s *BrotliEncoderState) bool {
+func BrotliEncoderHasMoreOutput(s *Writer) bool {
 	return s.available_out_ != 0
 }
 
-func BrotliEncoderTakeOutput(s *BrotliEncoderState, size *uint) []byte {
+func BrotliEncoderTakeOutput(s *Writer, size *uint) []byte {
 	var consumed_size uint = s.available_out_
 	var result []byte = s.next_out_
 	if *size != 0 {
