@@ -1,5 +1,7 @@
 package brotli
 
+import "io"
+
 /* Copyright 2015 Google Inc. All Rights Reserved.
 
    Distributed under MIT license.
@@ -89,7 +91,11 @@ const (
 	BROTLI_STATE_READ_BLOCK_LENGTH_SUFFIX
 )
 
-type BrotliDecoderState struct {
+type Reader struct {
+	src io.Reader
+	buf []byte // scratch space for reading from src
+	in  []byte // current chunk to decode; usually aliases buf
+
 	state        int
 	loop_counter int
 	br           BrotliBitReader
@@ -177,7 +183,7 @@ type BrotliDecoderState struct {
 	trivial_literal_contexts    [8]uint32
 }
 
-func BrotliDecoderStateInit(s *BrotliDecoderState) bool {
+func BrotliDecoderStateInit(s *Reader) bool {
 	s.error_code = 0 /* BROTLI_DECODER_NO_ERROR */
 
 	BrotliInitBitReader(&s.br)
@@ -244,7 +250,7 @@ func BrotliDecoderStateInit(s *BrotliDecoderState) bool {
 	return true
 }
 
-func BrotliDecoderStateMetablockBegin(s *BrotliDecoderState) {
+func BrotliDecoderStateMetablockBegin(s *Reader) {
 	s.meta_block_remaining_len = 0
 	s.block_length[0] = 1 << 24
 	s.block_length[1] = 1 << 24
@@ -274,7 +280,7 @@ func BrotliDecoderStateMetablockBegin(s *BrotliDecoderState) {
 	s.distance_hgroup.htrees = nil
 }
 
-func BrotliDecoderStateCleanupAfterMetablock(s *BrotliDecoderState) {
+func BrotliDecoderStateCleanupAfterMetablock(s *Reader) {
 	s.context_modes = nil
 	s.context_map = nil
 	s.dist_context_map = nil
@@ -283,14 +289,14 @@ func BrotliDecoderStateCleanupAfterMetablock(s *BrotliDecoderState) {
 	s.distance_hgroup.htrees = nil
 }
 
-func BrotliDecoderStateCleanup(s *BrotliDecoderState) {
+func BrotliDecoderStateCleanup(s *Reader) {
 	BrotliDecoderStateCleanupAfterMetablock(s)
 
 	s.ringbuffer = nil
 	s.block_type_trees = nil
 }
 
-func BrotliDecoderHuffmanTreeGroupInit(s *BrotliDecoderState, group *HuffmanTreeGroup, alphabet_size uint32, max_symbol uint32, ntrees uint32) bool {
+func BrotliDecoderHuffmanTreeGroupInit(s *Reader, group *HuffmanTreeGroup, alphabet_size uint32, max_symbol uint32, ntrees uint32) bool {
 	var max_table_size uint = uint(kMaxHuffmanTableSize[(alphabet_size+31)>>5])
 	group.alphabet_size = uint16(alphabet_size)
 	group.max_symbol = uint16(max_symbol)
