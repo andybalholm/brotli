@@ -31,6 +31,7 @@ func HashBytesH6(data []byte, mask uint64, shift int) uint32 {
 }
 
 type H6 struct {
+	HasherCommon
 	bucket_size_ uint
 	block_size_  uint
 	hash_shift_  int
@@ -41,7 +42,7 @@ type H6 struct {
 }
 
 func SelfH6(handle HasherHandle) *H6 {
-	return handle.extra.(*H6)
+	return handle.(*H6)
 }
 
 func NumH6(self *H6) []uint16 {
@@ -53,8 +54,7 @@ func BucketsH6(self *H6) []uint32 {
 }
 
 func InitializeH6(handle HasherHandle, params *BrotliEncoderParams) {
-	var common *HasherCommon = GetHasherCommon(handle)
-	handle.extra = new(H6)
+	var common *HasherCommon = handle.Common()
 	var self *H6 = SelfH6(handle)
 	self.hash_shift_ = 64 - common.params.bucket_bits
 	self.hash_mask_ = (^(uint64(0))) >> uint(64-8*common.params.hash_len)
@@ -90,7 +90,7 @@ func StoreH6(handle HasherHandle, data []byte, mask uint, ix uint) {
 	var num []uint16 = NumH6(self)
 	var key uint32 = HashBytesH6(data[ix&mask:], self.hash_mask_, self.hash_shift_)
 	var minor_ix uint = uint(num[key]) & uint(self.block_mask_)
-	var offset uint = minor_ix + uint(key<<uint(GetHasherCommon(handle).params.block_bits))
+	var offset uint = minor_ix + uint(key<<uint(handle.Common().params.block_bits))
 	BucketsH6(self)[offset] = uint32(ix)
 	num[key]++
 }
@@ -115,7 +115,7 @@ func StitchToPreviousBlockH6(handle HasherHandle, num_bytes uint, position uint,
 }
 
 func PrepareDistanceCacheH6(handle HasherHandle, distance_cache []int) {
-	PrepareDistanceCache(distance_cache, GetHasherCommon(handle).params.num_last_distances_to_check)
+	PrepareDistanceCache(distance_cache, handle.Common().params.num_last_distances_to_check)
 }
 
 /* Find a longest backward match of &data[cur_ix] up to the length of
@@ -130,7 +130,7 @@ func PrepareDistanceCacheH6(handle HasherHandle, distance_cache []int) {
    Writes the best match into |out|.
    |out|->score is updated only if a better match is found. */
 func FindLongestMatchH6(handle HasherHandle, dictionary *BrotliEncoderDictionary, data []byte, ring_buffer_mask uint, distance_cache []int, cur_ix uint, max_length uint, max_backward uint, gap uint, max_distance uint, out *HasherSearchResult) {
-	var common *HasherCommon = GetHasherCommon(handle)
+	var common *HasherCommon = handle.Common()
 	var self *H6 = SelfH6(handle)
 	var num []uint16 = NumH6(self)
 	var buckets []uint32 = BucketsH6(self)

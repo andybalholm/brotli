@@ -30,6 +30,7 @@ func HashBytesH10(data []byte) uint32 {
 }
 
 type H10 struct {
+	HasherCommon
 	window_mask_ uint
 	buckets_     [1 << 17]uint32
 	invalid_pos_ uint32
@@ -37,7 +38,7 @@ type H10 struct {
 }
 
 func SelfH10(handle HasherHandle) *H10 {
-	return handle.extra.(*H10)
+	return handle.(*H10)
 }
 
 func ForestH10(self *H10) []uint32 {
@@ -45,7 +46,6 @@ func ForestH10(self *H10) []uint32 {
 }
 
 func InitializeH10(handle HasherHandle, params *BrotliEncoderParams) {
-	handle.extra = new(H10)
 	var self *H10 = SelfH10(handle)
 	self.window_mask_ = (1 << params.lgwin) - 1
 	self.invalid_pos_ = uint32(0 - self.window_mask_)

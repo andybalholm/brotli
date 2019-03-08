@@ -31,15 +31,15 @@ func HashBytesH4(data []byte) uint32 {
    This is a hash map of fixed size (BUCKET_SIZE). Starting from the
    given index, 4 buckets are used to store values of a key. */
 type H4 struct {
+	HasherCommon
 	buckets_ [(1 << 17) + 4]uint32
 }
 
 func SelfH4(handle HasherHandle) *H4 {
-	return handle.extra.(*H4)
+	return handle.(*H4)
 }
 
 func InitializeH4(handle HasherHandle, params *BrotliEncoderParams) {
-	handle.extra = new(H4)
 }
 
 func PrepareH4(handle HasherHandle, one_shot bool, input_size uint, data []byte) {

@@ -23,13 +23,14 @@ type HasherCommon struct {
 	is_prepared_     bool
 	dict_num_lookups uint
 	dict_num_matches uint
-	extra            interface{}
 }
 
-type HasherHandle *HasherCommon
+func (h *HasherCommon) Common() *HasherCommon {
+	return h
+}
 
-func GetHasherCommon(handle HasherHandle) *HasherCommon {
-	return (*HasherCommon)(handle)
+type HasherHandle interface {
+	Common() *HasherCommon
 }
 
 type score_t uint
@@ -166,7 +167,7 @@ func TestStaticDictionaryItem(dictionary *BrotliEncoderDictionary, item uint, da
 func SearchInStaticDictionary(dictionary *BrotliEncoderDictionary, handle HasherHandle, data []byte, max_length uint, max_backward uint, max_distance uint, out *HasherSearchResult, shallow bool) {
 	var key uint
 	var i uint
-	var self *HasherCommon = GetHasherCommon(handle)
+	var self *HasherCommon = handle.Common()
 	if self.dict_num_matches < self.dict_num_lookups>>7 {
 		return
 	}
@@ -238,7 +239,7 @@ func HasherReset(handle HasherHandle) {
 	if handle == nil {
 		return
 	}
-	GetHasherCommon(handle).is_prepared_ = false
+	handle.Common().is_prepared_ = false
 }
 
 func HasherSetup(handle *HasherHandle, params *BrotliEncoderParams, data []byte, position uint, input_size uint, is_last bool) {
@@ -247,9 +248,37 @@ func HasherSetup(handle *HasherHandle, params *BrotliEncoderParams, data []byte,
 	var one_shot bool = (position == 0 && is_last)
 	if *handle == nil {
 		ChooseHasher(params, &params.hasher)
-		self = new(HasherCommon)
+		switch params.hasher.type_ {
+		case 2:
+			self = new(H2)
+		case 3:
+			self = new(H3)
+		case 4:
+			self = new(H4)
+		case 5:
+			self = new(H5)
+		case 6:
+			self = new(H6)
+		case 40:
+			self = new(H40)
+		case 41:
+			self = new(H41)
+		case 42:
+			self = new(H42)
+		case 54:
+			self = new(H54)
+		case 35:
+			self = new(H35)
+		case 55:
+			self = new(H55)
+		case 65:
+			self = new(H65)
+		case 10:
+			self = new(H10)
+		}
+
 		*handle = self
-		common = GetHasherCommon(self)
+		common = self.Common()
 		common.params = params.hasher
 		switch common.params.type_ {
 		case 2:
@@ -278,8 +307,6 @@ func HasherSetup(handle *HasherHandle, params *BrotliEncoderParams, data []byte,
 			InitializeH65(*handle, params)
 		case 10:
 			InitializeH10(*handle, params)
-			break
-			fallthrough
 
 		default:
 			break
@@ -289,7 +316,7 @@ func HasherSetup(handle *HasherHandle, params *BrotliEncoderParams, data []byte,
 	}
 
 	self = *handle
-	common = GetHasherCommon(self)
+	common = self.Common()
 	if !common.is_prepared_ {
 		switch common.params.type_ {
 		case 2:
@@ -336,7 +363,7 @@ func InitOrStitchToPreviousBlock(handle *HasherHandle, data []byte, mask uint, p
 	var self HasherHandle
 	HasherSetup(handle, params, data, position, input_size, is_last)
 	self = *handle
-	switch GetHasherCommon(self).params.type_ {
+	switch self.Common().params.type_ {
 	case 2:
 		StitchToPreviousBlockH2(self, input_size, position, data, mask)
 	case 3:

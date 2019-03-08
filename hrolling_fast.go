@@ -39,6 +39,7 @@ func HashRollingFunctionHROLLING_FAST(state uint32, add byte, rem byte, factor u
 }
 
 type HROLLING_FAST struct {
+	HasherCommon
 	state         uint32
 	table         []uint32
 	next_ix       uint
@@ -48,11 +49,10 @@ type HROLLING_FAST struct {
 }
 
 func SelfHROLLING_FAST(handle HasherHandle) *HROLLING_FAST {
-	return handle.extra.(*HROLLING_FAST)
+	return handle.(*HROLLING_FAST)
 }
 
 func InitializeHROLLING_FAST(handle HasherHandle, params *BrotliEncoderParams) {
-	handle.extra = new(HROLLING_FAST)
 	var self *HROLLING_FAST = SelfHROLLING_FAST(handle)
 	var i uint
 	self.state = 0

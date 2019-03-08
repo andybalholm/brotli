@@ -35,15 +35,15 @@ func HashBytesH2(data []byte) uint32 {
    This is a hash map of fixed size (1 << 16). Starting from the
    given index, 1 buckets are used to store values of a key. */
 type H2 struct {
+	HasherCommon
 	buckets_ [(1 << 16) + 1]uint32
 }
 
 func SelfH2(handle HasherHandle) *H2 {
-	return handle.extra.(*H2)
+	return handle.(*H2)
 }
 
 func InitializeH2(handle HasherHandle, params *BrotliEncoderParams) {
-	handle.extra = new(H2)
 }
 
 func PrepareH2(handle HasherHandle, one_shot bool, input_size uint, data []byte) {

@@ -41,6 +41,7 @@ func HashRollingFunctionHROLLING(state uint32, add byte, rem byte, factor uint32
 }
 
 type HROLLING struct {
+	HasherCommon
 	state         uint32
 	table         []uint32
 	next_ix       uint
@@ -50,11 +51,10 @@ type HROLLING struct {
 }
 
 func SelfHROLLING(handle HasherHandle) *HROLLING {
-	return handle.extra.(*HROLLING)
+	return handle.(*HROLLING)
 }
 
 func InitializeHROLLING(handle HasherHandle, params *BrotliEncoderParams) {
-	handle.extra = new(HROLLING)
 	var self *HROLLING = SelfHROLLING(handle)
 	var i uint
 	self.state = 0

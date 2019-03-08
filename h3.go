@@ -31,15 +31,15 @@ func HashBytesH3(data []byte) uint32 {
    This is a hash map of fixed size (BUCKET_SIZE). Starting from the
    given index, 2 buckets are used to store values of a key. */
 type H3 struct {
+	HasherCommon
 	buckets_ [(1 << 16) + 2]uint32
 }
 
 func SelfH3(handle HasherHandle) *H3 {
-	return handle.extra.(*H3)
+	return handle.(*H3)
 }
 
 func InitializeH3(handle HasherHandle, params *BrotliEncoderParams) {
-	handle.extra = new(H3)
 }
 
 func PrepareH3(handle HasherHandle, one_shot bool, input_size uint, data []byte) {

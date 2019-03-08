@@ -30,17 +30,17 @@ func StoreLookaheadH65() uint {
 }
 
 type H65 struct {
+	HasherCommon
 	ha     HasherHandle
 	hb     HasherHandle
 	params *BrotliEncoderParams
 }
 
 func SelfH65(handle HasherHandle) *H65 {
-	return handle.extra.(*H65)
+	return handle.(*H65)
 }
 
 func InitializeH65(handle HasherHandle, params *BrotliEncoderParams) {
-	handle.extra = new(H65)
 	var self *H65 = SelfH65(handle)
 	self.ha = nil
 	self.hb = nil
@@ -57,16 +57,16 @@ func PrepareH65(handle HasherHandle, one_shot bool, input_size uint, data []byte
 		var common_a *HasherCommon
 		var common_b *HasherCommon
 
-		self.ha = new(HasherCommon)
-		common_a = (*HasherCommon)(self.ha)
+		self.ha = new(H6)
+		common_a = self.ha.Common()
 		common_a.params = self.params.hasher
 		common_a.is_prepared_ = false
 		common_a.dict_num_lookups = 0
 		common_a.dict_num_matches = 0
 		InitializeH6(self.ha, self.params)
 
-		self.hb = new(HasherCommon)
-		common_b = (*HasherCommon)(self.hb)
+		self.hb = new(HROLLING)
+		common_b = self.hb.Common()
 		common_b.params = self.params.hasher
 		common_b.is_prepared_ = false
 		common_b.dict_num_lookups = 0

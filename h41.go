@@ -40,6 +40,7 @@ type BankH41 struct {
 }
 
 type H41 struct {
+	HasherCommon
 	addr          [1 << 15]uint32
 	head          [1 << 15]uint16
 	tiny_hash     [65536]byte
@@ -49,11 +50,10 @@ type H41 struct {
 }
 
 func SelfH41(handle HasherHandle) *H41 {
-	return handle.extra.(*H41)
+	return handle.(*H41)
 }
 
 func InitializeH41(handle HasherHandle, params *BrotliEncoderParams) {
-	handle.extra = new(H41)
 	var tmp uint
 	if params.quality > 6 {
 		tmp = 7

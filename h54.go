@@ -31,15 +31,15 @@ func HashBytesH54(data []byte) uint32 {
    This is a hash map of fixed size ((1 << 20)). Starting from the
    given index, 4 buckets are used to store values of a key. */
 type H54 struct {
+	HasherCommon
 	buckets_ [(1 << 20) + 4]uint32
 }
 
 func SelfH54(handle HasherHandle) *H54 {
-	return handle.extra.(*H54)
+	return handle.(*H54)
 }
 
 func InitializeH54(handle HasherHandle, params *BrotliEncoderParams) {
-	handle.extra = new(H54)
 }
 
 func PrepareH54(handle HasherHandle, one_shot bool, input_size uint, data []byte) {
