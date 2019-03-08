@@ -53,31 +53,28 @@ func BucketsH6(self *H6) []uint32 {
 	return []uint32(self.buckets)
 }
 
-func InitializeH6(handle HasherHandle, params *BrotliEncoderParams) {
-	var common *HasherCommon = handle.Common()
-	var self *H6 = SelfH6(handle)
-	self.hash_shift_ = 64 - common.params.bucket_bits
-	self.hash_mask_ = (^(uint64(0))) >> uint(64-8*common.params.hash_len)
-	self.bucket_size_ = uint(1) << uint(common.params.bucket_bits)
-	self.block_size_ = uint(1) << uint(common.params.block_bits)
-	self.block_mask_ = uint32(self.block_size_ - 1)
-	self.num = make([]uint16, self.bucket_size_)
-	self.buckets = make([]uint32, self.block_size_*self.bucket_size_)
+func (h *H6) Initialize(params *BrotliEncoderParams) {
+	h.hash_shift_ = 64 - h.params.bucket_bits
+	h.hash_mask_ = (^(uint64(0))) >> uint(64-8*h.params.hash_len)
+	h.bucket_size_ = uint(1) << uint(h.params.bucket_bits)
+	h.block_size_ = uint(1) << uint(h.params.block_bits)
+	h.block_mask_ = uint32(h.block_size_ - 1)
+	h.num = make([]uint16, h.bucket_size_)
+	h.buckets = make([]uint32, h.block_size_*h.bucket_size_)
 }
 
-func PrepareH6(handle HasherHandle, one_shot bool, input_size uint, data []byte) {
-	var self *H6 = SelfH6(handle)
-	var num []uint16 = NumH6(self)
-	var partial_prepare_threshold uint = self.bucket_size_ >> 6
+func (h *H6) Prepare(one_shot bool, input_size uint, data []byte) {
+	var num []uint16 = h.num
+	var partial_prepare_threshold uint = h.bucket_size_ >> 6
 	/* Partial preparation is 100 times slower (per socket). */
 	if one_shot && input_size <= partial_prepare_threshold {
 		var i uint
 		for i = 0; i < input_size; i++ {
-			var key uint32 = HashBytesH6(data[i:], self.hash_mask_, self.hash_shift_)
+			var key uint32 = HashBytesH6(data[i:], h.hash_mask_, h.hash_shift_)
 			num[key] = 0
 		}
 	} else {
-		for i := 0; i < int(self.bucket_size_); i++ {
+		for i := 0; i < int(h.bucket_size_); i++ {
 			num[i] = 0
 		}
 	}
@@ -102,15 +99,15 @@ func StoreRangeH6(handle HasherHandle, data []byte, mask uint, ix_start uint, ix
 	}
 }
 
-func StitchToPreviousBlockH6(handle HasherHandle, num_bytes uint, position uint, ringbuffer []byte, ringbuffer_mask uint) {
+func (h *H6) StitchToPreviousBlock(num_bytes uint, position uint, ringbuffer []byte, ringbuffer_mask uint) {
 	if num_bytes >= HashTypeLengthH6()-1 && position >= 3 {
 		/* Prepare the hashes for three last bytes of the last write.
 		   These could not be calculated before, since they require knowledge
 		   of both the previous and the current block. */
-		StoreH6(handle, ringbuffer, ringbuffer_mask, position-3)
+		StoreH6(h, ringbuffer, ringbuffer_mask, position-3)
 
-		StoreH6(handle, ringbuffer, ringbuffer_mask, position-2)
-		StoreH6(handle, ringbuffer, ringbuffer_mask, position-1)
+		StoreH6(h, ringbuffer, ringbuffer_mask, position-2)
+		StoreH6(h, ringbuffer, ringbuffer_mask, position-1)
 	}
 }
 

@@ -53,18 +53,17 @@ func SelfH41(handle HasherHandle) *H41 {
 	return handle.(*H41)
 }
 
-func InitializeH41(handle HasherHandle, params *BrotliEncoderParams) {
+func (h *H41) Initialize(params *BrotliEncoderParams) {
 	var tmp uint
 	if params.quality > 6 {
 		tmp = 7
 	} else {
 		tmp = 8
 	}
-	SelfH41(handle).max_hops = tmp << uint(params.quality-4)
+	h.max_hops = tmp << uint(params.quality-4)
 }
 
-func PrepareH41(handle HasherHandle, one_shot bool, input_size uint, data []byte) {
-	var self *H41 = SelfH41(handle)
+func (h *H41) Prepare(one_shot bool, input_size uint, data []byte) {
 	var partial_prepare_threshold uint = (1 << 15) >> 6
 	/* Partial preparation is 100 times slower (per socket). */
 	if one_shot && input_size <= partial_prepare_threshold {
@@ -73,24 +72,24 @@ func PrepareH41(handle HasherHandle, one_shot bool, input_size uint, data []byte
 			var bucket uint = HashBytesH41(data[i:])
 
 			/* See InitEmpty comment. */
-			self.addr[bucket] = 0xCCCCCCCC
+			h.addr[bucket] = 0xCCCCCCCC
 
-			self.head[bucket] = 0xCCCC
+			h.head[bucket] = 0xCCCC
 		}
 	} else {
 		/* Fill |addr| array with 0xCCCCCCCC value. Because of wrapping, position
 		   processed by hasher never reaches 3GB + 64M; this makes all new chains
 		   to be terminated after the first node. */
 		var i int
-		for i = 0; i < len(self.addr); i++ {
-			self.addr[i] = 0xCCCCCCCC
+		for i = 0; i < len(h.addr); i++ {
+			h.addr[i] = 0xCCCCCCCC
 		}
 
-		self.head = [1 << 15]uint16{}
+		h.head = [1 << 15]uint16{}
 	}
 
-	self.tiny_hash = [65536]byte{}
-	self.free_slot_idx = [1]uint16{}
+	h.tiny_hash = [65536]byte{}
+	h.free_slot_idx = [1]uint16{}
 }
 
 /* Look at 4 bytes at &data[ix & mask]. Compute a hash from these, and prepend
@@ -120,15 +119,15 @@ func StoreRangeH41(handle HasherHandle, data []byte, mask uint, ix_start uint, i
 	}
 }
 
-func StitchToPreviousBlockH41(handle HasherHandle, num_bytes uint, position uint, ringbuffer []byte, ring_buffer_mask uint) {
+func (h *H41) StitchToPreviousBlock(num_bytes uint, position uint, ringbuffer []byte, ring_buffer_mask uint) {
 	if num_bytes >= HashTypeLengthH41()-1 && position >= 3 {
 		/* Prepare the hashes for three last bytes of the last write.
 		   These could not be calculated before, since they require knowledge
 		   of both the previous and the current block. */
-		StoreH41(handle, ringbuffer, ring_buffer_mask, position-3)
+		StoreH41(h, ringbuffer, ring_buffer_mask, position-3)
 
-		StoreH41(handle, ringbuffer, ring_buffer_mask, position-2)
-		StoreH41(handle, ringbuffer, ring_buffer_mask, position-1)
+		StoreH41(h, ringbuffer, ring_buffer_mask, position-2)
+		StoreH41(h, ringbuffer, ring_buffer_mask, position-1)
 	}
 }
 

@@ -39,11 +39,10 @@ func SelfH54(handle HasherHandle) *H54 {
 	return handle.(*H54)
 }
 
-func InitializeH54(handle HasherHandle, params *BrotliEncoderParams) {
+func (*H54) Initialize(params *BrotliEncoderParams) {
 }
 
-func PrepareH54(handle HasherHandle, one_shot bool, input_size uint, data []byte) {
-	var self *H54 = SelfH54(handle)
+func (h *H54) Prepare(one_shot bool, input_size uint, data []byte) {
 	var partial_prepare_threshold uint = (4 << 20) >> 7
 	/* Partial preparation is 100 times slower (per socket). */
 	if one_shot && input_size <= partial_prepare_threshold {
@@ -51,7 +50,7 @@ func PrepareH54(handle HasherHandle, one_shot bool, input_size uint, data []byte
 		for i = 0; i < input_size; i++ {
 			var key uint32 = HashBytesH54(data[i:])
 			for i := 0; i < int(4); i++ {
-				self.buckets_[key:][i] = 0
+				h.buckets_[key:][i] = 0
 			}
 		}
 	} else {
@@ -59,7 +58,7 @@ func PrepareH54(handle HasherHandle, one_shot bool, input_size uint, data []byte
 		   not filling will make the results of the compression stochastic
 		   (but correct). This is because random data would cause the
 		   system to find accidentally good backward references here and there. */
-		self.buckets_ = [(1 << 20) + 4]uint32{}
+		h.buckets_ = [(1 << 20) + 4]uint32{}
 	}
 }
 
@@ -80,15 +79,15 @@ func StoreRangeH54(handle HasherHandle, data []byte, mask uint, ix_start uint, i
 	}
 }
 
-func StitchToPreviousBlockH54(handle HasherHandle, num_bytes uint, position uint, ringbuffer []byte, ringbuffer_mask uint) {
+func (h *H54) StitchToPreviousBlock(num_bytes uint, position uint, ringbuffer []byte, ringbuffer_mask uint) {
 	if num_bytes >= HashTypeLengthH54()-1 && position >= 3 {
 		/* Prepare the hashes for three last bytes of the last write.
 		   These could not be calculated before, since they require knowledge
 		   of both the previous and the current block. */
-		StoreH54(handle, ringbuffer, ringbuffer_mask, position-3)
+		StoreH54(h, ringbuffer, ringbuffer_mask, position-3)
 
-		StoreH54(handle, ringbuffer, ringbuffer_mask, position-2)
-		StoreH54(handle, ringbuffer, ringbuffer_mask, position-1)
+		StoreH54(h, ringbuffer, ringbuffer_mask, position-2)
+		StoreH54(h, ringbuffer, ringbuffer_mask, position-1)
 	}
 }
 

@@ -39,11 +39,10 @@ func SelfH3(handle HasherHandle) *H3 {
 	return handle.(*H3)
 }
 
-func InitializeH3(handle HasherHandle, params *BrotliEncoderParams) {
+func (*H3) Initialize(params *BrotliEncoderParams) {
 }
 
-func PrepareH3(handle HasherHandle, one_shot bool, input_size uint, data []byte) {
-	var self *H3 = SelfH3(handle)
+func (h *H3) Prepare(one_shot bool, input_size uint, data []byte) {
 	var partial_prepare_threshold uint = (4 << 16) >> 7
 	/* Partial preparation is 100 times slower (per socket). */
 	if one_shot && input_size <= partial_prepare_threshold {
@@ -51,7 +50,7 @@ func PrepareH3(handle HasherHandle, one_shot bool, input_size uint, data []byte)
 		for i = 0; i < input_size; i++ {
 			var key uint32 = HashBytesH3(data[i:])
 			for i := 0; i < int(2); i++ {
-				self.buckets_[key:][i] = 0
+				h.buckets_[key:][i] = 0
 			}
 		}
 	} else {
@@ -60,8 +59,8 @@ func PrepareH3(handle HasherHandle, one_shot bool, input_size uint, data []byte)
 		   (but correct). This is because random data would cause the
 		   system to find accidentally good backward references here and there. */
 		var i int
-		for i = 0; i < len(self.buckets_); i++ {
-			self.buckets_[i] = 0
+		for i = 0; i < len(h.buckets_); i++ {
+			h.buckets_[i] = 0
 		}
 	}
 }
@@ -83,15 +82,15 @@ func StoreRangeH3(handle HasherHandle, data []byte, mask uint, ix_start uint, ix
 	}
 }
 
-func StitchToPreviousBlockH3(handle HasherHandle, num_bytes uint, position uint, ringbuffer []byte, ringbuffer_mask uint) {
+func (h *H3) StitchToPreviousBlock(num_bytes uint, position uint, ringbuffer []byte, ringbuffer_mask uint) {
 	if num_bytes >= HashTypeLengthH3()-1 && position >= 3 {
 		/* Prepare the hashes for three last bytes of the last write.
 		   These could not be calculated before, since they require knowledge
 		   of both the previous and the current block. */
-		StoreH3(handle, ringbuffer, ringbuffer_mask, position-3)
+		StoreH3(h, ringbuffer, ringbuffer_mask, position-3)
 
-		StoreH3(handle, ringbuffer, ringbuffer_mask, position-2)
-		StoreH3(handle, ringbuffer, ringbuffer_mask, position-1)
+		StoreH3(h, ringbuffer, ringbuffer_mask, position-2)
+		StoreH3(h, ringbuffer, ringbuffer_mask, position-1)
 	}
 }
 

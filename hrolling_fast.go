@@ -52,39 +52,37 @@ func SelfHROLLING_FAST(handle HasherHandle) *HROLLING_FAST {
 	return handle.(*HROLLING_FAST)
 }
 
-func InitializeHROLLING_FAST(handle HasherHandle, params *BrotliEncoderParams) {
-	var self *HROLLING_FAST = SelfHROLLING_FAST(handle)
+func (h *HROLLING_FAST) Initialize(params *BrotliEncoderParams) {
 	var i uint
-	self.state = 0
-	self.next_ix = 0
+	h.state = 0
+	h.next_ix = 0
 
-	self.factor = kRollingHashMul32HROLLING_FAST
+	h.factor = kRollingHashMul32HROLLING_FAST
 
 	/* Compute the factor of the oldest byte to remove: factor**steps modulo
 	   0xffffffff (the multiplications rely on 32-bit overflow) */
-	self.factor_remove = 1
+	h.factor_remove = 1
 
 	for i = 0; i < 32; i += 4 {
-		self.factor_remove *= self.factor
+		h.factor_remove *= h.factor
 	}
 
-	self.table = make([]uint32, 16777216)
+	h.table = make([]uint32, 16777216)
 	for i = 0; i < 16777216; i++ {
-		self.table[i] = kInvalidPosHROLLING_FAST
+		h.table[i] = kInvalidPosHROLLING_FAST
 	}
 }
 
-func PrepareHROLLING_FAST(handle HasherHandle, one_shot bool, input_size uint, data []byte) {
-	var self *HROLLING_FAST = SelfHROLLING_FAST(handle)
+func (h *HROLLING_FAST) Prepare(one_shot bool, input_size uint, data []byte) {
 	var i uint
 
 	/* Too small size, cannot use this hasher. */
 	if input_size < 32 {
 		return
 	}
-	self.state = 0
+	h.state = 0
 	for i = 0; i < 32; i += 4 {
-		self.state = HashRollingFunctionInitialHROLLING_FAST(self.state, data[i], self.factor)
+		h.state = HashRollingFunctionInitialHROLLING_FAST(h.state, data[i], h.factor)
 	}
 }
 
@@ -94,8 +92,7 @@ func StoreHROLLING_FAST(handle HasherHandle, data []byte, mask uint, ix uint) {
 func StoreRangeHROLLING_FAST(handle HasherHandle, data []byte, mask uint, ix_start uint, ix_end uint) {
 }
 
-func StitchToPreviousBlockHROLLING_FAST(handle HasherHandle, num_bytes uint, position uint, ringbuffer []byte, ring_buffer_mask uint) {
-	var self *HROLLING_FAST = SelfHROLLING_FAST(handle)
+func (h *HROLLING_FAST) StitchToPreviousBlock(num_bytes uint, position uint, ringbuffer []byte, ring_buffer_mask uint) {
 	var position_masked uint
 	/* In this case we must re-initialize the hasher from scratch from the
 	   current position. */
@@ -118,8 +115,8 @@ func StitchToPreviousBlockHROLLING_FAST(handle HasherHandle, num_bytes uint, pos
 		available = ring_buffer_mask - position_masked
 	}
 
-	PrepareHROLLING_FAST(handle, false, available, ringbuffer[position&ring_buffer_mask:])
-	self.next_ix = position
+	h.Prepare(false, available, ringbuffer[position&ring_buffer_mask:])
+	h.next_ix = position
 }
 
 func PrepareDistanceCacheHROLLING_FAST(handle HasherHandle, distance_cache *int) {

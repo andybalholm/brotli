@@ -43,18 +43,17 @@ func SelfH2(handle HasherHandle) *H2 {
 	return handle.(*H2)
 }
 
-func InitializeH2(handle HasherHandle, params *BrotliEncoderParams) {
+func (*H2) Initialize(params *BrotliEncoderParams) {
 }
 
-func PrepareH2(handle HasherHandle, one_shot bool, input_size uint, data []byte) {
-	var self *H2 = SelfH2(handle)
+func (h *H2) Prepare(one_shot bool, input_size uint, data []byte) {
 	var partial_prepare_threshold uint = (4 << 16) >> 7
 	/* Partial preparation is 100 times slower (per socket). */
 	if one_shot && input_size <= partial_prepare_threshold {
 		var i uint
 		for i = 0; i < input_size; i++ {
 			var key uint32 = HashBytesH2(data[i:])
-			self.buckets_[key] = 0
+			h.buckets_[key] = 0
 		}
 	} else {
 		/* It is not strictly necessary to fill this buffer here, but
@@ -62,8 +61,8 @@ func PrepareH2(handle HasherHandle, one_shot bool, input_size uint, data []byte)
 		   (but correct). This is because random data would cause the
 		   system to find accidentally good backward references here and there. */
 		var i int
-		for i = 0; i < len(self.buckets_); i++ {
-			self.buckets_[i] = 0
+		for i = 0; i < len(h.buckets_); i++ {
+			h.buckets_[i] = 0
 		}
 	}
 }
@@ -85,15 +84,15 @@ func StoreRangeH2(handle HasherHandle, data []byte, mask uint, ix_start uint, ix
 	}
 }
 
-func StitchToPreviousBlockH2(handle HasherHandle, num_bytes uint, position uint, ringbuffer []byte, ringbuffer_mask uint) {
+func (h *H2) StitchToPreviousBlock(num_bytes uint, position uint, ringbuffer []byte, ringbuffer_mask uint) {
 	if num_bytes >= HashTypeLengthH2()-1 && position >= 3 {
 		/* Prepare the hashes for three last bytes of the last write.
 		   These could not be calculated before, since they require knowledge
 		   of both the previous and the current block. */
-		StoreH2(handle, ringbuffer, ringbuffer_mask, position-3)
+		StoreH2(h, ringbuffer, ringbuffer_mask, position-3)
 
-		StoreH2(handle, ringbuffer, ringbuffer_mask, position-2)
-		StoreH2(handle, ringbuffer, ringbuffer_mask, position-1)
+		StoreH2(h, ringbuffer, ringbuffer_mask, position-2)
+		StoreH2(h, ringbuffer, ringbuffer_mask, position-1)
 	}
 }
 

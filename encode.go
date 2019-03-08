@@ -1598,7 +1598,7 @@ func BrotliCompressBufferQuality10(lgwin int, input_size uint, input_buffer []by
 			var path_size uint
 			var new_cmd_alloc_size uint
 			BrotliInitZopfliNodes(nodes, block_size+1)
-			StitchToPreviousBlockH10(hasher, block_size, block_start, input_buffer, mask)
+			hasher.StitchToPreviousBlock(block_size, block_start, input_buffer, mask)
 			path_size = BrotliZopfliComputeShortestPath(block_size, block_start, input_buffer, mask, &params, dist_cache[:], hasher, nodes)
 
 			/* We allocate a command buffer in the first iteration of this loop that

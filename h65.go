@@ -40,42 +40,40 @@ func SelfH65(handle HasherHandle) *H65 {
 	return handle.(*H65)
 }
 
-func InitializeH65(handle HasherHandle, params *BrotliEncoderParams) {
-	var self *H65 = SelfH65(handle)
-	self.ha = nil
-	self.hb = nil
-	self.params = params
+func (h *H65) Initialize(params *BrotliEncoderParams) {
+	h.ha = nil
+	h.hb = nil
+	h.params = params
 }
 
 /* TODO: Initialize of the hashers is defered to Prepare (and params
    remembered here) because we don't get the one_shot and input_size params
    here that are needed to know the memory size of them. Instead provide
    those params to all hashers InitializeH65 */
-func PrepareH65(handle HasherHandle, one_shot bool, input_size uint, data []byte) {
-	var self *H65 = SelfH65(handle)
-	if self.ha == nil {
+func (h *H65) Prepare(one_shot bool, input_size uint, data []byte) {
+	if h.ha == nil {
 		var common_a *HasherCommon
 		var common_b *HasherCommon
 
-		self.ha = new(H6)
-		common_a = self.ha.Common()
-		common_a.params = self.params.hasher
+		h.ha = new(H6)
+		common_a = h.ha.Common()
+		common_a.params = h.params.hasher
 		common_a.is_prepared_ = false
 		common_a.dict_num_lookups = 0
 		common_a.dict_num_matches = 0
-		InitializeH6(self.ha, self.params)
+		h.ha.Initialize(h.params)
 
-		self.hb = new(HROLLING)
-		common_b = self.hb.Common()
-		common_b.params = self.params.hasher
+		h.hb = new(HROLLING)
+		common_b = h.hb.Common()
+		common_b.params = h.params.hasher
 		common_b.is_prepared_ = false
 		common_b.dict_num_lookups = 0
 		common_b.dict_num_matches = 0
-		InitializeHROLLING(self.hb, self.params)
+		h.hb.Initialize(h.params)
 	}
 
-	PrepareH6(self.ha, one_shot, input_size, data)
-	PrepareHROLLING(self.hb, one_shot, input_size, data)
+	h.ha.Prepare(one_shot, input_size, data)
+	h.hb.Prepare(one_shot, input_size, data)
 }
 
 func StoreH65(handle HasherHandle, data []byte, mask uint, ix uint) {
@@ -90,10 +88,9 @@ func StoreRangeH65(handle HasherHandle, data []byte, mask uint, ix_start uint, i
 	StoreRangeHROLLING(self.hb, data, mask, ix_start, ix_end)
 }
 
-func StitchToPreviousBlockH65(handle HasherHandle, num_bytes uint, position uint, ringbuffer []byte, ring_buffer_mask uint) {
-	var self *H65 = SelfH65(handle)
-	StitchToPreviousBlockH6(self.ha, num_bytes, position, ringbuffer, ring_buffer_mask)
-	StitchToPreviousBlockHROLLING(self.hb, num_bytes, position, ringbuffer, ring_buffer_mask)
+func (h *H65) StitchToPreviousBlock(num_bytes uint, position uint, ringbuffer []byte, ring_buffer_mask uint) {
+	h.ha.StitchToPreviousBlock(num_bytes, position, ringbuffer, ring_buffer_mask)
+	h.hb.StitchToPreviousBlock(num_bytes, position, ringbuffer, ring_buffer_mask)
 }
 
 func PrepareDistanceCacheH65(handle HasherHandle, distance_cache []int) {

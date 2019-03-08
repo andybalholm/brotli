@@ -45,20 +45,18 @@ func ForestH10(self *H10) []uint32 {
 	return []uint32(self.forest)
 }
 
-func InitializeH10(handle HasherHandle, params *BrotliEncoderParams) {
-	var self *H10 = SelfH10(handle)
-	self.window_mask_ = (1 << params.lgwin) - 1
-	self.invalid_pos_ = uint32(0 - self.window_mask_)
+func (h *H10) Initialize(params *BrotliEncoderParams) {
+	h.window_mask_ = (1 << params.lgwin) - 1
+	h.invalid_pos_ = uint32(0 - h.window_mask_)
 	var num_nodes uint = uint(1) << params.lgwin
-	self.forest = make([]uint32, 2*num_nodes)
+	h.forest = make([]uint32, 2*num_nodes)
 }
 
-func PrepareH10(handle HasherHandle, one_shot bool, input_size uint, data []byte) {
-	var self *H10 = SelfH10(handle)
-	var invalid_pos uint32 = self.invalid_pos_
+func (h *H10) Prepare(one_shot bool, input_size uint, data []byte) {
+	var invalid_pos uint32 = h.invalid_pos_
 	var i uint32
 	for i = 0; i < 1<<17; i++ {
-		self.buckets_[i] = invalid_pos
+		h.buckets_[i] = invalid_pos
 	}
 }
 
@@ -261,8 +259,7 @@ func StoreRangeH10(handle HasherHandle, data []byte, mask uint, ix_start uint, i
 	}
 }
 
-func StitchToPreviousBlockH10(handle HasherHandle, num_bytes uint, position uint, ringbuffer []byte, ringbuffer_mask uint) {
-	var self *H10 = SelfH10(handle)
+func (h *H10) StitchToPreviousBlock(num_bytes uint, position uint, ringbuffer []byte, ringbuffer_mask uint) {
 	if num_bytes >= HashTypeLengthH10()-1 && position >= 128 {
 		var i_start uint = position - 128 + 1
 		var i_end uint = brotli_min_size_t(position, i_start+num_bytes)
@@ -276,12 +273,12 @@ func StitchToPreviousBlockH10(handle HasherHandle, num_bytes uint, position uint
 			   Furthermore, we have to make sure that we don't look further back
 			   from the start of the next block than the window size, otherwise we
 			   could access already overwritten areas of the ring-buffer. */
-			var max_backward uint = self.window_mask_ - brotli_max_size_t(BROTLI_WINDOW_GAP-1, position-i)
+			var max_backward uint = h.window_mask_ - brotli_max_size_t(BROTLI_WINDOW_GAP-1, position-i)
 
 			/* We know that i + 128 <= position + num_bytes, i.e. the
 			   end of the current block and that we have at least
 			   128 tail in the ring-buffer. */
-			StoreAndFindMatchesH10(self, ringbuffer, i, ringbuffer_mask, 128, max_backward, nil, nil)
+			StoreAndFindMatchesH10(h, ringbuffer, i, ringbuffer_mask, 128, max_backward, nil, nil)
 		}
 	}
 }

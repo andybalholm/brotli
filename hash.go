@@ -31,6 +31,9 @@ func (h *HasherCommon) Common() *HasherCommon {
 
 type HasherHandle interface {
 	Common() *HasherCommon
+	Initialize(params *BrotliEncoderParams)
+	Prepare(one_shot bool, input_size uint, data []byte)
+	StitchToPreviousBlock(num_bytes uint, position uint, ringbuffer []byte, ringbuffer_mask uint)
 }
 
 type score_t uint
@@ -280,75 +283,13 @@ func HasherSetup(handle *HasherHandle, params *BrotliEncoderParams, data []byte,
 		*handle = self
 		common = self.Common()
 		common.params = params.hasher
-		switch common.params.type_ {
-		case 2:
-			InitializeH2(*handle, params)
-		case 3:
-			InitializeH3(*handle, params)
-		case 4:
-			InitializeH4(*handle, params)
-		case 5:
-			InitializeH5(*handle, params)
-		case 6:
-			InitializeH6(*handle, params)
-		case 40:
-			InitializeH40(*handle, params)
-		case 41:
-			InitializeH41(*handle, params)
-		case 42:
-			InitializeH42(*handle, params)
-		case 54:
-			InitializeH54(*handle, params)
-		case 35:
-			InitializeH35(*handle, params)
-		case 55:
-			InitializeH55(*handle, params)
-		case 65:
-			InitializeH65(*handle, params)
-		case 10:
-			InitializeH10(*handle, params)
-
-		default:
-			break
-		}
-
-		HasherReset(*handle)
+		self.Initialize(params)
 	}
 
 	self = *handle
 	common = self.Common()
 	if !common.is_prepared_ {
-		switch common.params.type_ {
-		case 2:
-			PrepareH2(self, one_shot, input_size, data)
-		case 3:
-			PrepareH3(self, one_shot, input_size, data)
-		case 4:
-			PrepareH4(self, one_shot, input_size, data)
-		case 5:
-			PrepareH5(self, one_shot, input_size, data)
-		case 6:
-			PrepareH6(self, one_shot, input_size, data)
-		case 40:
-			PrepareH40(self, one_shot, input_size, data)
-		case 41:
-			PrepareH41(self, one_shot, input_size, data)
-		case 42:
-			PrepareH42(self, one_shot, input_size, data)
-		case 54:
-			PrepareH54(self, one_shot, input_size, data)
-		case 35:
-			PrepareH35(self, one_shot, input_size, data)
-		case 55:
-			PrepareH55(self, one_shot, input_size, data)
-		case 65:
-			PrepareH65(self, one_shot, input_size, data)
-		case 10:
-			PrepareH10(self, one_shot, input_size, data)
-
-		default:
-			break
-		}
+		self.Prepare(one_shot, input_size, data)
 
 		if position == 0 {
 			common.dict_num_lookups = 0
@@ -363,35 +304,5 @@ func InitOrStitchToPreviousBlock(handle *HasherHandle, data []byte, mask uint, p
 	var self HasherHandle
 	HasherSetup(handle, params, data, position, input_size, is_last)
 	self = *handle
-	switch self.Common().params.type_ {
-	case 2:
-		StitchToPreviousBlockH2(self, input_size, position, data, mask)
-	case 3:
-		StitchToPreviousBlockH3(self, input_size, position, data, mask)
-	case 4:
-		StitchToPreviousBlockH4(self, input_size, position, data, mask)
-	case 5:
-		StitchToPreviousBlockH5(self, input_size, position, data, mask)
-	case 6:
-		StitchToPreviousBlockH6(self, input_size, position, data, mask)
-	case 40:
-		StitchToPreviousBlockH40(self, input_size, position, data, mask)
-	case 41:
-		StitchToPreviousBlockH41(self, input_size, position, data, mask)
-	case 42:
-		StitchToPreviousBlockH42(self, input_size, position, data, mask)
-	case 54:
-		StitchToPreviousBlockH54(self, input_size, position, data, mask)
-	case 35:
-		StitchToPreviousBlockH35(self, input_size, position, data, mask)
-	case 55:
-		StitchToPreviousBlockH55(self, input_size, position, data, mask)
-	case 65:
-		StitchToPreviousBlockH65(self, input_size, position, data, mask)
-	case 10:
-		StitchToPreviousBlockH10(self, input_size, position, data, mask)
-
-	default:
-		break
-	}
+	self.StitchToPreviousBlock(input_size, position, data, mask)
 }
