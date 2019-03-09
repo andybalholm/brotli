@@ -1,5 +1,7 @@
 package brotli
 
+/* NOTE: this hasher does not search in the dictionary. It is used as
+   backup-hasher, the main hasher already searches in it. */
 /* NOLINT(build/header_guard) */
 /* Copyright 2018 Google Inc. All Rights Reserved.
 
@@ -9,37 +11,40 @@ package brotli
 
 /* Rolling hash for long distance long string matches. Stores one position
    per bucket, bucket key is computed over a long region. */
-var kRollingHashMul32HROLLING_FAST uint32 = 69069
+var kRollingHashMul32hashRolling uint32 = 69069
 
-var kInvalidPosHROLLING_FAST uint32 = 0xffffffff
+var kInvalidPosHashRolling uint32 = 0xffffffff
 
 /* This hasher uses a longer forward length, but returning a higher value here
    will hurt compression by the main hasher when combined with a composite
    hasher. The hasher tests for forward itself instead. */
-func (*HROLLING_FAST) HashTypeLength() uint {
+func (*hashRolling) HashTypeLength() uint {
 	return 4
 }
 
-func (*HROLLING_FAST) StoreLookahead() uint {
+func (*hashRolling) StoreLookahead() uint {
 	return 4
 }
 
 /* Computes a code from a single byte. A lookup table of 256 values could be
    used, but simply adding 1 works about as good. */
-func HashByteHROLLING_FAST(byte byte) uint32 {
-	return uint32(byte) + 1
+func (*hashRolling) HashByte(b byte) uint32 {
+	return uint32(b) + 1
 }
 
-func HashRollingFunctionInitialHROLLING_FAST(state uint32, add byte, factor uint32) uint32 {
-	return uint32(factor*state + HashByteHROLLING_FAST(add))
+func (h *hashRolling) HashRollingFunctionInitial(state uint32, add byte, factor uint32) uint32 {
+	return uint32(factor*state + h.HashByte(add))
 }
 
-func HashRollingFunctionHROLLING_FAST(state uint32, add byte, rem byte, factor uint32, factor_remove uint32) uint32 {
-	return uint32(factor*state + HashByteHROLLING_FAST(add) - factor_remove*HashByteHROLLING_FAST(rem))
+func (h *hashRolling) HashRollingFunction(state uint32, add byte, rem byte, factor uint32, factor_remove uint32) uint32 {
+	return uint32(factor*state + h.HashByte(add) - factor_remove*h.HashByte(rem))
 }
 
-type HROLLING_FAST struct {
+type hashRolling struct {
 	HasherCommon
+
+	jump int
+
 	state         uint32
 	table         []uint32
 	next_ix       uint
@@ -48,58 +53,51 @@ type HROLLING_FAST struct {
 	factor_remove uint32
 }
 
-func SelfHROLLING_FAST(handle HasherHandle) *HROLLING_FAST {
-	return handle.(*HROLLING_FAST)
-}
-
-func (h *HROLLING_FAST) Initialize(params *BrotliEncoderParams) {
-	var i uint
+func (h *hashRolling) Initialize(params *BrotliEncoderParams) {
 	h.state = 0
 	h.next_ix = 0
 
-	h.factor = kRollingHashMul32HROLLING_FAST
+	h.factor = kRollingHashMul32hashRolling
 
 	/* Compute the factor of the oldest byte to remove: factor**steps modulo
 	   0xffffffff (the multiplications rely on 32-bit overflow) */
 	h.factor_remove = 1
 
-	for i = 0; i < 32; i += 4 {
+	for i := 0; i < 32; i += h.jump {
 		h.factor_remove *= h.factor
 	}
 
 	h.table = make([]uint32, 16777216)
-	for i = 0; i < 16777216; i++ {
-		h.table[i] = kInvalidPosHROLLING_FAST
+	for i := 0; i < 16777216; i++ {
+		h.table[i] = kInvalidPosHashRolling
 	}
 }
 
-func (h *HROLLING_FAST) Prepare(one_shot bool, input_size uint, data []byte) {
-	var i uint
-
+func (h *hashRolling) Prepare(one_shot bool, input_size uint, data []byte) {
 	/* Too small size, cannot use this hasher. */
 	if input_size < 32 {
 		return
 	}
 	h.state = 0
-	for i = 0; i < 32; i += 4 {
-		h.state = HashRollingFunctionInitialHROLLING_FAST(h.state, data[i], h.factor)
+	for i := 0; i < 32; i += h.jump {
+		h.state = h.HashRollingFunctionInitial(h.state, data[i], h.factor)
 	}
 }
 
-func (*HROLLING_FAST) Store(data []byte, mask uint, ix uint) {
+func (*hashRolling) Store(data []byte, mask uint, ix uint) {
 }
 
-func (*HROLLING_FAST) StoreRange(data []byte, mask uint, ix_start uint, ix_end uint) {
+func (*hashRolling) StoreRange(data []byte, mask uint, ix_start uint, ix_end uint) {
 }
 
-func (h *HROLLING_FAST) StitchToPreviousBlock(num_bytes uint, position uint, ringbuffer []byte, ring_buffer_mask uint) {
+func (h *hashRolling) StitchToPreviousBlock(num_bytes uint, position uint, ringbuffer []byte, ring_buffer_mask uint) {
 	var position_masked uint
 	/* In this case we must re-initialize the hasher from scratch from the
 	   current position. */
 
 	var available uint = num_bytes
-	if position&(4-1) != 0 {
-		var diff uint = 4 - (position & (4 - 1))
+	if position&uint(h.jump-1) != 0 {
+		var diff uint = uint(h.jump) - (position & uint(h.jump-1))
 		if diff > available {
 			available = 0
 		} else {
@@ -119,14 +117,14 @@ func (h *HROLLING_FAST) StitchToPreviousBlock(num_bytes uint, position uint, rin
 	h.next_ix = position
 }
 
-func (*HROLLING_FAST) PrepareDistanceCache(distance_cache []int) {
+func (*hashRolling) PrepareDistanceCache(distance_cache []int) {
 }
 
-func (h *HROLLING_FAST) FindLongestMatch(dictionary *BrotliEncoderDictionary, data []byte, ring_buffer_mask uint, distance_cache []int, cur_ix uint, max_length uint, max_backward uint, gap uint, max_distance uint, out *HasherSearchResult) {
+func (h *hashRolling) FindLongestMatch(dictionary *BrotliEncoderDictionary, data []byte, ring_buffer_mask uint, distance_cache []int, cur_ix uint, max_length uint, max_backward uint, gap uint, max_distance uint, out *HasherSearchResult) {
 	var cur_ix_masked uint = cur_ix & ring_buffer_mask
 	var pos uint = h.next_ix
 
-	if cur_ix&(4-1) != 0 {
+	if cur_ix&uint(h.jump-1) != 0 {
 		return
 	}
 
@@ -135,18 +133,18 @@ func (h *HROLLING_FAST) FindLongestMatch(dictionary *BrotliEncoderDictionary, da
 		return
 	}
 
-	for pos = h.next_ix; pos <= cur_ix; pos += 4 {
+	for pos = h.next_ix; pos <= cur_ix; pos += uint(h.jump) {
 		var code uint32 = h.state & ((16777216 * 64) - 1)
 		var rem byte = data[pos&ring_buffer_mask]
 		var add byte = data[(pos+32)&ring_buffer_mask]
-		var found_ix uint = uint(kInvalidPosHROLLING_FAST)
+		var found_ix uint = uint(kInvalidPosHashRolling)
 
-		h.state = HashRollingFunctionHROLLING_FAST(h.state, add, rem, h.factor, h.factor_remove)
+		h.state = h.HashRollingFunction(h.state, add, rem, h.factor, h.factor_remove)
 
 		if code < 16777216 {
 			found_ix = uint(h.table[code])
 			h.table[code] = uint32(pos)
-			if pos == cur_ix && uint32(found_ix) != kInvalidPosHROLLING_FAST {
+			if pos == cur_ix && uint32(found_ix) != kInvalidPosHashRolling {
 				/* The cast to 32-bit makes backward distances up to 4GB work even
 				   if cur_ix is above 4GB, despite using 32-bit values in the table. */
 				var backward uint = uint(uint32(cur_ix - found_ix))
@@ -167,5 +165,5 @@ func (h *HROLLING_FAST) FindLongestMatch(dictionary *BrotliEncoderDictionary, da
 		}
 	}
 
-	h.next_ix = cur_ix + 4
+	h.next_ix = cur_ix + uint(h.jump)
 }

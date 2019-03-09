@@ -65,7 +65,7 @@ func (h *H35) Prepare(one_shot bool, input_size uint, data []byte) {
 		common_a.dict_num_matches = 0
 		h.ha.Initialize(h.params)
 
-		h.hb = new(HROLLING_FAST)
+		h.hb = &hashRolling{jump: 1}
 		common_b = h.hb.Common()
 		common_b.params = h.params.hasher
 		common_b.is_prepared_ = false
