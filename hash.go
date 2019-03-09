@@ -284,11 +284,26 @@ func newHasher(typ int) HasherHandle {
 	case 6:
 		return new(H6)
 	case 40:
-		return new(H40)
+		return &hashForgetfulChain{
+			bucketBits:              15,
+			numBanks:                1,
+			bankBits:                16,
+			numLastDistancesToCheck: 4,
+		}
 	case 41:
-		return new(H41)
+		return &hashForgetfulChain{
+			bucketBits:              15,
+			numBanks:                1,
+			bankBits:                16,
+			numLastDistancesToCheck: 10,
+		}
 	case 42:
-		return new(H42)
+		return &hashForgetfulChain{
+			bucketBits:              15,
+			numBanks:                512,
+			bankBits:                9,
+			numLastDistancesToCheck: 16,
+		}
 	case 54:
 		return &hashLongestMatchQuickly{
 			bucketBits:    20,
