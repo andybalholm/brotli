@@ -1,5 +1,7 @@
 package brotli
 
+import "encoding/binary"
+
 /* Matches data against static dictionary words, and for each length l,
    for which a match is found, updates matches[l] to be the minimum possible
      (distance << 5) + len_code.
@@ -70,7 +72,7 @@ var kHashMul64 uint64 = 0x1E35A7BD1E35A7BD
 var kHashMul64Long uint64 = 0x1FE35A7BD3579BD3
 
 func Hash14(data []byte) uint32 {
-	var h uint32 = BROTLI_UNALIGNED_LOAD32LE(data) * kHashMul32
+	var h uint32 = binary.LittleEndian.Uint32(data) * kHashMul32
 
 	/* The higher bits contain more mixture from the multiplication,
 	   so we take our results from there. */

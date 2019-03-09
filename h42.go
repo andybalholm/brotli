@@ -1,5 +1,7 @@
 package brotli
 
+import "encoding/binary"
+
 /* NOLINT(build/header_guard) */
 /* Copyright 2016 Google Inc. All Rights Reserved.
 
@@ -23,7 +25,7 @@ func (*H42) StoreLookahead() uint {
 
 /* HashBytes is the function that chooses the bucket to place the address in.*/
 func HashBytesH42(data []byte) uint {
-	var h uint32 = BROTLI_UNALIGNED_LOAD32LE(data) * kHashMul32
+	var h uint32 = binary.LittleEndian.Uint32(data) * kHashMul32
 
 	/* The higher bits contain more mixture from the multiplication,
 	   so we take our results from there. */

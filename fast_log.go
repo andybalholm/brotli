@@ -1,5 +1,7 @@
 package brotli
 
+import "math"
+
 /* Copyright 2013 Google Inc. All Rights Reserved.
 
    Distributed under MIT license.
@@ -311,5 +313,5 @@ func FastLog2(v uint) float64 {
 		return float64(kLog2Table[v])
 	}
 
-	return log2(float64(v))
+	return math.Log2(float64(v))
 }

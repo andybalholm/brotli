@@ -30,46 +30,6 @@ package brotli
 */
 type brotli_reg_t uint64
 
-/* Read / store values byte-wise; hopefully compiler will understand. */
-func BROTLI_UNALIGNED_LOAD16LE(p []byte) uint16 {
-	var in []byte = []byte(p)
-	return uint16(in[0] | in[1]<<8)
-}
-
-func BROTLI_UNALIGNED_LOAD32LE(p []byte) uint32 {
-	var in []byte = []byte(p)
-	var value uint32 = uint32(in[0])
-	value |= uint32(in[1]) << 8
-	value |= uint32(in[2]) << 16
-	value |= uint32(in[3]) << 24
-	return value
-}
-
-func BROTLI_UNALIGNED_LOAD64LE(p []byte) uint64 {
-	var in []byte = []byte(p)
-	var value uint64 = uint64(in[0])
-	value |= uint64(in[1]) << 8
-	value |= uint64(in[2]) << 16
-	value |= uint64(in[3]) << 24
-	value |= uint64(in[4]) << 32
-	value |= uint64(in[5]) << 40
-	value |= uint64(in[6]) << 48
-	value |= uint64(in[7]) << 56
-	return value
-}
-
-func BROTLI_UNALIGNED_STORE64LE(p []byte, v uint64) {
-	var out []byte = []byte(p)
-	out[0] = byte(v)
-	out[1] = byte(v >> 8)
-	out[2] = byte(v >> 16)
-	out[3] = byte(v >> 24)
-	out[4] = byte(v >> 32)
-	out[5] = byte(v >> 40)
-	out[6] = byte(v >> 48)
-	out[7] = byte(v >> 56)
-}
-
 func brotli_min_double(a float64, b float64) float64 {
 	if a < b {
 		return a

@@ -1,5 +1,7 @@
 package brotli
 
+import "math"
+
 /* The distance symbols effectively used by "Large Window Brotli" (32-bit). */
 const BROTLI_NUM_HISTOGRAM_DISTANCE_SYMBOLS = 544
 
@@ -12,7 +14,7 @@ type HistogramLiteral struct {
 func HistogramClearLiteral(self *HistogramLiteral) {
 	self.data_ = [BROTLI_NUM_LITERAL_SYMBOLS]uint32{}
 	self.total_count_ = 0
-	self.bit_cost_ = HUGE_VAL
+	self.bit_cost_ = math.MaxFloat64
 }
 
 func ClearHistogramsLiteral(array []HistogramLiteral, length uint) {
@@ -61,7 +63,7 @@ type HistogramCommand struct {
 func HistogramClearCommand(self *HistogramCommand) {
 	self.data_ = [BROTLI_NUM_COMMAND_SYMBOLS]uint32{}
 	self.total_count_ = 0
-	self.bit_cost_ = HUGE_VAL
+	self.bit_cost_ = math.MaxFloat64
 }
 
 func ClearHistogramsCommand(array []HistogramCommand, length uint) {
@@ -110,7 +112,7 @@ type HistogramDistance struct {
 func HistogramClearDistance(self *HistogramDistance) {
 	self.data_ = [BROTLI_NUM_DISTANCE_SYMBOLS]uint32{}
 	self.total_count_ = 0
-	self.bit_cost_ = HUGE_VAL
+	self.bit_cost_ = math.MaxFloat64
 }
 
 func ClearHistogramsDistance(array []HistogramDistance, length uint) {

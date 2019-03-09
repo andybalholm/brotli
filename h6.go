@@ -1,5 +1,7 @@
 package brotli
 
+import "encoding/binary"
+
 /* NOLINT(build/header_guard) */
 /* Copyright 2010 Google Inc. All Rights Reserved.
 
@@ -23,7 +25,7 @@ func (*H6) StoreLookahead() uint {
 
 /* HashBytes is the function that chooses the bucket to place the address in. */
 func HashBytesH6(data []byte, mask uint64, shift int) uint32 {
-	var h uint64 = (BROTLI_UNALIGNED_LOAD64LE(data) & mask) * kHashMul64Long
+	var h uint64 = (binary.LittleEndian.Uint64(data) & mask) * kHashMul64Long
 
 	/* The higher bits contain more mixture from the multiplication,
 	   so we take our results from there. */

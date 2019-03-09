@@ -1,5 +1,7 @@
 package brotli
 
+import "encoding/binary"
+
 /* Copyright 2015 Google Inc. All Rights Reserved.
 
    Distributed under MIT license.
@@ -25,7 +27,7 @@ package brotli
 var kCompressFragmentTwoPassBlockSize uint = 1 << 17
 
 func Hash1(p []byte, shift uint, length uint) uint32 {
-	var h uint64 = (BROTLI_UNALIGNED_LOAD64LE(p) << ((8 - length) * 8)) * uint64(kHashMul32_a)
+	var h uint64 = (binary.LittleEndian.Uint64(p) << ((8 - length) * 8)) * uint64(kHashMul32_a)
 	return uint32(h >> shift)
 }
 
@@ -349,7 +351,7 @@ func CreateCommands(input []byte, block_size uint, input_size uint, base_ip_ptr 
 
 					var prev_hash uint32
 					if min_match == 4 {
-						input_bytes = BROTLI_UNALIGNED_LOAD64LE(input[ip-3:])
+						input_bytes = binary.LittleEndian.Uint64(input[ip-3:])
 						cur_hash = HashBytesAtOffset(input_bytes, 3, shift, min_match)
 						prev_hash = HashBytesAtOffset(input_bytes, 0, shift, min_match)
 						table[prev_hash] = int(ip - base_ip - 3)
@@ -358,14 +360,14 @@ func CreateCommands(input []byte, block_size uint, input_size uint, base_ip_ptr 
 						prev_hash = HashBytesAtOffset(input_bytes, 0, shift, min_match)
 						table[prev_hash] = int(ip - base_ip - 1)
 					} else {
-						input_bytes = BROTLI_UNALIGNED_LOAD64LE(input[ip-5:])
+						input_bytes = binary.LittleEndian.Uint64(input[ip-5:])
 						prev_hash = HashBytesAtOffset(input_bytes, 0, shift, min_match)
 						table[prev_hash] = int(ip - base_ip - 5)
 						prev_hash = HashBytesAtOffset(input_bytes, 1, shift, min_match)
 						table[prev_hash] = int(ip - base_ip - 4)
 						prev_hash = HashBytesAtOffset(input_bytes, 2, shift, min_match)
 						table[prev_hash] = int(ip - base_ip - 3)
-						input_bytes = BROTLI_UNALIGNED_LOAD64LE(input[ip-2:])
+						input_bytes = binary.LittleEndian.Uint64(input[ip-2:])
 						cur_hash = HashBytesAtOffset(input_bytes, 2, shift, min_match)
 						prev_hash = HashBytesAtOffset(input_bytes, 0, shift, min_match)
 						table[prev_hash] = int(ip - base_ip - 2)
@@ -402,7 +404,7 @@ func CreateCommands(input []byte, block_size uint, input_size uint, base_ip_ptr 
 
 					var prev_hash uint32
 					if min_match == 4 {
-						input_bytes = BROTLI_UNALIGNED_LOAD64LE(input[ip-3:])
+						input_bytes = binary.LittleEndian.Uint64(input[ip-3:])
 						cur_hash = HashBytesAtOffset(input_bytes, 3, shift, min_match)
 						prev_hash = HashBytesAtOffset(input_bytes, 0, shift, min_match)
 						table[prev_hash] = int(ip - base_ip - 3)
@@ -411,14 +413,14 @@ func CreateCommands(input []byte, block_size uint, input_size uint, base_ip_ptr 
 						prev_hash = HashBytesAtOffset(input_bytes, 2, shift, min_match)
 						table[prev_hash] = int(ip - base_ip - 1)
 					} else {
-						input_bytes = BROTLI_UNALIGNED_LOAD64LE(input[ip-5:])
+						input_bytes = binary.LittleEndian.Uint64(input[ip-5:])
 						prev_hash = HashBytesAtOffset(input_bytes, 0, shift, min_match)
 						table[prev_hash] = int(ip - base_ip - 5)
 						prev_hash = HashBytesAtOffset(input_bytes, 1, shift, min_match)
 						table[prev_hash] = int(ip - base_ip - 4)
 						prev_hash = HashBytesAtOffset(input_bytes, 2, shift, min_match)
 						table[prev_hash] = int(ip - base_ip - 3)
-						input_bytes = BROTLI_UNALIGNED_LOAD64LE(input[ip-2:])
+						input_bytes = binary.LittleEndian.Uint64(input[ip-2:])
 						cur_hash = HashBytesAtOffset(input_bytes, 2, shift, min_match)
 						prev_hash = HashBytesAtOffset(input_bytes, 0, shift, min_match)
 						table[prev_hash] = int(ip - base_ip - 2)

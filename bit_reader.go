@@ -1,5 +1,7 @@
 package brotli
 
+import "encoding/binary"
+
 /* Copyright 2013 Google Inc. All Rights Reserved.
 
    Distributed under MIT license.
@@ -112,7 +114,7 @@ func BrotliFillBitWindow(br *BrotliBitReader, n_bits uint32) {
 	if br.bit_pos_ >= 32 {
 		br.val_ >>= 32
 		br.bit_pos_ ^= 32 /* here same as -= 32 because of the if condition */
-		br.val_ |= (uint64(BROTLI_UNALIGNED_LOAD32LE(br.input[br.byte_pos:]))) << 32
+		br.val_ |= (uint64(binary.LittleEndian.Uint32(br.input[br.byte_pos:]))) << 32
 		br.byte_pos += 4
 	}
 }

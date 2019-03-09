@@ -1,5 +1,7 @@
 package brotli
 
+import "encoding/binary"
+
 /* Copyright 2015 Google Inc. All Rights Reserved.
 
    Distributed under MIT license.
@@ -47,7 +49,7 @@ package brotli
    OUTPUT: maximal copy distance <= |input_size|
    OUTPUT: maximal copy distance <= BROTLI_MAX_BACKWARD_LIMIT(18) */
 func Hash5(p []byte, shift uint) uint32 {
-	var h uint64 = (BROTLI_UNALIGNED_LOAD64LE(p) << 24) * uint64(kHashMul32_a)
+	var h uint64 = (binary.LittleEndian.Uint64(p) << 24) * uint64(kHashMul32_a)
 	return uint32(h >> shift)
 }
 
@@ -695,7 +697,7 @@ emit_commands:
 				   compression we first update "table" with the hashes of some positions
 				   within the last copy. */
 				{
-					var input_bytes uint64 = BROTLI_UNALIGNED_LOAD64LE(in[ip-3:])
+					var input_bytes uint64 = binary.LittleEndian.Uint64(in[ip-3:])
 					var prev_hash uint32 = HashBytesAtOffset5(input_bytes, 0, shift)
 					var cur_hash uint32 = HashBytesAtOffset5(input_bytes, 3, shift)
 					table[prev_hash] = int(ip - base_ip - 3)
@@ -732,7 +734,7 @@ emit_commands:
 				   compression we first update "table" with the hashes of some positions
 				   within the last copy. */
 				{
-					var input_bytes uint64 = BROTLI_UNALIGNED_LOAD64LE(in[ip-3:])
+					var input_bytes uint64 = binary.LittleEndian.Uint64(in[ip-3:])
 					var prev_hash uint32 = HashBytesAtOffset5(input_bytes, 0, shift)
 					var cur_hash uint32 = HashBytesAtOffset5(input_bytes, 3, shift)
 					table[prev_hash] = int(ip - base_ip - 3)

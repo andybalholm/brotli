@@ -1,5 +1,7 @@
 package brotli
 
+import "encoding/binary"
+
 /* NOLINT(build/header_guard) */
 /* Copyright 2010 Google Inc. All Rights Reserved.
 
@@ -22,7 +24,7 @@ func (*H2) StoreLookahead() uint {
    the address in. The HashLongestMatch and H2
    classes have separate, different implementations of hashing. */
 func HashBytesH2(data []byte) uint32 {
-	var h uint64 = ((BROTLI_UNALIGNED_LOAD64LE(data) << (64 - 8*5)) * kHashMul64)
+	var h uint64 = ((binary.LittleEndian.Uint64(data) << (64 - 8*5)) * kHashMul64)
 
 	/* The higher bits contain more mixture from the multiplication,
 	   so we take our results from there. */

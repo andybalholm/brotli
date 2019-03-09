@@ -1,5 +1,7 @@
 package brotli
 
+import "encoding/binary"
+
 /* Copyright 2013 Google Inc. All Rights Reserved.
 
    Distributed under MIT license.
@@ -17,7 +19,7 @@ var kInvalidMatch uint32 = 0xFFFFFFF
    See file LICENSE for detail or copy at https://opensource.org/licenses/MIT
 */
 func Hash(data []byte) uint32 {
-	var h uint32 = BROTLI_UNALIGNED_LOAD32LE(data) * kDictHashMul32
+	var h uint32 = binary.LittleEndian.Uint32(data) * kDictHashMul32
 
 	/* The higher bits contain more mixture from the multiplication,
 	   so we take our results from there. */
