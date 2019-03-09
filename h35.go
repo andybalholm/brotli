@@ -57,7 +57,7 @@ func (h *H35) Prepare(one_shot bool, input_size uint, data []byte) {
 		var common_a *HasherCommon
 		var common_b *HasherCommon
 
-		h.ha = new(H3)
+		h.ha = newHasher(3)
 		common_a = h.ha.Common()
 		common_a.params = h.params.hasher
 		common_a.is_prepared_ = false

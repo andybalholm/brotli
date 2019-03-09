@@ -1,6 +1,9 @@
 package brotli
 
-import "encoding/binary"
+import (
+	"encoding/binary"
+	"fmt"
+)
 
 /* Matches data against static dictionary words, and for each length l,
    for which a match is found, updates matches[l] to be the minimum possible
@@ -253,40 +256,66 @@ func HasherReset(handle HasherHandle) {
 	handle.Common().is_prepared_ = false
 }
 
+func newHasher(typ int) HasherHandle {
+	switch typ {
+	case 2:
+		return &hashLongestMatchQuickly{
+			bucketBits:    16,
+			bucketSweep:   1,
+			hashLen:       5,
+			useDictionary: true,
+		}
+	case 3:
+		return &hashLongestMatchQuickly{
+			bucketBits:    16,
+			bucketSweep:   2,
+			hashLen:       5,
+			useDictionary: false,
+		}
+	case 4:
+		return &hashLongestMatchQuickly{
+			bucketBits:    17,
+			bucketSweep:   4,
+			hashLen:       5,
+			useDictionary: true,
+		}
+	case 5:
+		return new(H5)
+	case 6:
+		return new(H6)
+	case 40:
+		return new(H40)
+	case 41:
+		return new(H41)
+	case 42:
+		return new(H42)
+	case 54:
+		return &hashLongestMatchQuickly{
+			bucketBits:    20,
+			bucketSweep:   4,
+			hashLen:       7,
+			useDictionary: false,
+		}
+	case 35:
+		return new(H35)
+	case 55:
+		return new(H55)
+	case 65:
+		return new(H65)
+	case 10:
+		return new(H10)
+	}
+
+	panic(fmt.Sprintf("unknown hasher type: %d", typ))
+}
+
 func HasherSetup(handle *HasherHandle, params *BrotliEncoderParams, data []byte, position uint, input_size uint, is_last bool) {
 	var self HasherHandle = nil
 	var common *HasherCommon = nil
 	var one_shot bool = (position == 0 && is_last)
 	if *handle == nil {
 		ChooseHasher(params, &params.hasher)
-		switch params.hasher.type_ {
-		case 2:
-			self = new(H2)
-		case 3:
-			self = new(H3)
-		case 4:
-			self = new(H4)
-		case 5:
-			self = new(H5)
-		case 6:
-			self = new(H6)
-		case 40:
-			self = new(H40)
-		case 41:
-			self = new(H41)
-		case 42:
-			self = new(H42)
-		case 54:
-			self = new(H54)
-		case 35:
-			self = new(H35)
-		case 55:
-			self = new(H55)
-		case 65:
-			self = new(H65)
-		case 10:
-			self = new(H10)
-		}
+		self = newHasher(params.hasher.type_)
 
 		*handle = self
 		common = self.Common()
