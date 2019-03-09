@@ -24,9 +24,9 @@ var (
 func NewWriter(dst io.Writer, options WriterOptions) *Writer {
 	w := new(Writer)
 	BrotliEncoderInitState(w)
-	BrotliEncoderSetParameter(w, BROTLI_PARAM_QUALITY, uint32(options.Quality))
+	w.params.quality = options.Quality
 	if options.LGWin > 0 {
-		BrotliEncoderSetParameter(w, BROTLI_PARAM_LGWIN, uint32(options.LGWin))
+		w.params.lgwin = uint(options.LGWin)
 	}
 	w.dst = dst
 	return w
@@ -40,8 +40,7 @@ func (w *Writer) writeChunk(p []byte, op int) (n int, err error) {
 	for {
 		availableIn := uint(len(p))
 		nextIn := p
-		availableOut := uint(0)
-		success := BrotliEncoderCompressStream(w, op, &availableIn, &nextIn, &availableOut, nil, nil)
+		success := BrotliEncoderCompressStream(w, op, &availableIn, &nextIn)
 		bytesConsumed := len(p) - int(availableIn)
 		p = p[bytesConsumed:]
 		n += bytesConsumed
@@ -49,17 +48,15 @@ func (w *Writer) writeChunk(p []byte, op int) (n int, err error) {
 			return n, errEncode
 		}
 
-		var outputDataSize uint
-		outputData := BrotliEncoderTakeOutput(w, &outputDataSize)
-		outputData = outputData[:outputDataSize]
+		outputData := BrotliEncoderTakeOutput(w)
 
-		if outputDataSize > 0 {
+		if len(outputData) > 0 {
 			_, err = w.dst.Write(outputData)
 			if err != nil {
 				return n, err
 			}
 		}
-		if len(p) == 0 && !BrotliEncoderHasMoreOutput(w) {
+		if len(p) == 0 {
 			return n, nil
 		}
 	}
