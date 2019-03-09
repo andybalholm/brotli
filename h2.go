@@ -10,11 +10,11 @@ package brotli
 /* For BUCKET_SWEEP == 1, enabling the dictionary lookup makes compression
    a little faster (0.5% - 1%) and it compresses 0.15% better on small text
    and HTML inputs. */
-func HashTypeLengthH2() uint {
+func (*H2) HashTypeLength() uint {
 	return 8
 }
 
-func StoreLookaheadH2() uint {
+func (*H2) StoreLookahead() uint {
 	return 8
 }
 
@@ -70,33 +70,32 @@ func (h *H2) Prepare(one_shot bool, input_size uint, data []byte) {
 /* Look at 5 bytes at &data[ix & mask].
    Compute a hash from these, and store the value somewhere within
    [ix .. ix+3]. */
-func StoreH2(handle HasherHandle, data []byte, mask uint, ix uint) {
+func (h *H2) Store(data []byte, mask uint, ix uint) {
 	var key uint32 = HashBytesH2(data[ix&mask:])
 	var off uint32 = uint32(ix>>3) % 1
 	/* Wiggle the value with the bucket sweep range. */
-	SelfH2(handle).buckets_[key+off] = uint32(ix)
+	h.buckets_[key+off] = uint32(ix)
 }
 
-func StoreRangeH2(handle HasherHandle, data []byte, mask uint, ix_start uint, ix_end uint) {
+func (h *H2) StoreRange(data []byte, mask uint, ix_start uint, ix_end uint) {
 	var i uint
 	for i = ix_start; i < ix_end; i++ {
-		StoreH2(handle, data, mask, i)
+		h.Store(data, mask, i)
 	}
 }
 
 func (h *H2) StitchToPreviousBlock(num_bytes uint, position uint, ringbuffer []byte, ringbuffer_mask uint) {
-	if num_bytes >= HashTypeLengthH2()-1 && position >= 3 {
+	if num_bytes >= h.HashTypeLength()-1 && position >= 3 {
 		/* Prepare the hashes for three last bytes of the last write.
 		   These could not be calculated before, since they require knowledge
 		   of both the previous and the current block. */
-		StoreH2(h, ringbuffer, ringbuffer_mask, position-3)
-
-		StoreH2(h, ringbuffer, ringbuffer_mask, position-2)
-		StoreH2(h, ringbuffer, ringbuffer_mask, position-1)
+		h.Store(ringbuffer, ringbuffer_mask, position-3)
+		h.Store(ringbuffer, ringbuffer_mask, position-2)
+		h.Store(ringbuffer, ringbuffer_mask, position-1)
 	}
 }
 
-func PrepareDistanceCacheH2(handle HasherHandle, distance_cache []int) {
+func (*H2) PrepareDistanceCache(distance_cache []int) {
 }
 
 /* Find a longest backward match of &data[cur_ix & ring_buffer_mask]
@@ -107,8 +106,7 @@ func PrepareDistanceCacheH2(handle HasherHandle, distance_cache []int) {
    Does not look for matches further away than max_backward.
    Writes the best match into |out|.
    |out|->score is updated only if a better match is found. */
-func FindLongestMatchH2(handle HasherHandle, dictionary *BrotliEncoderDictionary, data []byte, ring_buffer_mask uint, distance_cache []int, cur_ix uint, max_length uint, max_backward uint, gap uint, max_distance uint, out *HasherSearchResult) {
-	var self *H2 = SelfH2(handle)
+func (h *H2) FindLongestMatch(dictionary *BrotliEncoderDictionary, data []byte, ring_buffer_mask uint, distance_cache []int, cur_ix uint, max_length uint, max_backward uint, gap uint, max_distance uint, out *HasherSearchResult) {
 	var best_len_in uint = out.len
 	var cur_ix_masked uint = cur_ix & ring_buffer_mask
 	var key uint32 = HashBytesH2(data[cur_ix_masked:])
@@ -134,7 +132,7 @@ func FindLongestMatchH2(handle HasherHandle, dictionary *BrotliEncoderDictionary
 					out.score = best_score
 					compare_char = int(data[cur_ix_masked+best_len])
 					if 1 == 1 {
-						self.buckets_[key] = uint32(cur_ix)
+						h.buckets_[key] = uint32(cur_ix)
 						return
 					}
 				}
@@ -147,9 +145,9 @@ func FindLongestMatchH2(handle HasherHandle, dictionary *BrotliEncoderDictionary
 		var len uint
 
 		/* Only one to look for, don't bother to prepare for a loop. */
-		prev_ix = uint(self.buckets_[key])
+		prev_ix = uint(h.buckets_[key])
 
-		self.buckets_[key] = uint32(cur_ix)
+		h.buckets_[key] = uint32(cur_ix)
 		backward = cur_ix - prev_ix
 		prev_ix &= uint(uint32(ring_buffer_mask))
 		if compare_char != int(data[prev_ix+best_len_in]) {
@@ -171,7 +169,7 @@ func FindLongestMatchH2(handle HasherHandle, dictionary *BrotliEncoderDictionary
 			}
 		}
 	} else {
-		bucket = self.buckets_[key:]
+		bucket = h.buckets_[key:]
 		var i int
 		prev_ix = uint(bucket[0])
 		bucket = bucket[1:]
@@ -203,8 +201,8 @@ func FindLongestMatchH2(handle HasherHandle, dictionary *BrotliEncoderDictionary
 	}
 
 	if min_score == out.score {
-		SearchInStaticDictionary(dictionary, handle, data[cur_ix_masked:], max_length, max_backward+gap, max_distance, out, true)
+		SearchInStaticDictionary(dictionary, h, data[cur_ix_masked:], max_length, max_backward+gap, max_distance, out, true)
 	}
 
-	self.buckets_[key+uint32((cur_ix>>3)%1)] = uint32(cur_ix)
+	h.buckets_[key+uint32((cur_ix>>3)%1)] = uint32(cur_ix)
 }

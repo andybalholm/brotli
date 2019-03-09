@@ -11,9 +11,9 @@ package brotli
 
 /* Composite hasher: This hasher allows to combine two other hashers, HASHER_A
    and HASHER_B. */
-func HashTypeLengthH35() uint {
-	var a uint = HashTypeLengthH3()
-	var b uint = HashTypeLengthHROLLING_FAST()
+func (h *H35) HashTypeLength() uint {
+	var a uint = h.ha.HashTypeLength()
+	var b uint = h.hb.HashTypeLength()
 	if a > b {
 		return a
 	} else {
@@ -21,9 +21,9 @@ func HashTypeLengthH35() uint {
 	}
 }
 
-func StoreLookaheadH35() uint {
-	var a uint = StoreLookaheadH3()
-	var b uint = StoreLookaheadHROLLING_FAST()
+func (h *H35) StoreLookahead() uint {
+	var a uint = h.ha.StoreLookahead()
+	var b uint = h.hb.StoreLookahead()
 	if a > b {
 		return a
 	} else {
@@ -78,16 +78,14 @@ func (h *H35) Prepare(one_shot bool, input_size uint, data []byte) {
 	h.hb.Prepare(one_shot, input_size, data)
 }
 
-func StoreH35(handle HasherHandle, data []byte, mask uint, ix uint) {
-	var self *H35 = SelfH35(handle)
-	StoreH3(self.ha, data, mask, ix)
-	StoreHROLLING_FAST(self.hb, data, mask, ix)
+func (h *H35) Store(data []byte, mask uint, ix uint) {
+	h.ha.Store(data, mask, ix)
+	h.hb.Store(data, mask, ix)
 }
 
-func StoreRangeH35(handle HasherHandle, data []byte, mask uint, ix_start uint, ix_end uint) {
-	var self *H35 = SelfH35(handle)
-	StoreRangeH3(self.ha, data, mask, ix_start, ix_end)
-	StoreRangeHROLLING_FAST(self.hb, data, mask, ix_start, ix_end)
+func (h *H35) StoreRange(data []byte, mask uint, ix_start uint, ix_end uint) {
+	h.ha.StoreRange(data, mask, ix_start, ix_end)
+	h.hb.StoreRange(data, mask, ix_start, ix_end)
 }
 
 func (h *H35) StitchToPreviousBlock(num_bytes uint, position uint, ringbuffer []byte, ring_buffer_mask uint) {
@@ -95,14 +93,12 @@ func (h *H35) StitchToPreviousBlock(num_bytes uint, position uint, ringbuffer []
 	h.hb.StitchToPreviousBlock(num_bytes, position, ringbuffer, ring_buffer_mask)
 }
 
-func PrepareDistanceCacheH35(handle HasherHandle, distance_cache []int) {
-	var self *H35 = SelfH35(handle)
-	PrepareDistanceCacheH3(self.ha, distance_cache)
-	PrepareDistanceCacheHROLLING_FAST(self.hb, &distance_cache[0])
+func (h *H35) PrepareDistanceCache(distance_cache []int) {
+	h.ha.PrepareDistanceCache(distance_cache)
+	h.hb.PrepareDistanceCache(distance_cache)
 }
 
-func FindLongestMatchH35(handle HasherHandle, dictionary *BrotliEncoderDictionary, data []byte, ring_buffer_mask uint, distance_cache []int, cur_ix uint, max_length uint, max_backward uint, gap uint, max_distance uint, out *HasherSearchResult) {
-	var self *H35 = SelfH35(handle)
-	FindLongestMatchH3(self.ha, dictionary, data, ring_buffer_mask, distance_cache, cur_ix, max_length, max_backward, gap, max_distance, out)
-	FindLongestMatchHROLLING_FAST(self.hb, dictionary, data, ring_buffer_mask, &distance_cache[0], cur_ix, max_length, max_backward, gap, max_distance, out)
+func (h *H35) FindLongestMatch(dictionary *BrotliEncoderDictionary, data []byte, ring_buffer_mask uint, distance_cache []int, cur_ix uint, max_length uint, max_backward uint, gap uint, max_distance uint, out *HasherSearchResult) {
+	h.ha.FindLongestMatch(dictionary, data, ring_buffer_mask, distance_cache, cur_ix, max_length, max_backward, gap, max_distance, out)
+	h.hb.FindLongestMatch(dictionary, data, ring_buffer_mask, distance_cache, cur_ix, max_length, max_backward, gap, max_distance, out)
 }

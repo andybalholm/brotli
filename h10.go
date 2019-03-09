@@ -13,11 +13,11 @@ package brotli
    position in the input data. The binary tree is sorted by the lexicographic
    order of the sequences, and it is also a max-heap with respect to the
    starting positions. */
-func HashTypeLengthH10() uint {
+func (*H10) HashTypeLength() uint {
 	return 4
 }
 
-func StoreLookaheadH10() uint {
+func (*H10) StoreLookahead() uint {
 	return 128
 }
 
@@ -234,14 +234,13 @@ func FindAllMatchesH10(handle HasherHandle, dictionary *BrotliEncoderDictionary,
 /* Stores the hash of the next 4 bytes and re-roots the binary tree at the
    current sequence, without returning any matches.
    REQUIRES: ix + 128 <= end-of-current-block */
-func StoreH10(handle HasherHandle, data []byte, mask uint, ix uint) {
-	var self *H10 = SelfH10(handle)
-	var max_backward uint = self.window_mask_ - BROTLI_WINDOW_GAP + 1
+func (h *H10) Store(data []byte, mask uint, ix uint) {
+	var max_backward uint = h.window_mask_ - BROTLI_WINDOW_GAP + 1
 	/* Maximum distance is window size - 16, see section 9.1. of the spec. */
-	StoreAndFindMatchesH10(self, data, ix, mask, 128, max_backward, nil, nil)
+	StoreAndFindMatchesH10(h, data, ix, mask, 128, max_backward, nil, nil)
 }
 
-func StoreRangeH10(handle HasherHandle, data []byte, mask uint, ix_start uint, ix_end uint) {
+func (h *H10) StoreRange(data []byte, mask uint, ix_start uint, ix_end uint) {
 	var i uint = ix_start
 	var j uint = ix_start
 	if ix_start+63 <= ix_end {
@@ -250,17 +249,17 @@ func StoreRangeH10(handle HasherHandle, data []byte, mask uint, ix_start uint, i
 
 	if ix_start+512 <= i {
 		for ; j < i; j += 8 {
-			StoreH10(handle, data, mask, j)
+			h.Store(data, mask, j)
 		}
 	}
 
 	for ; i < ix_end; i++ {
-		StoreH10(handle, data, mask, i)
+		h.Store(data, mask, i)
 	}
 }
 
 func (h *H10) StitchToPreviousBlock(num_bytes uint, position uint, ringbuffer []byte, ringbuffer_mask uint) {
-	if num_bytes >= HashTypeLengthH10()-1 && position >= 128 {
+	if num_bytes >= h.HashTypeLength()-1 && position >= 128 {
 		var i_start uint = position - 128 + 1
 		var i_end uint = brotli_min_size_t(position, i_start+num_bytes)
 		/* Store the last `128 - 1` positions in the hasher.
@@ -285,3 +284,11 @@ func (h *H10) StitchToPreviousBlock(num_bytes uint, position uint, ringbuffer []
 
 /* MAX_NUM_MATCHES == 64 + MAX_TREE_SEARCH_DEPTH */
 const MAX_NUM_MATCHES_H10 = 128
+
+func (*H10) FindLongestMatch(dictionary *BrotliEncoderDictionary, data []byte, ring_buffer_mask uint, distance_cache []int, cur_ix uint, max_length uint, max_backward uint, gap uint, max_distance uint, out *HasherSearchResult) {
+	panic("unimplemented")
+}
+
+func (*H10) PrepareDistanceCache(distance_cache []int) {
+	panic("unimplemented")
+}

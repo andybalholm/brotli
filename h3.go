@@ -6,11 +6,11 @@ package brotli
    Distributed under MIT license.
    See file LICENSE for detail or copy at https://opensource.org/licenses/MIT
 */
-func HashTypeLengthH3() uint {
+func (*H3) HashTypeLength() uint {
 	return 8
 }
 
-func StoreLookaheadH3() uint {
+func (*H3) StoreLookahead() uint {
 	return 8
 }
 
@@ -68,33 +68,32 @@ func (h *H3) Prepare(one_shot bool, input_size uint, data []byte) {
 /* Look at 5 bytes at &data[ix & mask].
    Compute a hash from these, and store the value somewhere within
    [ix .. ix+3]. */
-func StoreH3(handle HasherHandle, data []byte, mask uint, ix uint) {
+func (h *H3) Store(data []byte, mask uint, ix uint) {
 	var key uint32 = HashBytesH3(data[ix&mask:])
 	var off uint32 = uint32(ix>>3) % 2
 	/* Wiggle the value with the bucket sweep range. */
-	SelfH3(handle).buckets_[key+off] = uint32(ix)
+	h.buckets_[key+off] = uint32(ix)
 }
 
-func StoreRangeH3(handle HasherHandle, data []byte, mask uint, ix_start uint, ix_end uint) {
+func (h *H3) StoreRange(data []byte, mask uint, ix_start uint, ix_end uint) {
 	var i uint
 	for i = ix_start; i < ix_end; i++ {
-		StoreH3(handle, data, mask, i)
+		h.Store(data, mask, i)
 	}
 }
 
 func (h *H3) StitchToPreviousBlock(num_bytes uint, position uint, ringbuffer []byte, ringbuffer_mask uint) {
-	if num_bytes >= HashTypeLengthH3()-1 && position >= 3 {
+	if num_bytes >= h.HashTypeLength()-1 && position >= 3 {
 		/* Prepare the hashes for three last bytes of the last write.
 		   These could not be calculated before, since they require knowledge
 		   of both the previous and the current block. */
-		StoreH3(h, ringbuffer, ringbuffer_mask, position-3)
-
-		StoreH3(h, ringbuffer, ringbuffer_mask, position-2)
-		StoreH3(h, ringbuffer, ringbuffer_mask, position-1)
+		h.Store(ringbuffer, ringbuffer_mask, position-3)
+		h.Store(ringbuffer, ringbuffer_mask, position-2)
+		h.Store(ringbuffer, ringbuffer_mask, position-1)
 	}
 }
 
-func PrepareDistanceCacheH3(handle HasherHandle, distance_cache []int) {
+func (*H3) PrepareDistanceCache(distance_cache []int) {
 }
 
 /* Find a longest backward match of &data[cur_ix & ring_buffer_mask]
@@ -105,8 +104,7 @@ func PrepareDistanceCacheH3(handle HasherHandle, distance_cache []int) {
    Does not look for matches further away than max_backward.
    Writes the best match into |out|.
    |out|->score is updated only if a better match is found. */
-func FindLongestMatchH3(handle HasherHandle, dictionary *BrotliEncoderDictionary, data []byte, ring_buffer_mask uint, distance_cache []int, cur_ix uint, max_length uint, max_backward uint, gap uint, max_distance uint, out *HasherSearchResult) {
-	var self *H3 = SelfH3(handle)
+func (h *H3) FindLongestMatch(dictionary *BrotliEncoderDictionary, data []byte, ring_buffer_mask uint, distance_cache []int, cur_ix uint, max_length uint, max_backward uint, gap uint, max_distance uint, out *HasherSearchResult) {
 	var best_len_in uint = out.len
 	var cur_ix_masked uint = cur_ix & ring_buffer_mask
 	var key uint32 = HashBytesH3(data[cur_ix_masked:])
@@ -131,7 +129,7 @@ func FindLongestMatchH3(handle HasherHandle, dictionary *BrotliEncoderDictionary
 					out.score = best_score
 					compare_char = int(data[cur_ix_masked+best_len])
 					if 2 == 1 {
-						self.buckets_[key] = uint32(cur_ix)
+						h.buckets_[key] = uint32(cur_ix)
 						return
 					}
 				}
@@ -144,9 +142,9 @@ func FindLongestMatchH3(handle HasherHandle, dictionary *BrotliEncoderDictionary
 		var len uint
 
 		/* Only one to look for, don't bother to prepare for a loop. */
-		prev_ix = uint(self.buckets_[key])
+		prev_ix = uint(h.buckets_[key])
 
-		self.buckets_[key] = uint32(cur_ix)
+		h.buckets_[key] = uint32(cur_ix)
 		backward = cur_ix - prev_ix
 		prev_ix &= uint(uint32(ring_buffer_mask))
 		if compare_char != int(data[prev_ix+best_len_in]) {
@@ -168,7 +166,7 @@ func FindLongestMatchH3(handle HasherHandle, dictionary *BrotliEncoderDictionary
 			}
 		}
 	} else {
-		bucket = self.buckets_[key:]
+		bucket = h.buckets_[key:]
 		var i int
 		prev_ix = uint(bucket[0])
 		bucket = bucket[1:]
@@ -199,5 +197,5 @@ func FindLongestMatchH3(handle HasherHandle, dictionary *BrotliEncoderDictionary
 		}
 	}
 
-	self.buckets_[key+uint32((cur_ix>>3)%2)] = uint32(cur_ix)
+	h.buckets_[key+uint32((cur_ix>>3)%2)] = uint32(cur_ix)
 }

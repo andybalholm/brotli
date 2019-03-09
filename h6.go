@@ -13,11 +13,11 @@ package brotli
    This is a hash map of fixed size (bucket_size_) to a ring buffer of
    fixed size (block_size_). The ring buffer contains the last block_size_
    index positions of the given hash key in the compressed data. */
-func HashTypeLengthH6() uint {
+func (*H6) HashTypeLength() uint {
 	return 8
 }
 
-func StoreLookaheadH6() uint {
+func (*H6) StoreLookahead() uint {
 	return 8
 }
 
@@ -82,37 +82,35 @@ func (h *H6) Prepare(one_shot bool, input_size uint, data []byte) {
 
 /* Look at 4 bytes at &data[ix & mask].
    Compute a hash from these, and store the value of ix at that position. */
-func StoreH6(handle HasherHandle, data []byte, mask uint, ix uint) {
-	var self *H6 = SelfH6(handle)
-	var num []uint16 = NumH6(self)
-	var key uint32 = HashBytesH6(data[ix&mask:], self.hash_mask_, self.hash_shift_)
-	var minor_ix uint = uint(num[key]) & uint(self.block_mask_)
-	var offset uint = minor_ix + uint(key<<uint(handle.Common().params.block_bits))
-	BucketsH6(self)[offset] = uint32(ix)
+func (h *H6) Store(data []byte, mask uint, ix uint) {
+	var num []uint16 = h.num
+	var key uint32 = HashBytesH6(data[ix&mask:], h.hash_mask_, h.hash_shift_)
+	var minor_ix uint = uint(num[key]) & uint(h.block_mask_)
+	var offset uint = minor_ix + uint(key<<uint(h.params.block_bits))
+	h.buckets[offset] = uint32(ix)
 	num[key]++
 }
 
-func StoreRangeH6(handle HasherHandle, data []byte, mask uint, ix_start uint, ix_end uint) {
+func (h *H6) StoreRange(data []byte, mask uint, ix_start uint, ix_end uint) {
 	var i uint
 	for i = ix_start; i < ix_end; i++ {
-		StoreH6(handle, data, mask, i)
+		h.Store(data, mask, i)
 	}
 }
 
 func (h *H6) StitchToPreviousBlock(num_bytes uint, position uint, ringbuffer []byte, ringbuffer_mask uint) {
-	if num_bytes >= HashTypeLengthH6()-1 && position >= 3 {
+	if num_bytes >= h.HashTypeLength()-1 && position >= 3 {
 		/* Prepare the hashes for three last bytes of the last write.
 		   These could not be calculated before, since they require knowledge
 		   of both the previous and the current block. */
-		StoreH6(h, ringbuffer, ringbuffer_mask, position-3)
-
-		StoreH6(h, ringbuffer, ringbuffer_mask, position-2)
-		StoreH6(h, ringbuffer, ringbuffer_mask, position-1)
+		h.Store(ringbuffer, ringbuffer_mask, position-3)
+		h.Store(ringbuffer, ringbuffer_mask, position-2)
+		h.Store(ringbuffer, ringbuffer_mask, position-1)
 	}
 }
 
-func PrepareDistanceCacheH6(handle HasherHandle, distance_cache []int) {
-	PrepareDistanceCache(distance_cache, handle.Common().params.num_last_distances_to_check)
+func (h *H6) PrepareDistanceCache(distance_cache []int) {
+	PrepareDistanceCache(distance_cache, h.params.num_last_distances_to_check)
 }
 
 /* Find a longest backward match of &data[cur_ix] up to the length of
@@ -126,11 +124,9 @@ func PrepareDistanceCacheH6(handle HasherHandle, distance_cache []int) {
    Does not look for matches further away than max_backward.
    Writes the best match into |out|.
    |out|->score is updated only if a better match is found. */
-func FindLongestMatchH6(handle HasherHandle, dictionary *BrotliEncoderDictionary, data []byte, ring_buffer_mask uint, distance_cache []int, cur_ix uint, max_length uint, max_backward uint, gap uint, max_distance uint, out *HasherSearchResult) {
-	var common *HasherCommon = handle.Common()
-	var self *H6 = SelfH6(handle)
-	var num []uint16 = NumH6(self)
-	var buckets []uint32 = BucketsH6(self)
+func (h *H6) FindLongestMatch(dictionary *BrotliEncoderDictionary, data []byte, ring_buffer_mask uint, distance_cache []int, cur_ix uint, max_length uint, max_backward uint, gap uint, max_distance uint, out *HasherSearchResult) {
+	var num []uint16 = h.num
+	var buckets []uint32 = h.buckets
 	var cur_ix_masked uint = cur_ix & ring_buffer_mask
 	var min_score uint = out.score
 	var best_score uint = out.score
@@ -143,7 +139,7 @@ func FindLongestMatchH6(handle HasherHandle, dictionary *BrotliEncoderDictionary
 	out.len_code_delta = 0
 
 	/* Try last distance first. */
-	for i = 0; i < uint(common.params.num_last_distances_to_check); i++ {
+	for i = 0; i < uint(h.params.num_last_distances_to_check); i++ {
 		var backward uint = uint(distance_cache[i])
 		var prev_ix uint = uint(cur_ix - backward)
 		if prev_ix >= cur_ix {
@@ -182,18 +178,18 @@ func FindLongestMatchH6(handle HasherHandle, dictionary *BrotliEncoderDictionary
 		}
 	}
 	{
-		var key uint32 = HashBytesH6(data[cur_ix_masked:], self.hash_mask_, self.hash_shift_)
-		bucket = buckets[key<<uint(common.params.block_bits):]
+		var key uint32 = HashBytesH6(data[cur_ix_masked:], h.hash_mask_, h.hash_shift_)
+		bucket = buckets[key<<uint(h.params.block_bits):]
 		var down uint
-		if uint(num[key]) > self.block_size_ {
-			down = uint(num[key]) - self.block_size_
+		if uint(num[key]) > h.block_size_ {
+			down = uint(num[key]) - h.block_size_
 		} else {
 			down = 0
 		}
 		for i = uint(num[key]); i > down; {
 			var prev_ix uint
 			i--
-			prev_ix = uint(bucket[uint32(i)&self.block_mask_])
+			prev_ix = uint(bucket[uint32(i)&h.block_mask_])
 			var backward uint = cur_ix - prev_ix
 			if backward > max_backward {
 				break
@@ -221,11 +217,11 @@ func FindLongestMatchH6(handle HasherHandle, dictionary *BrotliEncoderDictionary
 			}
 		}
 
-		bucket[uint32(num[key])&self.block_mask_] = uint32(cur_ix)
+		bucket[uint32(num[key])&h.block_mask_] = uint32(cur_ix)
 		num[key]++
 	}
 
 	if min_score == out.score {
-		SearchInStaticDictionary(dictionary, handle, data[cur_ix_masked:], max_length, max_backward+gap, max_distance, out, false)
+		SearchInStaticDictionary(dictionary, h, data[cur_ix_masked:], max_length, max_backward+gap, max_distance, out, false)
 	}
 }

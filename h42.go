@@ -13,11 +13,11 @@ package brotli
    Hashes are stored in chains which are bucketed to groups. Group of chains
    share a storage "bank". When more than "bank size" chain nodes are added,
    oldest nodes are replaced; this way several chains may share a tail. */
-func HashTypeLengthH42() uint {
+func (*H42) HashTypeLength() uint {
 	return 4
 }
 
-func StoreLookaheadH42() uint {
+func (*H42) StoreLookahead() uint {
 	return 4
 }
 
@@ -94,44 +94,42 @@ func (h *H42) Prepare(one_shot bool, input_size uint, data []byte) {
 
 /* Look at 4 bytes at &data[ix & mask]. Compute a hash from these, and prepend
    node to corresponding chain; also update tiny_hash for current position. */
-func StoreH42(handle HasherHandle, data []byte, mask uint, ix uint) {
-	var self *H42 = SelfH42(handle)
+func (h *H42) Store(data []byte, mask uint, ix uint) {
 	var key uint = HashBytesH42(data[ix&mask:])
 	var bank uint = key & (512 - 1)
 	var idx uint
-	idx = uint(self.free_slot_idx[bank]) & ((1 << 9) - 1)
-	self.free_slot_idx[bank]++
-	var delta uint = ix - uint(self.addr[key])
-	self.tiny_hash[uint16(ix)] = byte(key)
+	idx = uint(h.free_slot_idx[bank]) & ((1 << 9) - 1)
+	h.free_slot_idx[bank]++
+	var delta uint = ix - uint(h.addr[key])
+	h.tiny_hash[uint16(ix)] = byte(key)
 	if delta > 0xFFFF {
 		delta = 0xFFFF
 	}
-	self.banks[bank].slots[idx].delta = uint16(delta)
-	self.banks[bank].slots[idx].next = self.head[key]
-	self.addr[key] = uint32(ix)
-	self.head[key] = uint16(idx)
+	h.banks[bank].slots[idx].delta = uint16(delta)
+	h.banks[bank].slots[idx].next = h.head[key]
+	h.addr[key] = uint32(ix)
+	h.head[key] = uint16(idx)
 }
 
-func StoreRangeH42(handle HasherHandle, data []byte, mask uint, ix_start uint, ix_end uint) {
+func (h *H42) StoreRange(data []byte, mask uint, ix_start uint, ix_end uint) {
 	var i uint
 	for i = ix_start; i < ix_end; i++ {
-		StoreH42(handle, data, mask, i)
+		h.Store(data, mask, i)
 	}
 }
 
 func (h *H42) StitchToPreviousBlock(num_bytes uint, position uint, ringbuffer []byte, ring_buffer_mask uint) {
-	if num_bytes >= HashTypeLengthH42()-1 && position >= 3 {
+	if num_bytes >= h.HashTypeLength()-1 && position >= 3 {
 		/* Prepare the hashes for three last bytes of the last write.
 		   These could not be calculated before, since they require knowledge
 		   of both the previous and the current block. */
-		StoreH42(h, ringbuffer, ring_buffer_mask, position-3)
-
-		StoreH42(h, ringbuffer, ring_buffer_mask, position-2)
-		StoreH42(h, ringbuffer, ring_buffer_mask, position-1)
+		h.Store(ringbuffer, ring_buffer_mask, position-3)
+		h.Store(ringbuffer, ring_buffer_mask, position-2)
+		h.Store(ringbuffer, ring_buffer_mask, position-1)
 	}
 }
 
-func PrepareDistanceCacheH42(handle HasherHandle, distance_cache []int) {
+func (*H42) PrepareDistanceCache(distance_cache []int) {
 	PrepareDistanceCache(distance_cache, 16)
 }
 
@@ -146,8 +144,7 @@ func PrepareDistanceCacheH42(handle HasherHandle, distance_cache []int) {
    Does not look for matches further away than max_backward.
    Writes the best match into |out|.
    |out|->score is updated only if a better match is found. */
-func FindLongestMatchH42(handle HasherHandle, dictionary *BrotliEncoderDictionary, data []byte, ring_buffer_mask uint, distance_cache []int, cur_ix uint, max_length uint, max_backward uint, gap uint, max_distance uint, out *HasherSearchResult) {
-	var self *H42 = SelfH42(handle)
+func (h *H42) FindLongestMatch(dictionary *BrotliEncoderDictionary, data []byte, ring_buffer_mask uint, distance_cache []int, cur_ix uint, max_length uint, max_backward uint, gap uint, max_distance uint, out *HasherSearchResult) {
 	var cur_ix_masked uint = cur_ix & ring_buffer_mask
 	var min_score uint = out.score
 	var best_score uint = out.score
@@ -166,7 +163,7 @@ func FindLongestMatchH42(handle HasherHandle, dictionary *BrotliEncoderDictionar
 		var prev_ix uint = (cur_ix - backward)
 
 		/* For distance code 0 we want to consider 2-byte matches. */
-		if i > 0 && self.tiny_hash[uint16(prev_ix)] != tiny_hash {
+		if i > 0 && h.tiny_hash[uint16(prev_ix)] != tiny_hash {
 			continue
 		}
 		if prev_ix >= cur_ix || backward > max_backward {
@@ -196,9 +193,9 @@ func FindLongestMatchH42(handle HasherHandle, dictionary *BrotliEncoderDictionar
 	{
 		var bank uint = key & (512 - 1)
 		var backward uint = 0
-		var hops uint = self.max_hops
-		var delta uint = cur_ix - uint(self.addr[key])
-		var slot uint = uint(self.head[key])
+		var hops uint = h.max_hops
+		var delta uint = cur_ix - uint(h.addr[key])
+		var slot uint = uint(h.head[key])
 		for {
 			tmp8 := hops
 			hops--
@@ -212,8 +209,8 @@ func FindLongestMatchH42(handle HasherHandle, dictionary *BrotliEncoderDictionar
 				break
 			}
 			prev_ix = (cur_ix - backward) & ring_buffer_mask
-			slot = uint(self.banks[bank].slots[last].next)
-			delta = uint(self.banks[bank].slots[last].delta)
+			slot = uint(h.banks[bank].slots[last].next)
+			delta = uint(h.banks[bank].slots[last].delta)
 			if cur_ix_masked+best_len > ring_buffer_mask || prev_ix+best_len > ring_buffer_mask || data[cur_ix_masked+best_len] != data[prev_ix+best_len] {
 				continue
 			}
@@ -235,10 +232,10 @@ func FindLongestMatchH42(handle HasherHandle, dictionary *BrotliEncoderDictionar
 			}
 		}
 
-		StoreH42(handle, data, ring_buffer_mask, cur_ix)
+		h.Store(data, ring_buffer_mask, cur_ix)
 	}
 
 	if out.score == min_score {
-		SearchInStaticDictionary(dictionary, handle, data[cur_ix_masked:], max_length, max_backward+gap, max_distance, out, false)
+		SearchInStaticDictionary(dictionary, h, data[cur_ix_masked:], max_length, max_backward+gap, max_distance, out, false)
 	}
 }

@@ -9,9 +9,9 @@ package brotli
 
 /* Composite hasher: This hasher allows to combine two other hashers, HASHER_A
    and HASHER_B. */
-func HashTypeLengthH65() uint {
-	var a uint = HashTypeLengthH6()
-	var b uint = HashTypeLengthHROLLING()
+func (h *H65) HashTypeLength() uint {
+	var a uint = h.ha.HashTypeLength()
+	var b uint = h.hb.HashTypeLength()
 	if a > b {
 		return a
 	} else {
@@ -19,9 +19,9 @@ func HashTypeLengthH65() uint {
 	}
 }
 
-func StoreLookaheadH65() uint {
-	var a uint = StoreLookaheadH6()
-	var b uint = StoreLookaheadHROLLING()
+func (h *H65) StoreLookahead() uint {
+	var a uint = h.ha.StoreLookahead()
+	var b uint = h.hb.StoreLookahead()
 	if a > b {
 		return a
 	} else {
@@ -76,16 +76,14 @@ func (h *H65) Prepare(one_shot bool, input_size uint, data []byte) {
 	h.hb.Prepare(one_shot, input_size, data)
 }
 
-func StoreH65(handle HasherHandle, data []byte, mask uint, ix uint) {
-	var self *H65 = SelfH65(handle)
-	StoreH6(self.ha, data, mask, ix)
-	StoreHROLLING(self.hb, data, mask, ix)
+func (h *H65) Store(data []byte, mask uint, ix uint) {
+	h.ha.Store(data, mask, ix)
+	h.hb.Store(data, mask, ix)
 }
 
-func StoreRangeH65(handle HasherHandle, data []byte, mask uint, ix_start uint, ix_end uint) {
-	var self *H65 = SelfH65(handle)
-	StoreRangeH6(self.ha, data, mask, ix_start, ix_end)
-	StoreRangeHROLLING(self.hb, data, mask, ix_start, ix_end)
+func (h *H65) StoreRange(data []byte, mask uint, ix_start uint, ix_end uint) {
+	h.ha.StoreRange(data, mask, ix_start, ix_end)
+	h.hb.StoreRange(data, mask, ix_start, ix_end)
 }
 
 func (h *H65) StitchToPreviousBlock(num_bytes uint, position uint, ringbuffer []byte, ring_buffer_mask uint) {
@@ -93,14 +91,12 @@ func (h *H65) StitchToPreviousBlock(num_bytes uint, position uint, ringbuffer []
 	h.hb.StitchToPreviousBlock(num_bytes, position, ringbuffer, ring_buffer_mask)
 }
 
-func PrepareDistanceCacheH65(handle HasherHandle, distance_cache []int) {
-	var self *H65 = SelfH65(handle)
-	PrepareDistanceCacheH6(self.ha, distance_cache)
-	PrepareDistanceCacheHROLLING(self.hb, &distance_cache[0])
+func (h *H65) PrepareDistanceCache(distance_cache []int) {
+	h.ha.PrepareDistanceCache(distance_cache)
+	h.hb.PrepareDistanceCache(distance_cache)
 }
 
-func FindLongestMatchH65(handle HasherHandle, dictionary *BrotliEncoderDictionary, data []byte, ring_buffer_mask uint, distance_cache []int, cur_ix uint, max_length uint, max_backward uint, gap uint, max_distance uint, out *HasherSearchResult) {
-	var self *H65 = SelfH65(handle)
-	FindLongestMatchH6(self.ha, dictionary, data, ring_buffer_mask, distance_cache, cur_ix, max_length, max_backward, gap, max_distance, out)
-	FindLongestMatchHROLLING(self.hb, dictionary, data, ring_buffer_mask, &distance_cache[0], cur_ix, max_length, max_backward, gap, max_distance, out)
+func (h *H65) FindLongestMatch(dictionary *BrotliEncoderDictionary, data []byte, ring_buffer_mask uint, distance_cache []int, cur_ix uint, max_length uint, max_backward uint, gap uint, max_distance uint, out *HasherSearchResult) {
+	h.ha.FindLongestMatch(dictionary, data, ring_buffer_mask, distance_cache, cur_ix, max_length, max_backward, gap, max_distance, out)
+	h.hb.FindLongestMatch(dictionary, data, ring_buffer_mask, distance_cache, cur_ix, max_length, max_backward, gap, max_distance, out)
 }

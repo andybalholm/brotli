@@ -34,6 +34,12 @@ type HasherHandle interface {
 	Initialize(params *BrotliEncoderParams)
 	Prepare(one_shot bool, input_size uint, data []byte)
 	StitchToPreviousBlock(num_bytes uint, position uint, ringbuffer []byte, ringbuffer_mask uint)
+	HashTypeLength() uint
+	StoreLookahead() uint
+	PrepareDistanceCache(distance_cache []int)
+	FindLongestMatch(dictionary *BrotliEncoderDictionary, data []byte, ring_buffer_mask uint, distance_cache []int, cur_ix uint, max_length uint, max_backward uint, gap uint, max_distance uint, out *HasherSearchResult)
+	StoreRange(data []byte, mask uint, ix_start uint, ix_end uint)
+	Store(data []byte, mask uint, ix uint)
 }
 
 type score_t uint

@@ -1425,7 +1425,7 @@ func EncodeData(s *Writer, is_last bool, force_flush bool, out_size *uint, outpu
 
 	if s.params.quality == ZOPFLIFICATION_QUALITY {
 		assert(s.params.hasher.type_ == 10)
-		BrotliCreateZopfliBackwardReferences(uint(bytes), uint(wrapped_last_processed_pos), data, uint(mask), &s.params, s.hasher_, s.dist_cache_[:], &s.last_insert_len_, s.commands_[s.num_commands_:], &s.num_commands_, &s.num_literals_)
+		BrotliCreateZopfliBackwardReferences(uint(bytes), uint(wrapped_last_processed_pos), data, uint(mask), &s.params, s.hasher_.(*H10), s.dist_cache_[:], &s.last_insert_len_, s.commands_[s.num_commands_:], &s.num_commands_, &s.num_literals_)
 	} else if s.params.quality == HQ_ZOPFLIFICATION_QUALITY {
 		assert(s.params.hasher.type_ == 10)
 		BrotliCreateHqZopfliBackwardReferences(uint(bytes), uint(wrapped_last_processed_pos), data, uint(mask), &s.params, s.hasher_, s.dist_cache_[:], &s.last_insert_len_, s.commands_[s.num_commands_:], &s.num_commands_, &s.num_literals_)
@@ -1599,7 +1599,7 @@ func BrotliCompressBufferQuality10(lgwin int, input_size uint, input_buffer []by
 			var new_cmd_alloc_size uint
 			BrotliInitZopfliNodes(nodes, block_size+1)
 			hasher.StitchToPreviousBlock(block_size, block_start, input_buffer, mask)
-			path_size = BrotliZopfliComputeShortestPath(block_size, block_start, input_buffer, mask, &params, dist_cache[:], hasher, nodes)
+			path_size = BrotliZopfliComputeShortestPath(block_size, block_start, input_buffer, mask, &params, dist_cache[:], hasher.(*H10), nodes)
 
 			/* We allocate a command buffer in the first iteration of this loop that
 			   will be likely big enough for the whole metablock, so that for most

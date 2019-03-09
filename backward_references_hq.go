@@ -617,15 +617,15 @@ func ZopfliIterate(num_bytes uint, position uint, ringbuffer []byte, ringbuffer_
 }
 
 /* REQUIRES: nodes != NULL and len(nodes) >= num_bytes + 1 */
-func BrotliZopfliComputeShortestPath(num_bytes uint, position uint, ringbuffer []byte, ringbuffer_mask uint, params *BrotliEncoderParams, dist_cache []int, hasher HasherHandle, nodes []ZopfliNode) uint {
+func BrotliZopfliComputeShortestPath(num_bytes uint, position uint, ringbuffer []byte, ringbuffer_mask uint, params *BrotliEncoderParams, dist_cache []int, hasher *H10, nodes []ZopfliNode) uint {
 	var max_backward_limit uint = BROTLI_MAX_BACKWARD_LIMIT(params.lgwin)
 	var max_zopfli_len uint = MaxZopfliLen(params)
 	var model ZopfliCostModel
 	var queue StartPosQueue
 	var matches [2 * (MAX_NUM_MATCHES_H10 + 64)]BackwardMatch
 	var store_end uint
-	if num_bytes >= StoreLookaheadH10() {
-		store_end = position + num_bytes - StoreLookaheadH10() + 1
+	if num_bytes >= hasher.StoreLookahead() {
+		store_end = position + num_bytes - hasher.StoreLookahead() + 1
 	} else {
 		store_end = position
 	}
@@ -637,7 +637,7 @@ func BrotliZopfliComputeShortestPath(num_bytes uint, position uint, ringbuffer [
 	InitZopfliCostModel(&model, &params.dist, num_bytes)
 	ZopfliCostModelSetFromLiteralCosts(&model, position, ringbuffer, ringbuffer_mask)
 	InitStartPosQueue(&queue)
-	for i = 0; i+HashTypeLengthH10()-1 < num_bytes; i++ {
+	for i = 0; i+hasher.HashTypeLength()-1 < num_bytes; i++ {
 		var pos uint = position + i
 		var max_distance uint = brotli_min_size_t(pos, max_backward_limit)
 		var skip uint
@@ -658,12 +658,12 @@ func BrotliZopfliComputeShortestPath(num_bytes uint, position uint, ringbuffer [
 
 		if skip > 1 {
 			/* Add the tail of the copy to the hasher. */
-			StoreRangeH10(hasher, ringbuffer, ringbuffer_mask, pos+1, brotli_min_size_t(pos+skip, store_end))
+			hasher.StoreRange(ringbuffer, ringbuffer_mask, pos+1, brotli_min_size_t(pos+skip, store_end))
 
 			skip--
 			for skip != 0 {
 				i++
-				if i+HashTypeLengthH10()-1 >= num_bytes {
+				if i+hasher.HashTypeLength()-1 >= num_bytes {
 					break
 				}
 				EvaluateNode(position, i, max_backward_limit, gap, dist_cache, &model, &queue, nodes)
@@ -676,7 +676,7 @@ func BrotliZopfliComputeShortestPath(num_bytes uint, position uint, ringbuffer [
 	return ComputeShortestPathFromNodes(num_bytes, nodes)
 }
 
-func BrotliCreateZopfliBackwardReferences(num_bytes uint, position uint, ringbuffer []byte, ringbuffer_mask uint, params *BrotliEncoderParams, hasher HasherHandle, dist_cache []int, last_insert_len *uint, commands []Command, num_commands *uint, num_literals *uint) {
+func BrotliCreateZopfliBackwardReferences(num_bytes uint, position uint, ringbuffer []byte, ringbuffer_mask uint, params *BrotliEncoderParams, hasher *H10, dist_cache []int, last_insert_len *uint, commands []Command, num_commands *uint, num_literals *uint) {
 	var nodes []ZopfliNode
 	nodes = make([]ZopfliNode, (num_bytes + 1))
 	BrotliInitZopfliNodes(nodes, num_bytes+1)
@@ -690,8 +690,8 @@ func BrotliCreateHqZopfliBackwardReferences(num_bytes uint, position uint, ringb
 	var num_matches []uint32 = make([]uint32, num_bytes)
 	var matches_size uint = 4 * num_bytes
 	var store_end uint
-	if num_bytes >= StoreLookaheadH10() {
-		store_end = position + num_bytes - StoreLookaheadH10() + 1
+	if num_bytes >= hasher.StoreLookahead() {
+		store_end = position + num_bytes - hasher.StoreLookahead() + 1
 	} else {
 		store_end = position
 	}
@@ -707,7 +707,7 @@ func BrotliCreateHqZopfliBackwardReferences(num_bytes uint, position uint, ringb
 	var gap uint = 0
 	var shadow_matches uint = 0
 	var new_array []BackwardMatch
-	for i = 0; i+HashTypeLengthH10()-1 < num_bytes; i++ {
+	for i = 0; i+hasher.HashTypeLength()-1 < num_bytes; i++ {
 		var pos uint = position + i
 		var max_distance uint = brotli_min_size_t(pos, max_backward_limit)
 		var max_length uint = num_bytes - i
@@ -751,7 +751,7 @@ func BrotliCreateHqZopfliBackwardReferences(num_bytes uint, position uint, ringb
 				num_matches[i] = 1
 
 				/* Add the tail of the copy to the hasher. */
-				StoreRangeH10(hasher, ringbuffer, ringbuffer_mask, pos+1, brotli_min_size_t(pos+match_len, store_end))
+				hasher.StoreRange(ringbuffer, ringbuffer_mask, pos+1, brotli_min_size_t(pos+match_len, store_end))
 				var pos uint = i
 				for i := 0; i < int(skip); i++ {
 					num_matches[pos+1:][i] = 0

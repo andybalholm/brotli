@@ -18,11 +18,11 @@ var kInvalidPosHROLLING uint32 = 0xffffffff
 /* This hasher uses a longer forward length, but returning a higher value here
    will hurt compression by the main hasher when combined with a composite
    hasher. The hasher tests for forward itself instead. */
-func HashTypeLengthHROLLING() uint {
+func (*HROLLING) HashTypeLength() uint {
 	return 4
 }
 
-func StoreLookaheadHROLLING() uint {
+func (*HROLLING) StoreLookahead() uint {
 	return 4
 }
 
@@ -88,10 +88,10 @@ func (h *HROLLING) Prepare(one_shot bool, input_size uint, data []byte) {
 	}
 }
 
-func StoreHROLLING(handle HasherHandle, data []byte, mask uint, ix uint) {
+func (*HROLLING) Store(data []byte, mask uint, ix uint) {
 }
 
-func StoreRangeHROLLING(handle HasherHandle, data []byte, mask uint, ix_start uint, ix_end uint) {
+func (*HROLLING) StoreRange(data []byte, mask uint, ix_start uint, ix_end uint) {
 }
 
 func (h *HROLLING) StitchToPreviousBlock(num_bytes uint, position uint, ringbuffer []byte, ring_buffer_mask uint) {
@@ -121,13 +121,12 @@ func (h *HROLLING) StitchToPreviousBlock(num_bytes uint, position uint, ringbuff
 	h.next_ix = position
 }
 
-func PrepareDistanceCacheHROLLING(handle HasherHandle, distance_cache *int) {
+func (*HROLLING) PrepareDistanceCache(distance_cache []int) {
 }
 
-func FindLongestMatchHROLLING(handle HasherHandle, dictionary *BrotliEncoderDictionary, data []byte, ring_buffer_mask uint, distance_cache *int, cur_ix uint, max_length uint, max_backward uint, gap uint, max_distance uint, out *HasherSearchResult) {
-	var self *HROLLING = SelfHROLLING(handle)
+func (h *HROLLING) FindLongestMatch(dictionary *BrotliEncoderDictionary, data []byte, ring_buffer_mask uint, distance_cache []int, cur_ix uint, max_length uint, max_backward uint, gap uint, max_distance uint, out *HasherSearchResult) {
 	var cur_ix_masked uint = cur_ix & ring_buffer_mask
-	var pos uint = self.next_ix
+	var pos uint = h.next_ix
 
 	if cur_ix&(1-1) != 0 {
 		return
@@ -138,17 +137,17 @@ func FindLongestMatchHROLLING(handle HasherHandle, dictionary *BrotliEncoderDict
 		return
 	}
 
-	for pos = self.next_ix; pos <= cur_ix; pos += 1 {
-		var code uint32 = self.state & ((16777216 * 64) - 1)
+	for pos = h.next_ix; pos <= cur_ix; pos += 1 {
+		var code uint32 = h.state & ((16777216 * 64) - 1)
 		var rem byte = data[pos&ring_buffer_mask]
 		var add byte = data[(pos+32)&ring_buffer_mask]
 		var found_ix uint = uint(kInvalidPosHROLLING)
 
-		self.state = HashRollingFunctionHROLLING(self.state, add, rem, self.factor, self.factor_remove)
+		h.state = HashRollingFunctionHROLLING(h.state, add, rem, h.factor, h.factor_remove)
 
 		if code < 16777216 {
-			found_ix = uint(self.table[code])
-			self.table[code] = uint32(pos)
+			found_ix = uint(h.table[code])
+			h.table[code] = uint32(pos)
 			if pos == cur_ix && uint32(found_ix) != kInvalidPosHROLLING {
 				/* The cast to 32-bit makes backward distances up to 4GB work even
 				   if cur_ix is above 4GB, despite using 32-bit values in the table. */
@@ -170,5 +169,5 @@ func FindLongestMatchHROLLING(handle HasherHandle, dictionary *BrotliEncoderDict
 		}
 	}
 
-	self.next_ix = cur_ix + 1
+	h.next_ix = cur_ix + 1
 }
