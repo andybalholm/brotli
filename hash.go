@@ -286,7 +286,10 @@ func newHasher(typ int) HasherHandle {
 	case 10:
 		return new(H10)
 	case 35:
-		return new(H35)
+		return &hashComposite{
+			ha: newHasher(3),
+			hb: &hashRolling{jump: 4},
+		}
 	case 40:
 		return &hashForgetfulChain{
 			bucketBits:              15,
@@ -316,9 +319,15 @@ func newHasher(typ int) HasherHandle {
 			useDictionary: false,
 		}
 	case 55:
-		return new(H55)
+		return &hashComposite{
+			ha: newHasher(54),
+			hb: &hashRolling{jump: 4},
+		}
 	case 65:
-		return new(H65)
+		return &hashComposite{
+			ha: newHasher(6),
+			hb: &hashRolling{jump: 1},
+		}
 	}
 
 	panic(fmt.Sprintf("unknown hasher type: %d", typ))
