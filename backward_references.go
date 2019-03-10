@@ -19,7 +19,7 @@ package brotli
    initially the total amount of commands output by previous
    CreateBackwardReferences calls, and must be incremented by the amount written
    by this call. */
-func ComputeDistanceCode(distance uint, max_distance uint, dist_cache []int) uint {
+func computeDistanceCode(distance uint, max_distance uint, dist_cache []int) uint {
 	if distance <= max_distance {
 		var distance_plus_3 uint = distance + 3
 		var offset0 uint = distance_plus_3 - uint(dist_cache[0])
@@ -42,7 +42,7 @@ func ComputeDistanceCode(distance uint, max_distance uint, dist_cache []int) uin
 	return distance + BROTLI_NUM_DISTANCE_SHORT_CODES - 1
 }
 
-func BrotliCreateBackwardReferences(num_bytes uint, position uint, ringbuffer []byte, ringbuffer_mask uint, params *BrotliEncoderParams, hasher HasherHandle, dist_cache []int, last_insert_len *uint, commands []Command, num_commands *uint, num_literals *uint) {
+func createBackwardReferences(num_bytes uint, position uint, ringbuffer []byte, ringbuffer_mask uint, params *BrotliEncoderParams, hasher HasherHandle, dist_cache []int, last_insert_len *uint, commands []Command, num_commands *uint, num_literals *uint) {
 	var max_backward_limit uint = BROTLI_MAX_BACKWARD_LIMIT(params.lgwin)
 	var orig_commands []Command = commands
 	var insert_length uint = *last_insert_len
@@ -112,7 +112,7 @@ func BrotliCreateBackwardReferences(num_bytes uint, position uint, ringbuffer []
 			{
 				/* The first 16 codes are special short-codes,
 				   and the minimum offset is 1. */
-				var distance_code uint = ComputeDistanceCode(sr.distance, max_distance+gap, dist_cache)
+				var distance_code uint = computeDistanceCode(sr.distance, max_distance+gap, dist_cache)
 				if (sr.distance <= (max_distance + gap)) && distance_code > 0 {
 					dist_cache[3] = dist_cache[2]
 					dist_cache[2] = dist_cache[1]

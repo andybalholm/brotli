@@ -239,7 +239,7 @@ func ClusterBlocksDistance(data []uint16, length uint, num_blocks uint, block_id
 				pos++
 			}
 
-			histograms[j].bit_cost_ = BrotliPopulationCostDistance(&histograms[j])
+			histograms[j].bit_cost_ = populationCostDistance(&histograms[j])
 			new_clusters[j] = uint32(j)
 			symbols[j] = uint32(j)
 			sizes[j] = 1

@@ -670,7 +670,7 @@ func ShouldCompress(input []byte, input_size uint, num_literals uint) bool {
 			literal_histo[input[i]]++
 		}
 
-		return BitsEntropy(literal_histo[:], 256) < max_total_bit_cost
+		return bitsEntropy(literal_histo[:], 256) < max_total_bit_cost
 	}
 }
 

@@ -14,7 +14,7 @@ package brotli
 */
 
 /* Functions to estimate the bit cost of Huffman trees. */
-func ShannonEntropy(population []uint32, size uint, total *uint) float64 {
+func shannonEntropy(population []uint32, size uint, total *uint) float64 {
 	var sum uint = 0
 	var retval float64 = 0
 	var population_end []uint32 = population[size:]
@@ -33,9 +33,9 @@ func ShannonEntropy(population []uint32, size uint, total *uint) float64 {
 	return retval
 }
 
-func BitsEntropy(population []uint32, size uint) float64 {
+func bitsEntropy(population []uint32, size uint) float64 {
 	var sum uint
-	var retval float64 = ShannonEntropy(population, size, &sum)
+	var retval float64 = shannonEntropy(population, size, &sum)
 	if retval < float64(sum) {
 		/* At least one bit per literal is needed. */
 		retval = float64(sum)
@@ -44,19 +44,19 @@ func BitsEntropy(population []uint32, size uint) float64 {
 	return retval
 }
 
-var BrotliPopulationCostLiteral_kOneSymbolHistogramCost float64 = 12
-var BrotliPopulationCostLiteral_kTwoSymbolHistogramCost float64 = 20
-var BrotliPopulationCostLiteral_kThreeSymbolHistogramCost float64 = 28
-var BrotliPopulationCostLiteral_kFourSymbolHistogramCost float64 = 37
+const kOneSymbolHistogramCost float64 = 12
+const kTwoSymbolHistogramCost float64 = 20
+const kThreeSymbolHistogramCost float64 = 28
+const kFourSymbolHistogramCost float64 = 37
 
-func BrotliPopulationCostLiteral(histogram *HistogramLiteral) float64 {
+func populationCostLiteral(histogram *HistogramLiteral) float64 {
 	var data_size uint = HistogramDataSizeLiteral()
 	var count int = 0
 	var s [5]uint
 	var bits float64 = 0.0
 	var i uint
 	if histogram.total_count_ == 0 {
-		return BrotliPopulationCostLiteral_kOneSymbolHistogramCost
+		return kOneSymbolHistogramCost
 	}
 
 	for i = 0; i < data_size; i++ {
@@ -70,11 +70,11 @@ func BrotliPopulationCostLiteral(histogram *HistogramLiteral) float64 {
 	}
 
 	if count == 1 {
-		return BrotliPopulationCostLiteral_kOneSymbolHistogramCost
+		return kOneSymbolHistogramCost
 	}
 
 	if count == 2 {
-		return BrotliPopulationCostLiteral_kTwoSymbolHistogramCost + float64(histogram.total_count_)
+		return kTwoSymbolHistogramCost + float64(histogram.total_count_)
 	}
 
 	if count == 3 {
@@ -82,7 +82,7 @@ func BrotliPopulationCostLiteral(histogram *HistogramLiteral) float64 {
 		var histo1 uint32 = histogram.data_[s[1]]
 		var histo2 uint32 = histogram.data_[s[2]]
 		var histomax uint32 = brotli_max_uint32_t(histo0, brotli_max_uint32_t(histo1, histo2))
-		return BrotliPopulationCostLiteral_kThreeSymbolHistogramCost + 2*(float64(histo0)+float64(histo1)+float64(histo2)) - float64(histomax)
+		return kThreeSymbolHistogramCost + 2*(float64(histo0)+float64(histo1)+float64(histo2)) - float64(histomax)
 	}
 
 	if count == 4 {
@@ -107,7 +107,7 @@ func BrotliPopulationCostLiteral(histogram *HistogramLiteral) float64 {
 
 		h23 = histo[2] + histo[3]
 		histomax = brotli_max_uint32_t(h23, histo[0])
-		return BrotliPopulationCostLiteral_kFourSymbolHistogramCost + 3*float64(h23) + 2*(float64(histo[0])+float64(histo[1])) - float64(histomax)
+		return kFourSymbolHistogramCost + 3*float64(h23) + 2*(float64(histo[0])+float64(histo[1])) - float64(histomax)
 	}
 	{
 		var max_depth uint = 1
@@ -174,25 +174,20 @@ func BrotliPopulationCostLiteral(histogram *HistogramLiteral) float64 {
 		bits += float64(18 + 2*max_depth)
 
 		/* Add the entropy of the code length code histogram. */
-		bits += BitsEntropy(depth_histo[:], BROTLI_CODE_LENGTH_CODES)
+		bits += bitsEntropy(depth_histo[:], BROTLI_CODE_LENGTH_CODES)
 	}
 
 	return bits
 }
 
-var BrotliPopulationCostCommand_kOneSymbolHistogramCost float64 = 12
-var BrotliPopulationCostCommand_kTwoSymbolHistogramCost float64 = 20
-var BrotliPopulationCostCommand_kThreeSymbolHistogramCost float64 = 28
-var BrotliPopulationCostCommand_kFourSymbolHistogramCost float64 = 37
-
-func BrotliPopulationCostCommand(histogram *HistogramCommand) float64 {
+func populationCostCommand(histogram *HistogramCommand) float64 {
 	var data_size uint = HistogramDataSizeCommand()
 	var count int = 0
 	var s [5]uint
 	var bits float64 = 0.0
 	var i uint
 	if histogram.total_count_ == 0 {
-		return BrotliPopulationCostCommand_kOneSymbolHistogramCost
+		return kOneSymbolHistogramCost
 	}
 
 	for i = 0; i < data_size; i++ {
@@ -206,11 +201,11 @@ func BrotliPopulationCostCommand(histogram *HistogramCommand) float64 {
 	}
 
 	if count == 1 {
-		return BrotliPopulationCostCommand_kOneSymbolHistogramCost
+		return kOneSymbolHistogramCost
 	}
 
 	if count == 2 {
-		return BrotliPopulationCostCommand_kTwoSymbolHistogramCost + float64(histogram.total_count_)
+		return kTwoSymbolHistogramCost + float64(histogram.total_count_)
 	}
 
 	if count == 3 {
@@ -218,7 +213,7 @@ func BrotliPopulationCostCommand(histogram *HistogramCommand) float64 {
 		var histo1 uint32 = histogram.data_[s[1]]
 		var histo2 uint32 = histogram.data_[s[2]]
 		var histomax uint32 = brotli_max_uint32_t(histo0, brotli_max_uint32_t(histo1, histo2))
-		return BrotliPopulationCostCommand_kThreeSymbolHistogramCost + 2*(float64(histo0)+float64(histo1)+float64(histo2)) - float64(histomax)
+		return kThreeSymbolHistogramCost + 2*(float64(histo0)+float64(histo1)+float64(histo2)) - float64(histomax)
 	}
 
 	if count == 4 {
@@ -243,7 +238,7 @@ func BrotliPopulationCostCommand(histogram *HistogramCommand) float64 {
 
 		h23 = histo[2] + histo[3]
 		histomax = brotli_max_uint32_t(h23, histo[0])
-		return BrotliPopulationCostCommand_kFourSymbolHistogramCost + 3*float64(h23) + 2*(float64(histo[0])+float64(histo[1])) - float64(histomax)
+		return kFourSymbolHistogramCost + 3*float64(h23) + 2*(float64(histo[0])+float64(histo[1])) - float64(histomax)
 	}
 	{
 		var max_depth uint = 1
@@ -310,25 +305,20 @@ func BrotliPopulationCostCommand(histogram *HistogramCommand) float64 {
 		bits += float64(18 + 2*max_depth)
 
 		/* Add the entropy of the code length code histogram. */
-		bits += BitsEntropy(depth_histo[:], BROTLI_CODE_LENGTH_CODES)
+		bits += bitsEntropy(depth_histo[:], BROTLI_CODE_LENGTH_CODES)
 	}
 
 	return bits
 }
 
-var BrotliPopulationCostDistance_kOneSymbolHistogramCost float64 = 12
-var BrotliPopulationCostDistance_kTwoSymbolHistogramCost float64 = 20
-var BrotliPopulationCostDistance_kThreeSymbolHistogramCost float64 = 28
-var BrotliPopulationCostDistance_kFourSymbolHistogramCost float64 = 37
-
-func BrotliPopulationCostDistance(histogram *HistogramDistance) float64 {
+func populationCostDistance(histogram *HistogramDistance) float64 {
 	var data_size uint = HistogramDataSizeDistance()
 	var count int = 0
 	var s [5]uint
 	var bits float64 = 0.0
 	var i uint
 	if histogram.total_count_ == 0 {
-		return BrotliPopulationCostDistance_kOneSymbolHistogramCost
+		return kOneSymbolHistogramCost
 	}
 
 	for i = 0; i < data_size; i++ {
@@ -342,11 +332,11 @@ func BrotliPopulationCostDistance(histogram *HistogramDistance) float64 {
 	}
 
 	if count == 1 {
-		return BrotliPopulationCostDistance_kOneSymbolHistogramCost
+		return kOneSymbolHistogramCost
 	}
 
 	if count == 2 {
-		return BrotliPopulationCostDistance_kTwoSymbolHistogramCost + float64(histogram.total_count_)
+		return kTwoSymbolHistogramCost + float64(histogram.total_count_)
 	}
 
 	if count == 3 {
@@ -354,7 +344,7 @@ func BrotliPopulationCostDistance(histogram *HistogramDistance) float64 {
 		var histo1 uint32 = histogram.data_[s[1]]
 		var histo2 uint32 = histogram.data_[s[2]]
 		var histomax uint32 = brotli_max_uint32_t(histo0, brotli_max_uint32_t(histo1, histo2))
-		return BrotliPopulationCostDistance_kThreeSymbolHistogramCost + 2*(float64(histo0)+float64(histo1)+float64(histo2)) - float64(histomax)
+		return kThreeSymbolHistogramCost + 2*(float64(histo0)+float64(histo1)+float64(histo2)) - float64(histomax)
 	}
 
 	if count == 4 {
@@ -379,7 +369,7 @@ func BrotliPopulationCostDistance(histogram *HistogramDistance) float64 {
 
 		h23 = histo[2] + histo[3]
 		histomax = brotli_max_uint32_t(h23, histo[0])
-		return BrotliPopulationCostDistance_kFourSymbolHistogramCost + 3*float64(h23) + 2*(float64(histo[0])+float64(histo[1])) - float64(histomax)
+		return kFourSymbolHistogramCost + 3*float64(h23) + 2*(float64(histo[0])+float64(histo[1])) - float64(histomax)
 	}
 	{
 		var max_depth uint = 1
@@ -446,7 +436,7 @@ func BrotliPopulationCostDistance(histogram *HistogramDistance) float64 {
 		bits += float64(18 + 2*max_depth)
 
 		/* Add the entropy of the code length code histogram. */
-		bits += BitsEntropy(depth_histo[:], BROTLI_CODE_LENGTH_CODES)
+		bits += bitsEntropy(depth_histo[:], BROTLI_CODE_LENGTH_CODES)
 	}
 
 	return bits

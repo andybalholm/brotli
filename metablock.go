@@ -161,7 +161,7 @@ func ComputeDistanceCost(cmds []Command, num_commands uint, orig_params *BrotliD
 		}
 	}
 
-	*cost = BrotliPopulationCostDistance(&histo) + extra_bits
+	*cost = populationCostDistance(&histo) + extra_bits
 	return true
 }
 
@@ -363,7 +363,7 @@ func ContextBlockSplitterFinishBlock(self *ContextBlockSplitter, is_final bool) 
 		split.types[0] = 0
 
 		for i = 0; i < num_contexts; i++ {
-			last_entropy[i] = BitsEntropy(histograms[i].data_[:], self.alphabet_size_)
+			last_entropy[i] = bitsEntropy(histograms[i].data_[:], self.alphabet_size_)
 			last_entropy[num_contexts+i] = last_entropy[i]
 		}
 
@@ -389,13 +389,13 @@ func ContextBlockSplitterFinishBlock(self *ContextBlockSplitter, is_final bool) 
 		for i = 0; i < num_contexts; i++ {
 			var curr_histo_ix uint = self.curr_histogram_ix_ + i
 			var j uint
-			entropy[i] = BitsEntropy(histograms[curr_histo_ix].data_[:], self.alphabet_size_)
+			entropy[i] = bitsEntropy(histograms[curr_histo_ix].data_[:], self.alphabet_size_)
 			for j = 0; j < 2; j++ {
 				var jx uint = j*num_contexts + i
 				var last_histogram_ix uint = self.last_histogram_ix_[j] + i
 				combined_histo[jx] = histograms[curr_histo_ix]
 				HistogramAddHistogramLiteral(&combined_histo[jx], &histograms[last_histogram_ix])
-				combined_entropy[jx] = BitsEntropy(combined_histo[jx].data_[0:], self.alphabet_size_)
+				combined_entropy[jx] = bitsEntropy(combined_histo[jx].data_[0:], self.alphabet_size_)
 				diff[j] += combined_entropy[jx] - entropy[i] - last_entropy[jx]
 			}
 		}

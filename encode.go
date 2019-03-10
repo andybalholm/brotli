@@ -710,11 +710,11 @@ func ChooseContextMap(quality int, bigram_histo []uint32, num_literal_contexts *
 		two_prefix_histo[i%6] += bigram_histo[i]
 	}
 
-	entropy[1] = ShannonEntropy(monogram_histo[:], 3, &dummy)
-	entropy[2] = (ShannonEntropy(two_prefix_histo[:], 3, &dummy) + ShannonEntropy(two_prefix_histo[3:], 3, &dummy))
+	entropy[1] = shannonEntropy(monogram_histo[:], 3, &dummy)
+	entropy[2] = (shannonEntropy(two_prefix_histo[:], 3, &dummy) + shannonEntropy(two_prefix_histo[3:], 3, &dummy))
 	entropy[3] = 0
 	for i = 0; i < 3; i++ {
-		entropy[3] += ShannonEntropy(bigram_histo[3*i:], 3, &dummy)
+		entropy[3] += shannonEntropy(bigram_histo[3*i:], 3, &dummy)
 	}
 
 	total = uint(monogram_histo[0] + monogram_histo[1] + monogram_histo[2])
@@ -848,10 +848,10 @@ func ShouldUseComplexStaticContextMap(input []byte, start_pos uint, length uint,
 			}
 		}
 
-		entropy[1] = ShannonEntropy(combined_histo[:], 32, &dummy)
+		entropy[1] = shannonEntropy(combined_histo[:], 32, &dummy)
 		entropy[2] = 0
 		for i = 0; i < 13; i++ {
-			entropy[2] += ShannonEntropy(context_histo[i][0:], 32, &dummy)
+			entropy[2] += shannonEntropy(context_histo[i][0:], 32, &dummy)
 		}
 
 		entropy[0] = 1.0 / float64(total)
@@ -922,7 +922,7 @@ func ShouldCompress_encode(data []byte, mask uint, last_flush_pos uint64, bytes 
 				pos += kSampleRate
 			}
 
-			if BitsEntropy(literal_histo[:], 256) > bit_cost_threshold {
+			if bitsEntropy(literal_histo[:], 256) > bit_cost_threshold {
 				return false
 			}
 		}
@@ -1348,12 +1348,12 @@ func EncodeData(s *Writer, is_last bool, force_flush bool, out_size *uint, outpu
 
 	if s.params.quality == ZOPFLIFICATION_QUALITY {
 		assert(s.params.hasher.type_ == 10)
-		BrotliCreateZopfliBackwardReferences(uint(bytes), uint(wrapped_last_processed_pos), data, uint(mask), &s.params, s.hasher_.(*H10), s.dist_cache_[:], &s.last_insert_len_, s.commands_[s.num_commands_:], &s.num_commands_, &s.num_literals_)
+		createZopfliBackwardReferences(uint(bytes), uint(wrapped_last_processed_pos), data, uint(mask), &s.params, s.hasher_.(*H10), s.dist_cache_[:], &s.last_insert_len_, s.commands_[s.num_commands_:], &s.num_commands_, &s.num_literals_)
 	} else if s.params.quality == HQ_ZOPFLIFICATION_QUALITY {
 		assert(s.params.hasher.type_ == 10)
-		BrotliCreateHqZopfliBackwardReferences(uint(bytes), uint(wrapped_last_processed_pos), data, uint(mask), &s.params, s.hasher_, s.dist_cache_[:], &s.last_insert_len_, s.commands_[s.num_commands_:], &s.num_commands_, &s.num_literals_)
+		createHqZopfliBackwardReferences(uint(bytes), uint(wrapped_last_processed_pos), data, uint(mask), &s.params, s.hasher_, s.dist_cache_[:], &s.last_insert_len_, s.commands_[s.num_commands_:], &s.num_commands_, &s.num_literals_)
 	} else {
-		BrotliCreateBackwardReferences(uint(bytes), uint(wrapped_last_processed_pos), data, uint(mask), &s.params, s.hasher_, s.dist_cache_[:], &s.last_insert_len_, s.commands_[s.num_commands_:], &s.num_commands_, &s.num_literals_)
+		createBackwardReferences(uint(bytes), uint(wrapped_last_processed_pos), data, uint(mask), &s.params, s.hasher_, s.dist_cache_[:], &s.last_insert_len_, s.commands_[s.num_commands_:], &s.num_commands_, &s.num_literals_)
 	}
 	{
 		var max_length uint = MaxMetablockSize(&s.params)
@@ -1517,12 +1517,12 @@ func BrotliCompressBufferQuality10(lgwin int, input_size uint, input_buffer []by
 		var block_start uint
 		for block_start = metablock_start; block_start < metablock_end; {
 			var block_size uint = brotli_min_size_t(metablock_end-block_start, max_block_size)
-			var nodes []ZopfliNode = make([]ZopfliNode, (block_size + 1))
+			var nodes []zopfliNode = make([]zopfliNode, (block_size + 1))
 			var path_size uint
 			var new_cmd_alloc_size uint
-			BrotliInitZopfliNodes(nodes, block_size+1)
+			initZopfliNodes(nodes, block_size+1)
 			hasher.StitchToPreviousBlock(block_size, block_start, input_buffer, mask)
-			path_size = BrotliZopfliComputeShortestPath(block_size, block_start, input_buffer, mask, &params, dist_cache[:], hasher.(*H10), nodes)
+			path_size = zopfliComputeShortestPath(block_size, block_start, input_buffer, mask, &params, dist_cache[:], hasher.(*H10), nodes)
 
 			/* We allocate a command buffer in the first iteration of this loop that
 			   will be likely big enough for the whole metablock, so that for most
@@ -1545,7 +1545,7 @@ func BrotliCompressBufferQuality10(lgwin int, input_size uint, input_buffer []by
 				commands = new_commands
 			}
 
-			BrotliZopfliCreateCommands(block_size, block_start, nodes[0:], dist_cache[:], &last_insert_len, &params, commands[num_commands:], &num_literals)
+			zopfliCreateCommands(block_size, block_start, nodes[0:], dist_cache[:], &last_insert_len, &params, commands[num_commands:], &num_literals)
 			num_commands += path_size
 			block_start += block_size
 			metablock_size += block_size

@@ -239,7 +239,7 @@ func ClusterBlocksCommand(data []uint16, length uint, num_blocks uint, block_ids
 				pos++
 			}
 
-			histograms[j].bit_cost_ = BrotliPopulationCostCommand(&histograms[j])
+			histograms[j].bit_cost_ = populationCostCommand(&histograms[j])
 			new_clusters[j] = uint32(j)
 			symbols[j] = uint32(j)
 			sizes[j] = 1

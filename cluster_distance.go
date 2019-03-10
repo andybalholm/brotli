@@ -48,7 +48,7 @@ func BrotliCompareAndPushToQueueDistance(out []HistogramDistance, cluster_size [
 		var combo HistogramDistance = out[idx1]
 		var cost_combo float64
 		HistogramAddHistogramDistance(&combo, &out[idx2])
-		cost_combo = BrotliPopulationCostDistance(&combo)
+		cost_combo = populationCostDistance(&combo)
 		if cost_combo < threshold-p.cost_diff {
 			p.cost_combo = cost_combo
 			is_good_pair = true
@@ -160,7 +160,7 @@ func BrotliHistogramBitCostDistanceDistance(histogram *HistogramDistance, candid
 	} else {
 		var tmp HistogramDistance = *histogram
 		HistogramAddHistogramDistance(&tmp, candidate)
-		return BrotliPopulationCostDistance(&tmp) - candidate.bit_cost_
+		return populationCostDistance(&tmp) - candidate.bit_cost_
 	}
 }
 
@@ -269,7 +269,7 @@ func BrotliClusterHistogramsDistance(in []HistogramDistance, in_size uint, max_h
 
 	for i = 0; i < in_size; i++ {
 		out[i] = in[i]
-		out[i].bit_cost_ = BrotliPopulationCostDistance(&in[i])
+		out[i].bit_cost_ = populationCostDistance(&in[i])
 		histogram_symbols[i] = uint32(i)
 	}
 

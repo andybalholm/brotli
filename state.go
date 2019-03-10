@@ -98,7 +98,7 @@ type Reader struct {
 
 	state        int
 	loop_counter int
-	br           BrotliBitReader
+	br           bitReader
 	buffer       struct {
 		u64 uint64
 		u8  [8]byte
@@ -186,7 +186,7 @@ type Reader struct {
 func BrotliDecoderStateInit(s *Reader) bool {
 	s.error_code = 0 /* BROTLI_DECODER_NO_ERROR */
 
-	BrotliInitBitReader(&s.br)
+	initBitReader(&s.br)
 	s.state = BROTLI_STATE_UNINITED
 	s.large_window = false
 	s.substate_metablock_header = BROTLI_STATE_METABLOCK_HEADER_NONE

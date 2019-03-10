@@ -70,7 +70,7 @@ func BlockSplitterFinishBlockLiteral(self *BlockSplitterLiteral, is_final bool) 
 		split.lengths[0] = uint32(self.block_size_)
 
 		split.types[0] = 0
-		last_entropy[0] = BitsEntropy(histograms[0].data_[:], self.alphabet_size_)
+		last_entropy[0] = bitsEntropy(histograms[0].data_[:], self.alphabet_size_)
 		last_entropy[1] = last_entropy[0]
 		self.num_blocks_++
 		split.num_types++
@@ -80,7 +80,7 @@ func BlockSplitterFinishBlockLiteral(self *BlockSplitterLiteral, is_final bool) 
 		}
 		self.block_size_ = 0
 	} else if self.block_size_ > 0 {
-		var entropy float64 = BitsEntropy(histograms[self.curr_histogram_ix_].data_[:], self.alphabet_size_)
+		var entropy float64 = bitsEntropy(histograms[self.curr_histogram_ix_].data_[:], self.alphabet_size_)
 		var combined_histo [2]HistogramLiteral
 		var combined_entropy [2]float64
 		var diff [2]float64
@@ -89,7 +89,7 @@ func BlockSplitterFinishBlockLiteral(self *BlockSplitterLiteral, is_final bool) 
 			var last_histogram_ix uint = self.last_histogram_ix_[j]
 			combined_histo[j] = histograms[self.curr_histogram_ix_]
 			HistogramAddHistogramLiteral(&combined_histo[j], &histograms[last_histogram_ix])
-			combined_entropy[j] = BitsEntropy(combined_histo[j].data_[0:], self.alphabet_size_)
+			combined_entropy[j] = bitsEntropy(combined_histo[j].data_[0:], self.alphabet_size_)
 			diff[j] = combined_entropy[j] - entropy - last_entropy[j]
 		}
 
