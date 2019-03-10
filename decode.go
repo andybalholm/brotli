@@ -136,29 +136,6 @@ func BrotliDecoderSetParameter(state *Reader, p int, value uint32) bool {
 	}
 }
 
-func BrotliDecoderCreateInstance() *Reader {
-	var state *Reader
-	state = new(Reader)
-	if state == nil {
-		return nil
-	}
-
-	if !BrotliDecoderStateInit(state) {
-		return nil
-	}
-
-	return state
-}
-
-/* Deinitializes and frees BrotliDecoderState instance. */
-func BrotliDecoderDestroyInstance(state *Reader) {
-	if state == nil {
-		return
-	} else {
-		BrotliDecoderStateCleanup(state)
-	}
-}
-
 /* Saves error code and converts it to BrotliDecoderResult. */
 func SaveErrorCode(s *Reader, e int) int {
 	s.error_code = int(e)
@@ -2135,28 +2112,6 @@ func BrotliMaxDistanceSymbol(ndirect uint32, npostfix uint32) uint32 {
 	}
 }
 
-func BrotliDecoderDecompress(encoded_size uint, encoded_buffer []byte, decoded_size *uint, decoded_buffer []byte) int {
-	var s Reader
-	var result int
-	var total_out uint = 0
-	var available_in uint = encoded_size
-	var next_in []byte = encoded_buffer
-	var available_out uint = *decoded_size
-	var next_out []byte = decoded_buffer
-	if !BrotliDecoderStateInit(&s) {
-		return BROTLI_DECODER_RESULT_ERROR
-	}
-
-	result = BrotliDecoderDecompressStream(&s, &available_in, &next_in, &available_out, &next_out, &total_out)
-	*decoded_size = total_out
-	BrotliDecoderStateCleanup(&s)
-	if result != BROTLI_DECODER_RESULT_SUCCESS {
-		result = BROTLI_DECODER_RESULT_ERROR
-	}
-
-	return result
-}
-
 /* Invariant: input stream is never overconsumed:
    - invalid input implies that the whole stream is invalid -> any amount of
      input could be read and discarded
@@ -2168,14 +2123,9 @@ func BrotliDecoderDecompress(encoded_size uint, encoded_buffer []byte, decoded_s
      buffer ahead of time
    - when result is "success" decoder MUST return all unused data back to input
      buffer; this is possible because the invariant is held on enter */
-func BrotliDecoderDecompressStream(s *Reader, available_in *uint, next_in *[]byte, available_out *uint, next_out *[]byte, total_out *uint) int {
+func BrotliDecoderDecompressStream(s *Reader, available_in *uint, next_in *[]byte, available_out *uint, next_out *[]byte) int {
 	var result int = BROTLI_DECODER_SUCCESS
 	var br *BrotliBitReader = &s.br
-
-	/* Ensure that |total_out| is set, even if no data will ever be pushed out. */
-	if total_out != nil {
-		*total_out = s.partial_pos_out
-	}
 
 	/* Do not try to process further in a case of unrecoverable error. */
 	if int(s.error_code) < 0 {
@@ -2209,7 +2159,7 @@ func BrotliDecoderDecompressStream(s *Reader, available_in *uint, next_in *[]byt
 			/* Error, needs more input/output. */
 			if result == BROTLI_DECODER_NEEDS_MORE_INPUT {
 				if s.ringbuffer != nil { /* Pro-actively push output. */
-					var intermediate_result int = WriteRingBuffer(s, available_out, next_out, total_out, true)
+					var intermediate_result int = WriteRingBuffer(s, available_out, next_out, nil, true)
 
 					/* WriteRingBuffer checks s->meta_block_remaining_len validity. */
 					if int(intermediate_result) < 0 {
@@ -2381,7 +2331,7 @@ func BrotliDecoderDecompressStream(s *Reader, available_in *uint, next_in *[]byt
 			s.state = BROTLI_STATE_HUFFMAN_CODE_0
 		case BROTLI_STATE_UNCOMPRESSED:
 			{
-				result = CopyUncompressedBlockToOutput(available_out, next_out, total_out, s)
+				result = CopyUncompressedBlockToOutput(available_out, next_out, nil, s)
 				if result != BROTLI_DECODER_SUCCESS {
 					break
 				}
@@ -2609,7 +2559,7 @@ func BrotliDecoderDecompressStream(s *Reader, available_in *uint, next_in *[]byt
 
 			/* Fall through. */
 			BROTLI_STATE_COMMAND_POST_WRITE_2:
-			result = WriteRingBuffer(s, available_out, next_out, total_out, false)
+			result = WriteRingBuffer(s, available_out, next_out, nil, false)
 
 			if result != BROTLI_DECODER_SUCCESS {
 				break
@@ -2674,7 +2624,7 @@ func BrotliDecoderDecompressStream(s *Reader, available_in *uint, next_in *[]byt
 			/* Fall through. */
 		case BROTLI_STATE_DONE:
 			if s.ringbuffer != nil {
-				result = WriteRingBuffer(s, available_out, next_out, total_out, true)
+				result = WriteRingBuffer(s, available_out, next_out, nil, true)
 				if result != BROTLI_DECODER_SUCCESS {
 					break
 				}

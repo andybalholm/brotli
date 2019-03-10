@@ -49,7 +49,7 @@ func (r *Reader) Read(p []byte) (n int, err error) {
 		out_len := uint(len(p))
 		in_remaining := in_len
 		out_remaining := out_len
-		result := BrotliDecoderDecompressStream(r, &in_remaining, &r.in, &out_remaining, &p, nil)
+		result := BrotliDecoderDecompressStream(r, &in_remaining, &r.in, &out_remaining, &p)
 		written = out_len - out_remaining
 		n = int(written)
 
