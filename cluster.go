@@ -14,7 +14,7 @@ package brotli
 */
 
 /* Functions for clustering similar histograms together. */
-type HistogramPair struct {
+type histogramPair struct {
 	idx1       uint32
 	idx2       uint32
 	cost_combo float64
@@ -28,7 +28,7 @@ type HistogramPair struct {
 */
 
 /* Functions for clustering similar histograms together. */
-func HistogramPairIsLess(p1 *HistogramPair, p2 *HistogramPair) bool {
+func histogramPairIsLess(p1 *histogramPair, p2 *histogramPair) bool {
 	if p1.cost_diff != p2.cost_diff {
 		return p1.cost_diff > p2.cost_diff
 	}
@@ -37,7 +37,7 @@ func HistogramPairIsLess(p1 *HistogramPair, p2 *HistogramPair) bool {
 }
 
 /* Returns entropy reduction of the context map when we combine two clusters. */
-func ClusterCostDiff(size_a uint, size_b uint) float64 {
+func clusterCostDiff(size_a uint, size_b uint) float64 {
 	var size_c uint = size_a + size_b
 	return float64(size_a)*FastLog2(size_a) + float64(size_b)*FastLog2(size_b) - float64(size_c)*FastLog2(size_c)
 }

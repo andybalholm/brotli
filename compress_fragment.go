@@ -48,12 +48,12 @@ import "encoding/binary"
    REQUIRES: "table_size" is an odd (9, 11, 13, 15) power of two
    OUTPUT: maximal copy distance <= |input_size|
    OUTPUT: maximal copy distance <= BROTLI_MAX_BACKWARD_LIMIT(18) */
-func Hash5(p []byte, shift uint) uint32 {
+func hash5(p []byte, shift uint) uint32 {
 	var h uint64 = (binary.LittleEndian.Uint64(p) << 24) * uint64(kHashMul32_a)
 	return uint32(h >> shift)
 }
 
-func HashBytesAtOffset5(v uint64, offset int, shift uint) uint32 {
+func hashBytesAtOffset5(v uint64, offset int, shift uint) uint32 {
 	assert(offset >= 0)
 	assert(offset <= 3)
 	{
@@ -62,7 +62,7 @@ func HashBytesAtOffset5(v uint64, offset int, shift uint) uint32 {
 	}
 }
 
-func IsMatch5(p1 []byte, p2 []byte) bool {
+func isMatch5(p1 []byte, p2 []byte) bool {
 	var i int
 	for i = 0; i < 5; i++ {
 		if p1[i] != p2[i] {
@@ -81,7 +81,7 @@ func IsMatch5(p1 []byte, p2 []byte) bool {
    and thus have to assign a non-zero depth for each literal.
    Returns estimated compression ratio millibytes/char for encoding given input
    with generated code. */
-func BuildAndStoreLiteralPrefixCode(input []byte, input_size uint, depths []byte, bits []uint16, storage_ix *uint, storage []byte) uint {
+func buildAndStoreLiteralPrefixCode(input []byte, input_size uint, depths []byte, bits []uint16, storage_ix *uint, storage []byte) uint {
 	var histogram = [256]uint32{0}
 	var histogram_total uint
 	var i uint
@@ -117,7 +117,7 @@ func BuildAndStoreLiteralPrefixCode(input []byte, input_size uint, depths []byte
 		}
 	}
 
-	BrotliBuildAndStoreHuffmanTreeFast(histogram[:], histogram_total, /* max_bits = */
+	buildAndStoreHuffmanTreeFast(histogram[:], histogram_total, /* max_bits = */
 		8, depths, bits, storage_ix, storage)
 	{
 		var literal_ratio uint = 0
@@ -134,9 +134,9 @@ func BuildAndStoreLiteralPrefixCode(input []byte, input_size uint, depths []byte
 
 /* Builds a command and distance prefix code (each 64 symbols) into "depth" and
    "bits" based on "histogram" and stores it into the bit stream. */
-func BuildAndStoreCommandPrefixCode1(histogram []uint32, depth []byte, bits []uint16, storage_ix *uint, storage []byte) {
+func buildAndStoreCommandPrefixCode1(histogram []uint32, depth []byte, bits []uint16, storage_ix *uint, storage []byte) {
 	var tree [129]HuffmanTree
-	var cmd_depth = [BROTLI_NUM_COMMAND_SYMBOLS]byte{0}
+	var cmd_depth = [numCommandSymbols]byte{0}
 	/* Tree size for building a tree over 64 symbols is 2 * 64 + 1. */
 
 	var cmd_bits [64]uint16
@@ -181,14 +181,14 @@ func BuildAndStoreCommandPrefixCode1(histogram []uint32, depth []byte, bits []ui
 			cmd_depth[448+8*i] = depth[56+i]
 		}
 
-		BrotliStoreHuffmanTree(cmd_depth[:], BROTLI_NUM_COMMAND_SYMBOLS, tree[:], storage_ix, storage)
+		storeHuffmanTree(cmd_depth[:], numCommandSymbols, tree[:], storage_ix, storage)
 	}
 
-	BrotliStoreHuffmanTree(depth[64:], 64, tree[:], storage_ix, storage)
+	storeHuffmanTree(depth[64:], 64, tree[:], storage_ix, storage)
 }
 
 /* REQUIRES: insertlen < 6210 */
-func EmitInsertLen1(insertlen uint, depth []byte, bits []uint16, histo []uint32, storage_ix *uint, storage []byte) {
+func emitInsertLen1(insertlen uint, depth []byte, bits []uint16, histo []uint32, storage_ix *uint, storage []byte) {
 	if insertlen < 6 {
 		var code uint = insertlen + 40
 		BrotliWriteBits(uint(depth[code]), uint64(bits[code]), storage_ix, storage)
@@ -215,7 +215,7 @@ func EmitInsertLen1(insertlen uint, depth []byte, bits []uint16, histo []uint32,
 	}
 }
 
-func EmitLongInsertLen(insertlen uint, depth []byte, bits []uint16, histo []uint32, storage_ix *uint, storage []byte) {
+func emitLongInsertLen(insertlen uint, depth []byte, bits []uint16, histo []uint32, storage_ix *uint, storage []byte) {
 	if insertlen < 22594 {
 		BrotliWriteBits(uint(depth[62]), uint64(bits[62]), storage_ix, storage)
 		BrotliWriteBits(14, uint64(insertlen)-6210, storage_ix, storage)
@@ -227,7 +227,7 @@ func EmitLongInsertLen(insertlen uint, depth []byte, bits []uint16, histo []uint
 	}
 }
 
-func EmitCopyLen1(copylen uint, depth []byte, bits []uint16, histo []uint32, storage_ix *uint, storage []byte) {
+func emitCopyLen1(copylen uint, depth []byte, bits []uint16, histo []uint32, storage_ix *uint, storage []byte) {
 	if copylen < 10 {
 		BrotliWriteBits(uint(depth[copylen+14]), uint64(bits[copylen+14]), storage_ix, storage)
 		histo[copylen+14]++
@@ -253,7 +253,7 @@ func EmitCopyLen1(copylen uint, depth []byte, bits []uint16, histo []uint32, sto
 	}
 }
 
-func EmitCopyLenLastDistance1(copylen uint, depth []byte, bits []uint16, histo []uint32, storage_ix *uint, storage []byte) {
+func emitCopyLenLastDistance1(copylen uint, depth []byte, bits []uint16, histo []uint32, storage_ix *uint, storage []byte) {
 	if copylen < 12 {
 		BrotliWriteBits(uint(depth[copylen-4]), uint64(bits[copylen-4]), storage_ix, storage)
 		histo[copylen-4]++
@@ -291,7 +291,7 @@ func EmitCopyLenLastDistance1(copylen uint, depth []byte, bits []uint16, histo [
 	}
 }
 
-func EmitDistance1(distance uint, depth []byte, bits []uint16, histo []uint32, storage_ix *uint, storage []byte) {
+func emitDistance1(distance uint, depth []byte, bits []uint16, histo []uint32, storage_ix *uint, storage []byte) {
 	var d uint = distance + 3
 	var nbits uint32 = Log2FloorNonZero(d) - 1
 	var prefix uint = (d >> nbits) & 1
@@ -302,7 +302,7 @@ func EmitDistance1(distance uint, depth []byte, bits []uint16, histo []uint32, s
 	histo[distcode]++
 }
 
-func EmitLiterals(input []byte, len uint, depth []byte, bits []uint16, storage_ix *uint, storage []byte) {
+func emitLiterals(input []byte, len uint, depth []byte, bits []uint16, storage_ix *uint, storage []byte) {
 	var j uint
 	for j = 0; j < len; j++ {
 		var lit byte = input[j]
@@ -311,7 +311,7 @@ func EmitLiterals(input []byte, len uint, depth []byte, bits []uint16, storage_i
 }
 
 /* REQUIRES: len <= 1 << 24. */
-func BrotliStoreMetaBlockHeader1(len uint, is_uncompressed bool, storage_ix *uint, storage []byte) {
+func storeMetaBlockHeader1(len uint, is_uncompressed bool, storage_ix *uint, storage []byte) {
 	var nibbles uint = 6
 
 	/* ISLAST */
@@ -330,7 +330,7 @@ func BrotliStoreMetaBlockHeader1(len uint, is_uncompressed bool, storage_ix *uin
 	BrotliWriteSingleBit(is_uncompressed, storage_ix, storage)
 }
 
-func UpdateBits(n_bits uint, bits uint32, pos uint, array []byte) {
+func updateBits(n_bits uint, bits uint32, pos uint, array []byte) {
 	for n_bits > 0 {
 		var byte_pos uint = pos >> 3
 		var n_unchanged_bits uint = pos & 7
@@ -346,23 +346,23 @@ func UpdateBits(n_bits uint, bits uint32, pos uint, array []byte) {
 	}
 }
 
-func RewindBitPosition1(new_storage_ix uint, storage_ix *uint, storage []byte) {
+func rewindBitPosition1(new_storage_ix uint, storage_ix *uint, storage []byte) {
 	var bitpos uint = new_storage_ix & 7
 	var mask uint = (1 << bitpos) - 1
 	storage[new_storage_ix>>3] &= byte(mask)
 	*storage_ix = new_storage_ix
 }
 
-var ShouldMergeBlock_kSampleRate uint = 43
+var shouldMergeBlock_kSampleRate uint = 43
 
-func ShouldMergeBlock(data []byte, len uint, depths []byte) bool {
+func shouldMergeBlock(data []byte, len uint, depths []byte) bool {
 	var histo = [256]uint{0}
 	var i uint
-	for i = 0; i < len; i += ShouldMergeBlock_kSampleRate {
+	for i = 0; i < len; i += shouldMergeBlock_kSampleRate {
 		histo[data[i]]++
 	}
 	{
-		var total uint = (len + ShouldMergeBlock_kSampleRate - 1) / ShouldMergeBlock_kSampleRate
+		var total uint = (len + shouldMergeBlock_kSampleRate - 1) / shouldMergeBlock_kSampleRate
 		var r float64 = (FastLog2(total)+0.5)*float64(total) + 200
 		for i = 0; i < 256; i++ {
 			r -= float64(histo[i]) * (float64(depths[i]) + FastLog2(histo[i]))
@@ -372,7 +372,7 @@ func ShouldMergeBlock(data []byte, len uint, depths []byte) bool {
 	}
 }
 
-func ShouldUseUncompressedMode(metablock_start []byte, next_emit []byte, insertlen uint, literal_ratio uint) bool {
+func shouldUseUncompressedMode(metablock_start []byte, next_emit []byte, insertlen uint, literal_ratio uint) bool {
 	var compressed uint = uint(-cap(next_emit) + cap(metablock_start))
 	if compressed*50 > insertlen {
 		return false
@@ -381,10 +381,10 @@ func ShouldUseUncompressedMode(metablock_start []byte, next_emit []byte, insertl
 	}
 }
 
-func EmitUncompressedMetaBlock1(begin []byte, end []byte, storage_ix_start uint, storage_ix *uint, storage []byte) {
+func emitUncompressedMetaBlock1(begin []byte, end []byte, storage_ix_start uint, storage_ix *uint, storage []byte) {
 	var len uint = uint(-cap(end) + cap(begin))
-	RewindBitPosition1(storage_ix_start, storage_ix, storage)
-	BrotliStoreMetaBlockHeader1(uint(len), true, storage_ix, storage)
+	rewindBitPosition1(storage_ix_start, storage_ix, storage)
+	storeMetaBlockHeader1(uint(len), true, storage_ix, storage)
 	*storage_ix = (*storage_ix + 7) &^ 7
 	copy(storage[*storage_ix>>3:], begin[:len])
 	*storage_ix += uint(len << 3)
@@ -522,10 +522,10 @@ var kCmdHistoSeed = [128]uint32{
 	0,
 }
 
-var BrotliCompressFragmentFastImpl_kFirstBlockSize uint = 3 << 15
-var BrotliCompressFragmentFastImpl_kMergeBlockSize uint = 1 << 16
+var compressFragmentFastImpl_kFirstBlockSize uint = 3 << 15
+var compressFragmentFastImpl_kMergeBlockSize uint = 1 << 16
 
-func BrotliCompressFragmentFastImpl(in []byte, input_size uint, is_last bool, table []int, table_bits uint, cmd_depth []byte, cmd_bits []uint16, cmd_code_numbits *uint, cmd_code []byte, storage_ix *uint, storage []byte) {
+func compressFragmentFastImpl(in []byte, input_size uint, is_last bool, table []int, table_bits uint, cmd_depth []byte, cmd_bits []uint16, cmd_code_numbits *uint, cmd_code []byte, storage_ix *uint, storage []byte) {
 	var cmd_histo [128]uint32
 	var ip_end int
 	var next_emit int = 0
@@ -534,7 +534,7 @@ func BrotliCompressFragmentFastImpl(in []byte, input_size uint, is_last bool, ta
 	var kInputMarginBytes uint = BROTLI_WINDOW_GAP
 	var kMinMatchLen uint = 5
 	var metablock_start int = input
-	var block_size uint = brotli_min_size_t(input_size, BrotliCompressFragmentFastImpl_kFirstBlockSize)
+	var block_size uint = brotli_min_size_t(input_size, compressFragmentFastImpl_kFirstBlockSize)
 	var total_block_size uint = block_size
 	var mlen_storage_ix uint = *storage_ix + 3
 	var lit_depth [256]byte
@@ -553,12 +553,12 @@ func BrotliCompressFragmentFastImpl(in []byte, input_size uint, is_last bool, ta
 
 	/* Save the bit position of the MLEN field of the meta-block header, so that
 	   we can update it later if we decide to extend this meta-block. */
-	BrotliStoreMetaBlockHeader1(block_size, false, storage_ix, storage)
+	storeMetaBlockHeader1(block_size, false, storage_ix, storage)
 
 	/* No block splits, no contexts. */
 	BrotliWriteBits(13, 0, storage_ix, storage)
 
-	literal_ratio = BuildAndStoreLiteralPrefixCode(in[input:], block_size, lit_depth[:], lit_bits[:], storage_ix, storage)
+	literal_ratio = buildAndStoreLiteralPrefixCode(in[input:], block_size, lit_depth[:], lit_bits[:], storage_ix, storage)
 	{
 		/* Store the pre-compressed command and distance prefix codes. */
 		var i uint
@@ -592,7 +592,7 @@ emit_commands:
 
 		var next_hash uint32
 		ip++
-		for next_hash = Hash5(in[ip:], shift); ; {
+		for next_hash = hash5(in[ip:], shift); ; {
 			var skip uint32 = 32
 			var next_ip int = ip
 			/* Step 1: Scan forward in the input looking for a 5-byte-long match.
@@ -619,16 +619,16 @@ emit_commands:
 				var hash uint32 = next_hash
 				var bytes_between_hash_lookups uint32 = skip >> 5
 				skip++
-				assert(hash == Hash5(in[next_ip:], shift))
+				assert(hash == hash5(in[next_ip:], shift))
 				ip = next_ip
 				next_ip = int(uint32(ip) + bytes_between_hash_lookups)
 				if next_ip > ip_limit {
 					goto emit_remainder
 				}
 
-				next_hash = Hash5(in[next_ip:], shift)
+				next_hash = hash5(in[next_ip:], shift)
 				candidate = ip - last_distance
-				if IsMatch5(in[ip:], in[candidate:]) {
+				if isMatch5(in[ip:], in[candidate:]) {
 					if candidate < ip {
 						table[hash] = int(ip - base_ip)
 						break
@@ -640,14 +640,14 @@ emit_commands:
 				assert(candidate < ip)
 
 				table[hash] = int(ip - base_ip)
-				if !(!IsMatch5(in[ip:], in[candidate:])) {
+				if !(!isMatch5(in[ip:], in[candidate:])) {
 					break
 				}
 			}
 
 			/* Check copy distance. If candidate is not feasible, continue search.
 			   Checking is done outside of hot loop to reduce overhead. */
-			if ip-candidate > MAX_DISTANCE {
+			if ip-candidate > maxDistance {
 				goto trawl
 			}
 
@@ -666,27 +666,27 @@ emit_commands:
 				var insert uint = uint(base - next_emit)
 				ip += int(matched)
 				if insert < 6210 {
-					EmitInsertLen1(insert, cmd_depth, cmd_bits, cmd_histo[:], storage_ix, storage)
-				} else if ShouldUseUncompressedMode(in[metablock_start:], in[next_emit:], insert, literal_ratio) {
-					EmitUncompressedMetaBlock1(in[metablock_start:], in[base:], mlen_storage_ix-3, storage_ix, storage)
+					emitInsertLen1(insert, cmd_depth, cmd_bits, cmd_histo[:], storage_ix, storage)
+				} else if shouldUseUncompressedMode(in[metablock_start:], in[next_emit:], insert, literal_ratio) {
+					emitUncompressedMetaBlock1(in[metablock_start:], in[base:], mlen_storage_ix-3, storage_ix, storage)
 					input_size -= uint(base - input)
 					input = base
 					next_emit = input
 					goto next_block
 				} else {
-					EmitLongInsertLen(insert, cmd_depth, cmd_bits, cmd_histo[:], storage_ix, storage)
+					emitLongInsertLen(insert, cmd_depth, cmd_bits, cmd_histo[:], storage_ix, storage)
 				}
 
-				EmitLiterals(in[next_emit:], insert, lit_depth[:], lit_bits[:], storage_ix, storage)
+				emitLiterals(in[next_emit:], insert, lit_depth[:], lit_bits[:], storage_ix, storage)
 				if distance == last_distance {
 					BrotliWriteBits(uint(cmd_depth[64]), uint64(cmd_bits[64]), storage_ix, storage)
 					cmd_histo[64]++
 				} else {
-					EmitDistance1(uint(distance), cmd_depth, cmd_bits, cmd_histo[:], storage_ix, storage)
+					emitDistance1(uint(distance), cmd_depth, cmd_bits, cmd_histo[:], storage_ix, storage)
 					last_distance = distance
 				}
 
-				EmitCopyLenLastDistance1(matched, cmd_depth, cmd_bits, cmd_histo[:], storage_ix, storage)
+				emitCopyLenLastDistance1(matched, cmd_depth, cmd_bits, cmd_histo[:], storage_ix, storage)
 
 				next_emit = ip
 				if ip >= ip_limit {
@@ -698,12 +698,12 @@ emit_commands:
 				   within the last copy. */
 				{
 					var input_bytes uint64 = binary.LittleEndian.Uint64(in[ip-3:])
-					var prev_hash uint32 = HashBytesAtOffset5(input_bytes, 0, shift)
-					var cur_hash uint32 = HashBytesAtOffset5(input_bytes, 3, shift)
+					var prev_hash uint32 = hashBytesAtOffset5(input_bytes, 0, shift)
+					var cur_hash uint32 = hashBytesAtOffset5(input_bytes, 3, shift)
 					table[prev_hash] = int(ip - base_ip - 3)
-					prev_hash = HashBytesAtOffset5(input_bytes, 1, shift)
+					prev_hash = hashBytesAtOffset5(input_bytes, 1, shift)
 					table[prev_hash] = int(ip - base_ip - 2)
-					prev_hash = HashBytesAtOffset5(input_bytes, 2, shift)
+					prev_hash = hashBytesAtOffset5(input_bytes, 2, shift)
 					table[prev_hash] = int(ip - base_ip - 1)
 
 					candidate = base_ip + table[cur_hash]
@@ -711,19 +711,19 @@ emit_commands:
 				}
 			}
 
-			for IsMatch5(in[ip:], in[candidate:]) {
+			for isMatch5(in[ip:], in[candidate:]) {
 				var base int = ip
 				/* We have a 5-byte match at ip, and no need to emit any literal bytes
 				   prior to ip. */
 
 				var matched uint = 5 + FindMatchLengthWithLimit(in[candidate+5:], in[ip+5:], uint(ip_end-ip)-5)
-				if ip-candidate > MAX_DISTANCE {
+				if ip-candidate > maxDistance {
 					break
 				}
 				ip += int(matched)
 				last_distance = int(base - candidate) /* > 0 */
-				EmitCopyLen1(matched, cmd_depth, cmd_bits, cmd_histo[:], storage_ix, storage)
-				EmitDistance1(uint(last_distance), cmd_depth, cmd_bits, cmd_histo[:], storage_ix, storage)
+				emitCopyLen1(matched, cmd_depth, cmd_bits, cmd_histo[:], storage_ix, storage)
+				emitDistance1(uint(last_distance), cmd_depth, cmd_bits, cmd_histo[:], storage_ix, storage)
 
 				next_emit = ip
 				if ip >= ip_limit {
@@ -735,12 +735,12 @@ emit_commands:
 				   within the last copy. */
 				{
 					var input_bytes uint64 = binary.LittleEndian.Uint64(in[ip-3:])
-					var prev_hash uint32 = HashBytesAtOffset5(input_bytes, 0, shift)
-					var cur_hash uint32 = HashBytesAtOffset5(input_bytes, 3, shift)
+					var prev_hash uint32 = hashBytesAtOffset5(input_bytes, 0, shift)
+					var cur_hash uint32 = hashBytesAtOffset5(input_bytes, 3, shift)
 					table[prev_hash] = int(ip - base_ip - 3)
-					prev_hash = HashBytesAtOffset5(input_bytes, 1, shift)
+					prev_hash = hashBytesAtOffset5(input_bytes, 1, shift)
 					table[prev_hash] = int(ip - base_ip - 2)
-					prev_hash = HashBytesAtOffset5(input_bytes, 2, shift)
+					prev_hash = hashBytesAtOffset5(input_bytes, 2, shift)
 					table[prev_hash] = int(ip - base_ip - 1)
 
 					candidate = base_ip + table[cur_hash]
@@ -749,7 +749,7 @@ emit_commands:
 			}
 
 			ip++
-			next_hash = Hash5(in[ip:], shift)
+			next_hash = hash5(in[ip:], shift)
 		}
 	}
 
@@ -757,11 +757,11 @@ emit_remainder:
 	assert(next_emit <= ip_end)
 	input += int(block_size)
 	input_size -= block_size
-	block_size = brotli_min_size_t(input_size, BrotliCompressFragmentFastImpl_kMergeBlockSize)
+	block_size = brotli_min_size_t(input_size, compressFragmentFastImpl_kMergeBlockSize)
 
 	/* Decide if we want to continue this meta-block instead of emitting the
 	   last insert-only command. */
-	if input_size > 0 && total_block_size+block_size <= 1<<20 && ShouldMergeBlock(in[input:], block_size, lit_depth[:]) {
+	if input_size > 0 && total_block_size+block_size <= 1<<20 && shouldMergeBlock(in[input:], block_size, lit_depth[:]) {
 		assert(total_block_size > 1<<16)
 
 		/* Update the size of the current meta-block and continue emitting commands.
@@ -769,7 +769,7 @@ emit_remainder:
 		   nibbles. */
 		total_block_size += block_size
 
-		UpdateBits(20, uint32(total_block_size-1), mlen_storage_ix, storage)
+		updateBits(20, uint32(total_block_size-1), mlen_storage_ix, storage)
 		goto emit_commands
 	}
 
@@ -777,13 +777,13 @@ emit_remainder:
 	if next_emit < ip_end {
 		var insert uint = uint(ip_end - next_emit)
 		if insert < 6210 {
-			EmitInsertLen1(insert, cmd_depth, cmd_bits, cmd_histo[:], storage_ix, storage)
-			EmitLiterals(in[next_emit:], insert, lit_depth[:], lit_bits[:], storage_ix, storage)
-		} else if ShouldUseUncompressedMode(in[metablock_start:], in[next_emit:], insert, literal_ratio) {
-			EmitUncompressedMetaBlock1(in[metablock_start:], in[ip_end:], mlen_storage_ix-3, storage_ix, storage)
+			emitInsertLen1(insert, cmd_depth, cmd_bits, cmd_histo[:], storage_ix, storage)
+			emitLiterals(in[next_emit:], insert, lit_depth[:], lit_bits[:], storage_ix, storage)
+		} else if shouldUseUncompressedMode(in[metablock_start:], in[next_emit:], insert, literal_ratio) {
+			emitUncompressedMetaBlock1(in[metablock_start:], in[ip_end:], mlen_storage_ix-3, storage_ix, storage)
 		} else {
-			EmitLongInsertLen(insert, cmd_depth, cmd_bits, cmd_histo[:], storage_ix, storage)
-			EmitLiterals(in[next_emit:], insert, lit_depth[:], lit_bits[:], storage_ix, storage)
+			emitLongInsertLen(insert, cmd_depth, cmd_bits, cmd_histo[:], storage_ix, storage)
+			emitLiterals(in[next_emit:], insert, lit_depth[:], lit_bits[:], storage_ix, storage)
 		}
 	}
 
@@ -794,20 +794,20 @@ emit_remainder:
 next_block:
 	if input_size > 0 {
 		metablock_start = input
-		block_size = brotli_min_size_t(input_size, BrotliCompressFragmentFastImpl_kFirstBlockSize)
+		block_size = brotli_min_size_t(input_size, compressFragmentFastImpl_kFirstBlockSize)
 		total_block_size = block_size
 
 		/* Save the bit position of the MLEN field of the meta-block header, so that
 		   we can update it later if we decide to extend this meta-block. */
 		mlen_storage_ix = *storage_ix + 3
 
-		BrotliStoreMetaBlockHeader1(block_size, false, storage_ix, storage)
+		storeMetaBlockHeader1(block_size, false, storage_ix, storage)
 
 		/* No block splits, no contexts. */
 		BrotliWriteBits(13, 0, storage_ix, storage)
 
-		literal_ratio = BuildAndStoreLiteralPrefixCode(in[input:], block_size, lit_depth[:], lit_bits[:], storage_ix, storage)
-		BuildAndStoreCommandPrefixCode1(cmd_histo[:], cmd_depth, cmd_bits, storage_ix, storage)
+		literal_ratio = buildAndStoreLiteralPrefixCode(in[input:], block_size, lit_depth[:], lit_bits[:], storage_ix, storage)
+		buildAndStoreCommandPrefixCode1(cmd_histo[:], cmd_depth, cmd_bits, storage_ix, storage)
 		goto emit_commands
 	}
 
@@ -817,11 +817,11 @@ next_block:
 		cmd_code[0] = 0
 
 		*cmd_code_numbits = 0
-		BuildAndStoreCommandPrefixCode1(cmd_histo[:], cmd_depth, cmd_bits, cmd_code_numbits, cmd_code)
+		buildAndStoreCommandPrefixCode1(cmd_histo[:], cmd_depth, cmd_bits, cmd_code_numbits, cmd_code)
 	}
 }
 
-func BrotliCompressFragmentFast(input []byte, input_size uint, is_last bool, table []int, table_size uint, cmd_depth []byte, cmd_bits []uint16, cmd_code_numbits *uint, cmd_code []byte, storage_ix *uint, storage []byte) {
+func compressFragmentFast(input []byte, input_size uint, is_last bool, table []int, table_size uint, cmd_depth []byte, cmd_bits []uint16, cmd_code_numbits *uint, cmd_code []byte, storage_ix *uint, storage []byte) {
 	var initial_storage_ix uint = *storage_ix
 	var table_bits uint = uint(Log2FloorNonZero(table_size))
 
@@ -833,11 +833,11 @@ func BrotliCompressFragmentFast(input []byte, input_size uint, is_last bool, tab
 		return
 	}
 
-	BrotliCompressFragmentFastImpl(input, input_size, is_last, table, table_bits, cmd_depth, cmd_bits, cmd_code_numbits, cmd_code, storage_ix, storage)
+	compressFragmentFastImpl(input, input_size, is_last, table, table_bits, cmd_depth, cmd_bits, cmd_code_numbits, cmd_code, storage_ix, storage)
 
 	/* If output is larger than single uncompressed block, rewrite it. */
 	if *storage_ix-initial_storage_ix > 31+(input_size<<3) {
-		EmitUncompressedMetaBlock1(input, input[input_size:], initial_storage_ix, storage_ix, storage)
+		emitUncompressedMetaBlock1(input, input[input_size:], initial_storage_ix, storage_ix, storage)
 	}
 
 	if is_last {

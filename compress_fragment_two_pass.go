@@ -26,12 +26,12 @@ import "encoding/binary"
    on the actual command and literal byte histograms. */
 var kCompressFragmentTwoPassBlockSize uint = 1 << 17
 
-func Hash1(p []byte, shift uint, length uint) uint32 {
+func hash1(p []byte, shift uint, length uint) uint32 {
 	var h uint64 = (binary.LittleEndian.Uint64(p) << ((8 - length) * 8)) * uint64(kHashMul32_a)
 	return uint32(h >> shift)
 }
 
-func HashBytesAtOffset(v uint64, offset uint, shift uint, length uint) uint32 {
+func hashBytesAtOffset(v uint64, offset uint, shift uint, length uint) uint32 {
 	assert(offset <= 8-length)
 	{
 		var h uint64 = ((v >> (8 * offset)) << ((8 - length) * 8)) * uint64(kHashMul32_a)
@@ -39,7 +39,7 @@ func HashBytesAtOffset(v uint64, offset uint, shift uint, length uint) uint32 {
 	}
 }
 
-func IsMatch1(p1 []byte, p2 []byte, length uint) bool {
+func isMatch1(p1 []byte, p2 []byte, length uint) bool {
 	var i uint
 	for i = 0; i < length && i < 6; i++ {
 		if p1[i] != p2[i] {
@@ -52,9 +52,9 @@ func IsMatch1(p1 []byte, p2 []byte, length uint) bool {
 
 /* Builds a command and distance prefix code (each 64 symbols) into "depth" and
    "bits" based on "histogram" and stores it into the bit stream. */
-func BuildAndStoreCommandPrefixCode(histogram []uint32, depth []byte, bits []uint16, storage_ix *uint, storage []byte) {
+func buildAndStoreCommandPrefixCode(histogram []uint32, depth []byte, bits []uint16, storage_ix *uint, storage []byte) {
 	var tree [129]HuffmanTree
-	var cmd_depth = [BROTLI_NUM_COMMAND_SYMBOLS]byte{0}
+	var cmd_depth = [numCommandSymbols]byte{0}
 	/* Tree size for building a tree over 64 symbols is 2 * 64 + 1. */
 
 	var cmd_bits [64]uint16
@@ -98,13 +98,13 @@ func BuildAndStoreCommandPrefixCode(histogram []uint32, depth []byte, bits []uin
 			cmd_depth[448+8*i] = depth[16+i]
 		}
 
-		BrotliStoreHuffmanTree(cmd_depth[:], BROTLI_NUM_COMMAND_SYMBOLS, tree[:], storage_ix, storage)
+		storeHuffmanTree(cmd_depth[:], numCommandSymbols, tree[:], storage_ix, storage)
 	}
 
-	BrotliStoreHuffmanTree(depth[64:], 64, tree[:], storage_ix, storage)
+	storeHuffmanTree(depth[64:], 64, tree[:], storage_ix, storage)
 }
 
-func EmitInsertLen(insertlen uint32, commands *[]uint32) {
+func emitInsertLen(insertlen uint32, commands *[]uint32) {
 	if insertlen < 6 {
 		(*commands)[0] = insertlen
 	} else if insertlen < 130 {
@@ -134,7 +134,7 @@ func EmitInsertLen(insertlen uint32, commands *[]uint32) {
 	*commands = (*commands)[1:]
 }
 
-func EmitCopyLen(copylen uint, commands *[]uint32) {
+func emitCopyLen(copylen uint, commands *[]uint32) {
 	if copylen < 10 {
 		(*commands)[0] = uint32(copylen + 38)
 	} else if copylen < 134 {
@@ -158,7 +158,7 @@ func EmitCopyLen(copylen uint, commands *[]uint32) {
 	*commands = (*commands)[1:]
 }
 
-func EmitCopyLenLastDistance(copylen uint, commands *[]uint32) {
+func emitCopyLenLastDistance(copylen uint, commands *[]uint32) {
 	if copylen < 12 {
 		(*commands)[0] = uint32(copylen + 20)
 		*commands = (*commands)[1:]
@@ -196,7 +196,7 @@ func EmitCopyLenLastDistance(copylen uint, commands *[]uint32) {
 	}
 }
 
-func EmitDistance(distance uint32, commands *[]uint32) {
+func emitDistance(distance uint32, commands *[]uint32) {
 	var d uint32 = distance + 3
 	var nbits uint32 = Log2FloorNonZero(uint(d)) - 1
 	var prefix uint32 = (d >> nbits) & 1
@@ -208,7 +208,7 @@ func EmitDistance(distance uint32, commands *[]uint32) {
 }
 
 /* REQUIRES: len <= 1 << 24. */
-func BrotliStoreMetaBlockHeader(len uint, is_uncompressed bool, storage_ix *uint, storage []byte) {
+func storeMetaBlockHeader(len uint, is_uncompressed bool, storage_ix *uint, storage []byte) {
 	var nibbles uint = 6
 
 	/* ISLAST */
@@ -227,7 +227,7 @@ func BrotliStoreMetaBlockHeader(len uint, is_uncompressed bool, storage_ix *uint
 	BrotliWriteSingleBit(is_uncompressed, storage_ix, storage)
 }
 
-func CreateCommands(input []byte, block_size uint, input_size uint, base_ip_ptr []byte, table []int, table_bits uint, min_match uint, literals *[]byte, commands *[]uint32) {
+func createCommands(input []byte, block_size uint, input_size uint, base_ip_ptr []byte, table []int, table_bits uint, min_match uint, literals *[]byte, commands *[]uint32) {
 	var ip int = 0
 	var shift uint = 64 - table_bits
 	var ip_end int = int(block_size)
@@ -251,7 +251,7 @@ func CreateCommands(input []byte, block_size uint, input_size uint, base_ip_ptr 
 
 		var next_hash uint32
 		ip++
-		for next_hash = Hash1(input[ip:], shift, min_match); ; {
+		for next_hash = hash1(input[ip:], shift, min_match); ; {
 			var skip uint32 = 32
 			var next_ip int = ip
 			/* Step 1: Scan forward in the input looking for a 6-byte-long match.
@@ -280,15 +280,15 @@ func CreateCommands(input []byte, block_size uint, input_size uint, base_ip_ptr 
 				var bytes_between_hash_lookups uint32 = skip >> 5
 				skip++
 				ip = next_ip
-				assert(hash == Hash1(input[ip:], shift, min_match))
+				assert(hash == hash1(input[ip:], shift, min_match))
 				next_ip = int(uint32(ip) + bytes_between_hash_lookups)
 				if next_ip > ip_limit {
 					goto emit_remainder
 				}
 
-				next_hash = Hash1(input[next_ip:], shift, min_match)
+				next_hash = hash1(input[next_ip:], shift, min_match)
 				candidate = ip - last_distance
-				if IsMatch1(input[ip:], input[candidate:], min_match) {
+				if isMatch1(input[ip:], input[candidate:], min_match) {
 					if candidate < ip {
 						table[hash] = int(ip - base_ip)
 						break
@@ -300,14 +300,14 @@ func CreateCommands(input []byte, block_size uint, input_size uint, base_ip_ptr 
 				assert(candidate < ip)
 
 				table[hash] = int(ip - base_ip)
-				if !(!IsMatch1(input[ip:], input[candidate:], min_match)) {
+				if !(!isMatch1(input[ip:], input[candidate:], min_match)) {
 					break
 				}
 			}
 
 			/* Check copy distance. If candidate is not feasible, continue search.
 			   Checking is done outside of hot loop to reduce overhead. */
-			if ip-candidate > MAX_DISTANCE {
+			if ip-candidate > maxDistance {
 				goto trawl
 			}
 
@@ -325,18 +325,18 @@ func CreateCommands(input []byte, block_size uint, input_size uint, base_ip_ptr 
 
 				var insert int = int(base - next_emit)
 				ip += int(matched)
-				EmitInsertLen(uint32(insert), commands)
+				emitInsertLen(uint32(insert), commands)
 				copy(*literals, input[next_emit:][:uint(insert)])
 				*literals = (*literals)[insert:]
 				if distance == last_distance {
 					(*commands)[0] = 64
 					*commands = (*commands)[1:]
 				} else {
-					EmitDistance(uint32(distance), commands)
+					emitDistance(uint32(distance), commands)
 					last_distance = distance
 				}
 
-				EmitCopyLenLastDistance(matched, commands)
+				emitCopyLenLastDistance(matched, commands)
 
 				next_emit = ip
 				if ip >= ip_limit {
@@ -352,26 +352,26 @@ func CreateCommands(input []byte, block_size uint, input_size uint, base_ip_ptr 
 					var prev_hash uint32
 					if min_match == 4 {
 						input_bytes = binary.LittleEndian.Uint64(input[ip-3:])
-						cur_hash = HashBytesAtOffset(input_bytes, 3, shift, min_match)
-						prev_hash = HashBytesAtOffset(input_bytes, 0, shift, min_match)
+						cur_hash = hashBytesAtOffset(input_bytes, 3, shift, min_match)
+						prev_hash = hashBytesAtOffset(input_bytes, 0, shift, min_match)
 						table[prev_hash] = int(ip - base_ip - 3)
-						prev_hash = HashBytesAtOffset(input_bytes, 1, shift, min_match)
+						prev_hash = hashBytesAtOffset(input_bytes, 1, shift, min_match)
 						table[prev_hash] = int(ip - base_ip - 2)
-						prev_hash = HashBytesAtOffset(input_bytes, 0, shift, min_match)
+						prev_hash = hashBytesAtOffset(input_bytes, 0, shift, min_match)
 						table[prev_hash] = int(ip - base_ip - 1)
 					} else {
 						input_bytes = binary.LittleEndian.Uint64(input[ip-5:])
-						prev_hash = HashBytesAtOffset(input_bytes, 0, shift, min_match)
+						prev_hash = hashBytesAtOffset(input_bytes, 0, shift, min_match)
 						table[prev_hash] = int(ip - base_ip - 5)
-						prev_hash = HashBytesAtOffset(input_bytes, 1, shift, min_match)
+						prev_hash = hashBytesAtOffset(input_bytes, 1, shift, min_match)
 						table[prev_hash] = int(ip - base_ip - 4)
-						prev_hash = HashBytesAtOffset(input_bytes, 2, shift, min_match)
+						prev_hash = hashBytesAtOffset(input_bytes, 2, shift, min_match)
 						table[prev_hash] = int(ip - base_ip - 3)
 						input_bytes = binary.LittleEndian.Uint64(input[ip-2:])
-						cur_hash = HashBytesAtOffset(input_bytes, 2, shift, min_match)
-						prev_hash = HashBytesAtOffset(input_bytes, 0, shift, min_match)
+						cur_hash = hashBytesAtOffset(input_bytes, 2, shift, min_match)
+						prev_hash = hashBytesAtOffset(input_bytes, 0, shift, min_match)
 						table[prev_hash] = int(ip - base_ip - 2)
-						prev_hash = HashBytesAtOffset(input_bytes, 1, shift, min_match)
+						prev_hash = hashBytesAtOffset(input_bytes, 1, shift, min_match)
 						table[prev_hash] = int(ip - base_ip - 1)
 					}
 
@@ -380,7 +380,7 @@ func CreateCommands(input []byte, block_size uint, input_size uint, base_ip_ptr 
 				}
 			}
 
-			for ip-candidate <= MAX_DISTANCE && IsMatch1(input[ip:], input[candidate:], min_match) {
+			for ip-candidate <= maxDistance && isMatch1(input[ip:], input[candidate:], min_match) {
 				var base int = ip
 				/* We have a 6-byte match at ip, and no need to emit any
 				   literal bytes prior to ip. */
@@ -388,8 +388,8 @@ func CreateCommands(input []byte, block_size uint, input_size uint, base_ip_ptr 
 				var matched uint = min_match + FindMatchLengthWithLimit(input[uint(candidate)+min_match:], input[uint(ip)+min_match:], uint(ip_end-ip)-min_match)
 				ip += int(matched)
 				last_distance = int(base - candidate) /* > 0 */
-				EmitCopyLen(matched, commands)
-				EmitDistance(uint32(last_distance), commands)
+				emitCopyLen(matched, commands)
+				emitDistance(uint32(last_distance), commands)
 
 				next_emit = ip
 				if ip >= ip_limit {
@@ -405,26 +405,26 @@ func CreateCommands(input []byte, block_size uint, input_size uint, base_ip_ptr 
 					var prev_hash uint32
 					if min_match == 4 {
 						input_bytes = binary.LittleEndian.Uint64(input[ip-3:])
-						cur_hash = HashBytesAtOffset(input_bytes, 3, shift, min_match)
-						prev_hash = HashBytesAtOffset(input_bytes, 0, shift, min_match)
+						cur_hash = hashBytesAtOffset(input_bytes, 3, shift, min_match)
+						prev_hash = hashBytesAtOffset(input_bytes, 0, shift, min_match)
 						table[prev_hash] = int(ip - base_ip - 3)
-						prev_hash = HashBytesAtOffset(input_bytes, 1, shift, min_match)
+						prev_hash = hashBytesAtOffset(input_bytes, 1, shift, min_match)
 						table[prev_hash] = int(ip - base_ip - 2)
-						prev_hash = HashBytesAtOffset(input_bytes, 2, shift, min_match)
+						prev_hash = hashBytesAtOffset(input_bytes, 2, shift, min_match)
 						table[prev_hash] = int(ip - base_ip - 1)
 					} else {
 						input_bytes = binary.LittleEndian.Uint64(input[ip-5:])
-						prev_hash = HashBytesAtOffset(input_bytes, 0, shift, min_match)
+						prev_hash = hashBytesAtOffset(input_bytes, 0, shift, min_match)
 						table[prev_hash] = int(ip - base_ip - 5)
-						prev_hash = HashBytesAtOffset(input_bytes, 1, shift, min_match)
+						prev_hash = hashBytesAtOffset(input_bytes, 1, shift, min_match)
 						table[prev_hash] = int(ip - base_ip - 4)
-						prev_hash = HashBytesAtOffset(input_bytes, 2, shift, min_match)
+						prev_hash = hashBytesAtOffset(input_bytes, 2, shift, min_match)
 						table[prev_hash] = int(ip - base_ip - 3)
 						input_bytes = binary.LittleEndian.Uint64(input[ip-2:])
-						cur_hash = HashBytesAtOffset(input_bytes, 2, shift, min_match)
-						prev_hash = HashBytesAtOffset(input_bytes, 0, shift, min_match)
+						cur_hash = hashBytesAtOffset(input_bytes, 2, shift, min_match)
+						prev_hash = hashBytesAtOffset(input_bytes, 0, shift, min_match)
 						table[prev_hash] = int(ip - base_ip - 2)
-						prev_hash = HashBytesAtOffset(input_bytes, 1, shift, min_match)
+						prev_hash = hashBytesAtOffset(input_bytes, 1, shift, min_match)
 						table[prev_hash] = int(ip - base_ip - 1)
 					}
 
@@ -434,7 +434,7 @@ func CreateCommands(input []byte, block_size uint, input_size uint, base_ip_ptr 
 			}
 
 			ip++
-			next_hash = Hash1(input[ip:], shift, min_match)
+			next_hash = hash1(input[ip:], shift, min_match)
 		}
 	}
 
@@ -444,13 +444,13 @@ emit_remainder:
 	/* Emit the remaining bytes as literals. */
 	if next_emit < ip_end {
 		var insert uint32 = uint32(ip_end - next_emit)
-		EmitInsertLen(insert, commands)
+		emitInsertLen(insert, commands)
 		copy(*literals, input[next_emit:][:insert])
 		*literals = (*literals)[insert:]
 	}
 }
 
-var StoreCommands_kNumExtraBits = [128]uint32{
+var storeCommands_kNumExtraBits = [128]uint32{
 	0,
 	0,
 	0,
@@ -580,7 +580,7 @@ var StoreCommands_kNumExtraBits = [128]uint32{
 	24,
 	24,
 }
-var StoreCommands_kInsertOffset = [24]uint32{
+var storeCommands_kInsertOffset = [24]uint32{
 	0,
 	1,
 	2,
@@ -607,7 +607,7 @@ var StoreCommands_kInsertOffset = [24]uint32{
 	22594,
 }
 
-func StoreCommands(literals []byte, num_literals uint, commands []uint32, num_commands uint, storage_ix *uint, storage []byte) {
+func storeCommands(literals []byte, num_literals uint, commands []uint32, num_commands uint, storage_ix *uint, storage []byte) {
 	var lit_depths [256]byte
 	var lit_bits [256]uint16
 	var lit_histo = [256]uint32{0}
@@ -619,7 +619,7 @@ func StoreCommands(literals []byte, num_literals uint, commands []uint32, num_co
 		lit_histo[literals[i]]++
 	}
 
-	BrotliBuildAndStoreHuffmanTreeFast(lit_histo[:], num_literals, /* max_bits = */
+	buildAndStoreHuffmanTreeFast(lit_histo[:], num_literals, /* max_bits = */
 		8, lit_depths[:], lit_bits[:], storage_ix, storage)
 
 	for i = 0; i < num_commands; i++ {
@@ -632,7 +632,7 @@ func StoreCommands(literals []byte, num_literals uint, commands []uint32, num_co
 	cmd_histo[2] += 1
 	cmd_histo[64] += 1
 	cmd_histo[84] += 1
-	BuildAndStoreCommandPrefixCode(cmd_histo[:], cmd_depths[:], cmd_bits[:], storage_ix, storage)
+	buildAndStoreCommandPrefixCode(cmd_histo[:], cmd_depths[:], cmd_bits[:], storage_ix, storage)
 
 	for i = 0; i < num_commands; i++ {
 		var cmd uint32 = commands[i]
@@ -640,9 +640,9 @@ func StoreCommands(literals []byte, num_literals uint, commands []uint32, num_co
 		var extra uint32 = cmd >> 8
 		assert(code < 128)
 		BrotliWriteBits(uint(cmd_depths[code]), uint64(cmd_bits[code]), storage_ix, storage)
-		BrotliWriteBits(uint(StoreCommands_kNumExtraBits[code]), uint64(extra), storage_ix, storage)
+		BrotliWriteBits(uint(storeCommands_kNumExtraBits[code]), uint64(extra), storage_ix, storage)
 		if code < 24 {
-			var insert uint32 = StoreCommands_kInsertOffset[code] + extra
+			var insert uint32 = storeCommands_kInsertOffset[code] + extra
 			var j uint32
 			for j = 0; j < insert; j++ {
 				var lit byte = literals[0]
@@ -654,19 +654,19 @@ func StoreCommands(literals []byte, num_literals uint, commands []uint32, num_co
 }
 
 /* Acceptable loss for uncompressible speedup is 2% */
-const MIN_RATIO = 0.98
+const minRatio = 0.98
 
-const SAMPLE_RATE = 43
+const sampleRate = 43
 
-func ShouldCompress(input []byte, input_size uint, num_literals uint) bool {
+func shouldCompress(input []byte, input_size uint, num_literals uint) bool {
 	var corpus_size float64 = float64(input_size)
-	if float64(num_literals) < MIN_RATIO*corpus_size {
+	if float64(num_literals) < minRatio*corpus_size {
 		return true
 	} else {
 		var literal_histo = [256]uint32{0}
-		var max_total_bit_cost float64 = corpus_size * 8 * MIN_RATIO / SAMPLE_RATE
+		var max_total_bit_cost float64 = corpus_size * 8 * minRatio / sampleRate
 		var i uint
-		for i = 0; i < input_size; i += SAMPLE_RATE {
+		for i = 0; i < input_size; i += sampleRate {
 			literal_histo[input[i]]++
 		}
 
@@ -674,22 +674,22 @@ func ShouldCompress(input []byte, input_size uint, num_literals uint) bool {
 	}
 }
 
-func RewindBitPosition(new_storage_ix uint, storage_ix *uint, storage []byte) {
+func rewindBitPosition(new_storage_ix uint, storage_ix *uint, storage []byte) {
 	var bitpos uint = new_storage_ix & 7
 	var mask uint = (1 << bitpos) - 1
 	storage[new_storage_ix>>3] &= byte(mask)
 	*storage_ix = new_storage_ix
 }
 
-func EmitUncompressedMetaBlock(input []byte, input_size uint, storage_ix *uint, storage []byte) {
-	BrotliStoreMetaBlockHeader(input_size, true, storage_ix, storage)
+func emitUncompressedMetaBlock(input []byte, input_size uint, storage_ix *uint, storage []byte) {
+	storeMetaBlockHeader(input_size, true, storage_ix, storage)
 	*storage_ix = (*storage_ix + 7) &^ 7
 	copy(storage[*storage_ix>>3:], input[:input_size])
 	*storage_ix += input_size << 3
 	storage[*storage_ix>>3] = 0
 }
 
-func BrotliCompressFragmentTwoPassImpl(input []byte, input_size uint, is_last bool, command_buf []uint32, literal_buf []byte, table []int, table_bits uint, min_match uint, storage_ix *uint, storage []byte) {
+func compressFragmentTwoPassImpl(input []byte, input_size uint, is_last bool, command_buf []uint32, literal_buf []byte, table []int, table_bits uint, min_match uint, storage_ix *uint, storage []byte) {
 	/* Save the start of the first block for position and distance computations.
 	 */
 	var base_ip []byte = input
@@ -699,21 +699,21 @@ func BrotliCompressFragmentTwoPassImpl(input []byte, input_size uint, is_last bo
 		var commands []uint32 = command_buf
 		var literals []byte = literal_buf
 		var num_literals uint
-		CreateCommands(input, block_size, input_size, base_ip, table, table_bits, min_match, &literals, &commands)
+		createCommands(input, block_size, input_size, base_ip, table, table_bits, min_match, &literals, &commands)
 		num_literals = uint(-cap(literals) + cap(literal_buf))
-		if ShouldCompress(input, block_size, num_literals) {
+		if shouldCompress(input, block_size, num_literals) {
 			var num_commands uint = uint(-cap(commands) + cap(command_buf))
-			BrotliStoreMetaBlockHeader(block_size, false, storage_ix, storage)
+			storeMetaBlockHeader(block_size, false, storage_ix, storage)
 
 			/* No block splits, no contexts. */
 			BrotliWriteBits(13, 0, storage_ix, storage)
 
-			StoreCommands(literal_buf, num_literals, command_buf, num_commands, storage_ix, storage)
+			storeCommands(literal_buf, num_literals, command_buf, num_commands, storage_ix, storage)
 		} else {
 			/* Since we did not find many backward references and the entropy of
 			   the data is close to 8 bits, we can simply emit an uncompressed block.
 			   This makes compression speed of uncompressible data about 3x faster. */
-			EmitUncompressedMetaBlock(input, block_size, storage_ix, storage)
+			emitUncompressedMetaBlock(input, block_size, storage_ix, storage)
 		}
 
 		input = input[block_size:]
@@ -721,7 +721,7 @@ func BrotliCompressFragmentTwoPassImpl(input []byte, input_size uint, is_last bo
 	}
 }
 
-func BrotliCompressFragmentTwoPass(input []byte, input_size uint, is_last bool, command_buf []uint32, literal_buf []byte, table []int, table_size uint, storage_ix *uint, storage []byte) {
+func compressFragmentTwoPass(input []byte, input_size uint, is_last bool, command_buf []uint32, literal_buf []byte, table []int, table_size uint, storage_ix *uint, storage []byte) {
 	var initial_storage_ix uint = *storage_ix
 	var table_bits uint = uint(Log2FloorNonZero(table_size))
 	var min_match uint
@@ -730,12 +730,12 @@ func BrotliCompressFragmentTwoPass(input []byte, input_size uint, is_last bool, 
 	} else {
 		min_match = 6
 	}
-	BrotliCompressFragmentTwoPassImpl(input, input_size, is_last, command_buf, literal_buf, table, table_bits, min_match, storage_ix, storage)
+	compressFragmentTwoPassImpl(input, input_size, is_last, command_buf, literal_buf, table, table_bits, min_match, storage_ix, storage)
 
 	/* If output is larger than single uncompressed block, rewrite it. */
 	if *storage_ix-initial_storage_ix > 31+(input_size<<3) {
-		RewindBitPosition(initial_storage_ix, storage_ix, storage)
-		EmitUncompressedMetaBlock(input, input_size, storage_ix, storage)
+		rewindBitPosition(initial_storage_ix, storage_ix, storage)
+		emitUncompressedMetaBlock(input, input_size, storage_ix, storage)
 	}
 
 	if is_last {

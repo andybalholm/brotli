@@ -14,7 +14,7 @@ type BlockSplitterCommand struct {
 	min_block_size_    uint
 	split_threshold_   float64
 	num_blocks_        uint
-	split_             *BlockSplit
+	split_             *blockSplit
 	histograms_        []HistogramCommand
 	histograms_size_   *uint
 	target_block_size_ uint
@@ -25,9 +25,9 @@ type BlockSplitterCommand struct {
 	merge_last_count_  uint
 }
 
-func InitBlockSplitterCommand(self *BlockSplitterCommand, alphabet_size uint, min_block_size uint, split_threshold float64, num_symbols uint, split *BlockSplit, histograms *[]HistogramCommand, histograms_size *uint) {
+func InitBlockSplitterCommand(self *BlockSplitterCommand, alphabet_size uint, min_block_size uint, split_threshold float64, num_symbols uint, split *blockSplit, histograms *[]HistogramCommand, histograms_size *uint) {
 	var max_num_blocks uint = num_symbols/min_block_size + 1
-	var max_num_types uint = brotli_min_size_t(max_num_blocks, BROTLI_MAX_NUMBER_OF_BLOCK_TYPES+1)
+	var max_num_types uint = brotli_min_size_t(max_num_blocks, maxNumberOfBlockTypes+1)
 	/* We have to allocate one more histogram than the maximum number of block
 	   types for the current histogram when the meta-block is too big. */
 	self.alphabet_size_ = alphabet_size
@@ -61,7 +61,7 @@ func InitBlockSplitterCommand(self *BlockSplitterCommand, alphabet_size uint, mi
    (2) emits the current block with the type of the second last block;
    (3) merges the current block with the last block. */
 func BlockSplitterFinishBlockCommand(self *BlockSplitterCommand, is_final bool) {
-	var split *BlockSplit = self.split_
+	var split *blockSplit = self.split_
 	var last_entropy []float64 = self.last_entropy_[:]
 	var histograms []HistogramCommand = self.histograms_
 	self.block_size_ = brotli_max_size_t(self.block_size_, self.min_block_size_)
@@ -93,7 +93,7 @@ func BlockSplitterFinishBlockCommand(self *BlockSplitterCommand, is_final bool) 
 			diff[j] = combined_entropy[j] - entropy - last_entropy[j]
 		}
 
-		if split.num_types < BROTLI_MAX_NUMBER_OF_BLOCK_TYPES && diff[0] > self.split_threshold_ && diff[1] > self.split_threshold_ {
+		if split.num_types < maxNumberOfBlockTypes && diff[0] > self.split_threshold_ && diff[1] > self.split_threshold_ {
 			/* Create new block. */
 			split.lengths[self.num_blocks_] = uint32(self.block_size_)
 

@@ -6,13 +6,13 @@ import "math"
 const BROTLI_NUM_HISTOGRAM_DISTANCE_SYMBOLS = 544
 
 type HistogramLiteral struct {
-	data_        [BROTLI_NUM_LITERAL_SYMBOLS]uint32
+	data_        [numLiteralSymbols]uint32
 	total_count_ uint
 	bit_cost_    float64
 }
 
 func HistogramClearLiteral(self *HistogramLiteral) {
-	self.data_ = [BROTLI_NUM_LITERAL_SYMBOLS]uint32{}
+	self.data_ = [numLiteralSymbols]uint32{}
 	self.total_count_ = 0
 	self.bit_cost_ = math.MaxFloat64
 }
@@ -45,23 +45,23 @@ func HistogramAddVectorLiteral(self *HistogramLiteral, p []byte, n uint) {
 func HistogramAddHistogramLiteral(self *HistogramLiteral, v *HistogramLiteral) {
 	var i uint
 	self.total_count_ += v.total_count_
-	for i = 0; i < BROTLI_NUM_LITERAL_SYMBOLS; i++ {
+	for i = 0; i < numLiteralSymbols; i++ {
 		self.data_[i] += v.data_[i]
 	}
 }
 
 func HistogramDataSizeLiteral() uint {
-	return BROTLI_NUM_LITERAL_SYMBOLS
+	return numLiteralSymbols
 }
 
 type HistogramCommand struct {
-	data_        [BROTLI_NUM_COMMAND_SYMBOLS]uint32
+	data_        [numCommandSymbols]uint32
 	total_count_ uint
 	bit_cost_    float64
 }
 
 func HistogramClearCommand(self *HistogramCommand) {
-	self.data_ = [BROTLI_NUM_COMMAND_SYMBOLS]uint32{}
+	self.data_ = [numCommandSymbols]uint32{}
 	self.total_count_ = 0
 	self.bit_cost_ = math.MaxFloat64
 }
@@ -94,23 +94,23 @@ func HistogramAddVectorCommand(self *HistogramCommand, p []uint16, n uint) {
 func HistogramAddHistogramCommand(self *HistogramCommand, v *HistogramCommand) {
 	var i uint
 	self.total_count_ += v.total_count_
-	for i = 0; i < BROTLI_NUM_COMMAND_SYMBOLS; i++ {
+	for i = 0; i < numCommandSymbols; i++ {
 		self.data_[i] += v.data_[i]
 	}
 }
 
 func HistogramDataSizeCommand() uint {
-	return BROTLI_NUM_COMMAND_SYMBOLS
+	return numCommandSymbols
 }
 
 type HistogramDistance struct {
-	data_        [BROTLI_NUM_DISTANCE_SYMBOLS]uint32
+	data_        [numDistanceSymbols]uint32
 	total_count_ uint
 	bit_cost_    float64
 }
 
 func HistogramClearDistance(self *HistogramDistance) {
-	self.data_ = [BROTLI_NUM_DISTANCE_SYMBOLS]uint32{}
+	self.data_ = [numDistanceSymbols]uint32{}
 	self.total_count_ = 0
 	self.bit_cost_ = math.MaxFloat64
 }
@@ -143,23 +143,23 @@ func HistogramAddVectorDistance(self *HistogramDistance, p []uint16, n uint) {
 func HistogramAddHistogramDistance(self *HistogramDistance, v *HistogramDistance) {
 	var i uint
 	self.total_count_ += v.total_count_
-	for i = 0; i < BROTLI_NUM_DISTANCE_SYMBOLS; i++ {
+	for i = 0; i < numDistanceSymbols; i++ {
 		self.data_[i] += v.data_[i]
 	}
 }
 
 func HistogramDataSizeDistance() uint {
-	return BROTLI_NUM_DISTANCE_SYMBOLS
+	return numDistanceSymbols
 }
 
 type BlockSplitIterator struct {
-	split_  *BlockSplit
+	split_  *blockSplit
 	idx_    uint
 	type_   uint
 	length_ uint
 }
 
-func InitBlockSplitIterator(self *BlockSplitIterator, split *BlockSplit) {
+func InitBlockSplitIterator(self *BlockSplitIterator, split *blockSplit) {
 	self.split_ = split
 	self.idx_ = 0
 	self.type_ = 0
@@ -180,7 +180,7 @@ func BlockSplitIteratorNext(self *BlockSplitIterator) {
 	self.length_--
 }
 
-func BrotliBuildHistogramsWithContext(cmds []Command, num_commands uint, literal_split *BlockSplit, insert_and_copy_split *BlockSplit, dist_split *BlockSplit, ringbuffer []byte, start_pos uint, mask uint, prev_byte byte, prev_byte2 byte, context_modes []int, literal_histograms []HistogramLiteral, insert_and_copy_histograms []HistogramCommand, copy_dist_histograms []HistogramDistance) {
+func BrotliBuildHistogramsWithContext(cmds []command, num_commands uint, literal_split *blockSplit, insert_and_copy_split *blockSplit, dist_split *blockSplit, ringbuffer []byte, start_pos uint, mask uint, prev_byte byte, prev_byte2 byte, context_modes []int, literal_histograms []HistogramLiteral, insert_and_copy_histograms []HistogramCommand, copy_dist_histograms []HistogramDistance) {
 	var pos uint = start_pos
 	var literal_it BlockSplitIterator
 	var insert_and_copy_it BlockSplitIterator
@@ -191,7 +191,7 @@ func BrotliBuildHistogramsWithContext(cmds []Command, num_commands uint, literal
 	InitBlockSplitIterator(&insert_and_copy_it, insert_and_copy_split)
 	InitBlockSplitIterator(&dist_it, dist_split)
 	for i = 0; i < num_commands; i++ {
-		var cmd *Command = &cmds[i]
+		var cmd *command = &cmds[i]
 		var j uint
 		BlockSplitIteratorNext(&insert_and_copy_it)
 		HistogramAddCommand(&insert_and_copy_histograms[insert_and_copy_it.type_], uint(cmd.cmd_prefix_))
@@ -212,14 +212,14 @@ func BrotliBuildHistogramsWithContext(cmds []Command, num_commands uint, literal
 			pos++
 		}
 
-		pos += uint(CommandCopyLen(cmd))
-		if CommandCopyLen(cmd) != 0 {
+		pos += uint(commandCopyLen(cmd))
+		if commandCopyLen(cmd) != 0 {
 			prev_byte2 = ringbuffer[(pos-2)&mask]
 			prev_byte = ringbuffer[(pos-1)&mask]
 			if cmd.cmd_prefix_ >= 128 {
 				var context uint
 				BlockSplitIteratorNext(&dist_it)
-				context = uint(uint32(dist_it.type_<<BROTLI_DISTANCE_CONTEXT_BITS) + CommandDistanceContext(cmd))
+				context = uint(uint32(dist_it.type_<<BROTLI_DISTANCE_CONTEXT_BITS) + commandDistanceContext(cmd))
 				HistogramAddDistance(&copy_dist_histograms[context], uint(cmd.dist_prefix_)&0x3FF)
 			}
 		}

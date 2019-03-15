@@ -108,7 +108,7 @@ var kCopyExtra = []uint32{
 	24,
 }
 
-func GetInsertLengthCode(insertlen uint) uint16 {
+func getInsertLengthCode(insertlen uint) uint16 {
 	if insertlen < 6 {
 		return uint16(insertlen)
 	} else if insertlen < 130 {
@@ -125,7 +125,7 @@ func GetInsertLengthCode(insertlen uint) uint16 {
 	}
 }
 
-func GetCopyLengthCode(copylen uint) uint16 {
+func getCopyLengthCode(copylen uint) uint16 {
 	if copylen < 10 {
 		return uint16(copylen - 2)
 	} else if copylen < 134 {
@@ -138,7 +138,7 @@ func GetCopyLengthCode(copylen uint) uint16 {
 	}
 }
 
-func CombineLengthCodes(inscode uint16, copycode uint16, use_last_distance bool) uint16 {
+func combineLengthCodes(inscode uint16, copycode uint16, use_last_distance bool) uint16 {
 	var bits64 uint16 = uint16(copycode&0x7 | (inscode&0x7)<<3)
 	if use_last_distance && inscode < 8 && copycode < 16 {
 		if copycode < 8 {
@@ -163,29 +163,29 @@ func CombineLengthCodes(inscode uint16, copycode uint16, use_last_distance bool)
 	}
 }
 
-func GetLengthCode(insertlen uint, copylen uint, use_last_distance bool, code *uint16) {
-	var inscode uint16 = GetInsertLengthCode(insertlen)
-	var copycode uint16 = GetCopyLengthCode(copylen)
-	*code = CombineLengthCodes(inscode, copycode, use_last_distance)
+func getLengthCode(insertlen uint, copylen uint, use_last_distance bool, code *uint16) {
+	var inscode uint16 = getInsertLengthCode(insertlen)
+	var copycode uint16 = getCopyLengthCode(copylen)
+	*code = combineLengthCodes(inscode, copycode, use_last_distance)
 }
 
-func GetInsertBase(inscode uint16) uint32 {
+func getInsertBase(inscode uint16) uint32 {
 	return kInsBase[inscode]
 }
 
-func GetInsertExtra(inscode uint16) uint32 {
+func getInsertExtra(inscode uint16) uint32 {
 	return kInsExtra[inscode]
 }
 
-func GetCopyBase(copycode uint16) uint32 {
+func getCopyBase(copycode uint16) uint32 {
 	return kCopyBase[copycode]
 }
 
-func GetCopyExtra(copycode uint16) uint32 {
+func getCopyExtra(copycode uint16) uint32 {
 	return kCopyExtra[copycode]
 }
 
-type Command struct {
+type command struct {
 	insert_len_  uint32
 	copy_len_    uint32
 	dist_extra_  uint32
@@ -194,7 +194,7 @@ type Command struct {
 }
 
 /* distance_code is e.g. 0 for same-as-last short code, or 16 for offset 1. */
-func InitCommand(self *Command, dist *BrotliDistanceParams, insertlen uint, copylen uint, copylen_code_delta int, distance_code uint) {
+func initCommand(self *command, dist *BrotliDistanceParams, insertlen uint, copylen uint, copylen_code_delta int, distance_code uint) {
 	/* Don't rely on signed int representation, use honest casts. */
 	var delta uint32 = uint32(byte(int8(copylen_code_delta)))
 	self.insert_len_ = uint32(insertlen)
@@ -205,33 +205,33 @@ func InitCommand(self *Command, dist *BrotliDistanceParams, insertlen uint, copy
 	   clustering if needed. */
 	PrefixEncodeCopyDistance(distance_code, uint(dist.num_direct_distance_codes), uint(dist.distance_postfix_bits), &self.dist_prefix_, &self.dist_extra_)
 
-	GetLengthCode(insertlen, uint(int(copylen)+copylen_code_delta), (self.dist_prefix_&0x3FF == 0), &self.cmd_prefix_)
+	getLengthCode(insertlen, uint(int(copylen)+copylen_code_delta), (self.dist_prefix_&0x3FF == 0), &self.cmd_prefix_)
 }
 
-func InitInsertCommand(self *Command, insertlen uint) {
+func initInsertCommand(self *command, insertlen uint) {
 	self.insert_len_ = uint32(insertlen)
 	self.copy_len_ = 4 << 25
 	self.dist_extra_ = 0
-	self.dist_prefix_ = BROTLI_NUM_DISTANCE_SHORT_CODES
-	GetLengthCode(insertlen, 4, false, &self.cmd_prefix_)
+	self.dist_prefix_ = numDistanceShortCodes
+	getLengthCode(insertlen, 4, false, &self.cmd_prefix_)
 }
 
-func CommandRestoreDistanceCode(self *Command, dist *BrotliDistanceParams) uint32 {
-	if uint32(self.dist_prefix_&0x3FF) < BROTLI_NUM_DISTANCE_SHORT_CODES+dist.num_direct_distance_codes {
+func commandRestoreDistanceCode(self *command, dist *BrotliDistanceParams) uint32 {
+	if uint32(self.dist_prefix_&0x3FF) < numDistanceShortCodes+dist.num_direct_distance_codes {
 		return uint32(self.dist_prefix_) & 0x3FF
 	} else {
 		var dcode uint32 = uint32(self.dist_prefix_) & 0x3FF
 		var nbits uint32 = uint32(self.dist_prefix_) >> 10
 		var extra uint32 = self.dist_extra_
 		var postfix_mask uint32 = (1 << dist.distance_postfix_bits) - 1
-		var hcode uint32 = (dcode - dist.num_direct_distance_codes - BROTLI_NUM_DISTANCE_SHORT_CODES) >> dist.distance_postfix_bits
-		var lcode uint32 = (dcode - dist.num_direct_distance_codes - BROTLI_NUM_DISTANCE_SHORT_CODES) & postfix_mask
+		var hcode uint32 = (dcode - dist.num_direct_distance_codes - numDistanceShortCodes) >> dist.distance_postfix_bits
+		var lcode uint32 = (dcode - dist.num_direct_distance_codes - numDistanceShortCodes) & postfix_mask
 		var offset uint32 = ((2 + (hcode & 1)) << nbits) - 4
-		return ((offset + extra) << dist.distance_postfix_bits) + lcode + dist.num_direct_distance_codes + BROTLI_NUM_DISTANCE_SHORT_CODES
+		return ((offset + extra) << dist.distance_postfix_bits) + lcode + dist.num_direct_distance_codes + numDistanceShortCodes
 	}
 }
 
-func CommandDistanceContext(self *Command) uint32 {
+func commandDistanceContext(self *command) uint32 {
 	var r uint32 = uint32(self.cmd_prefix_) >> 6
 	var c uint32 = uint32(self.cmd_prefix_) & 7
 	if (r == 0 || r == 2 || r == 4 || r == 7) && (c <= 2) {
@@ -241,11 +241,11 @@ func CommandDistanceContext(self *Command) uint32 {
 	return 3
 }
 
-func CommandCopyLen(self *Command) uint32 {
+func commandCopyLen(self *command) uint32 {
 	return self.copy_len_ & 0x1FFFFFF
 }
 
-func CommandCopyLenCode(self *Command) uint32 {
+func commandCopyLenCode(self *command) uint32 {
 	var modifier uint32 = self.copy_len_ >> 25
 	var delta int32 = int32(int8(byte(modifier | (modifier&0x40)<<1)))
 	return uint32(int32(self.copy_len_&0x1FFFFFF) + delta)

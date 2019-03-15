@@ -39,12 +39,12 @@ func computeDistanceCode(distance uint, max_distance uint, dist_cache []int) uin
 		}
 	}
 
-	return distance + BROTLI_NUM_DISTANCE_SHORT_CODES - 1
+	return distance + numDistanceShortCodes - 1
 }
 
-func createBackwardReferences(num_bytes uint, position uint, ringbuffer []byte, ringbuffer_mask uint, params *BrotliEncoderParams, hasher HasherHandle, dist_cache []int, last_insert_len *uint, commands []Command, num_commands *uint, num_literals *uint) {
+func createBackwardReferences(num_bytes uint, position uint, ringbuffer []byte, ringbuffer_mask uint, params *BrotliEncoderParams, hasher HasherHandle, dist_cache []int, last_insert_len *uint, commands []command, num_commands *uint, num_literals *uint) {
 	var max_backward_limit uint = BROTLI_MAX_BACKWARD_LIMIT(params.lgwin)
-	var orig_commands []Command = commands
+	var orig_commands []command = commands
 	var insert_length uint = *last_insert_len
 	var pos_end uint = position + num_bytes
 	var store_end uint
@@ -121,7 +121,7 @@ func createBackwardReferences(num_bytes uint, position uint, ringbuffer []byte, 
 					hasher.PrepareDistanceCache(dist_cache)
 				}
 
-				InitCommand(&commands[0], &params.dist, insert_length, sr.len, sr.len_code_delta, distance_code)
+				initCommand(&commands[0], &params.dist, insert_length, sr.len, sr.len_code_delta, distance_code)
 				commands = commands[1:]
 			}
 

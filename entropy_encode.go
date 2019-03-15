@@ -280,7 +280,7 @@ func BrotliWriteHuffmanTreeRepetitions(previous_value byte, value byte, repetiti
 		var start uint = *tree_size
 		repetitions -= 3
 		for {
-			tree[*tree_size] = BROTLI_REPEAT_PREVIOUS_CODE_LENGTH
+			tree[*tree_size] = repeatPreviousCodeLength
 			extra_bits_data[*tree_size] = byte(repetitions & 0x3)
 			(*tree_size)++
 			repetitions >>= 2
@@ -315,7 +315,7 @@ func BrotliWriteHuffmanTreeRepetitionsZeros(repetitions uint, tree_size *uint, t
 		var start uint = *tree_size
 		repetitions -= 3
 		for {
-			tree[*tree_size] = BROTLI_REPEAT_ZERO_CODE_LENGTH
+			tree[*tree_size] = repeatZeroCodeLength
 			extra_bits_data[*tree_size] = byte(repetitions & 0x7)
 			(*tree_size)++
 			repetitions >>= 3
@@ -509,7 +509,7 @@ func DecideOverRleUse(depth []byte, length uint, use_rle_for_non_zero *bool, use
 }
 
 func BrotliWriteHuffmanTree(depth []byte, length uint, tree_size *uint, tree []byte, extra_bits_data []byte) {
-	var previous_value byte = BROTLI_INITIAL_REPEATED_CODE_LENGTH
+	var previous_value byte = initialRepeatedCodeLength
 	var i uint
 	var use_rle_for_non_zero bool = false
 	var use_rle_for_zero bool = false

@@ -2,7 +2,7 @@ package brotli
 
 var kCodeLengthDepth = [18]byte{4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 0, 4, 4}
 
-var kStaticCommandCodeDepth = [BROTLI_NUM_COMMAND_SYMBOLS]byte{
+var kStaticCommandCodeDepth = [numCommandSymbols]byte{
 	9,
 	9,
 	9,
@@ -782,7 +782,7 @@ func StoreStaticCodeLengthCode(storage_ix *uint, storage []byte) {
 	BrotliWriteBits(40, 0x0000FF55555554, storage_ix, storage)
 }
 
-var kZeroRepsBits = [BROTLI_NUM_COMMAND_SYMBOLS]uint64{
+var kZeroRepsBits = [numCommandSymbols]uint64{
 	0x00000000,
 	0x00000000,
 	0x00000000,
@@ -1489,7 +1489,7 @@ var kZeroRepsBits = [BROTLI_NUM_COMMAND_SYMBOLS]uint64{
 	0x08f9cb87,
 }
 
-var kZeroRepsDepth = [BROTLI_NUM_COMMAND_SYMBOLS]uint32{
+var kZeroRepsDepth = [numCommandSymbols]uint32{
 	0,
 	4,
 	8,
@@ -2196,7 +2196,7 @@ var kZeroRepsDepth = [BROTLI_NUM_COMMAND_SYMBOLS]uint32{
 	28,
 }
 
-var kNonZeroRepsBits = [BROTLI_NUM_COMMAND_SYMBOLS]uint64{
+var kNonZeroRepsBits = [numCommandSymbols]uint64{
 	0x0000000b,
 	0x0000001b,
 	0x0000002b,
@@ -2903,7 +2903,7 @@ var kNonZeroRepsBits = [BROTLI_NUM_COMMAND_SYMBOLS]uint64{
 	0x3baeb6db,
 }
 
-var kNonZeroRepsDepth = [BROTLI_NUM_COMMAND_SYMBOLS]uint32{
+var kNonZeroRepsDepth = [numCommandSymbols]uint32{
 	6,
 	6,
 	6,
@@ -3610,7 +3610,7 @@ var kNonZeroRepsDepth = [BROTLI_NUM_COMMAND_SYMBOLS]uint32{
 	30,
 }
 
-var kStaticCommandCodeBits = [BROTLI_NUM_COMMAND_SYMBOLS]uint16{
+var kStaticCommandCodeBits = [numCommandSymbols]uint16{
 	0,
 	256,
 	128,

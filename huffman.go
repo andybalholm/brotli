@@ -405,7 +405,7 @@ func BrotliBuildCodeLengthsHuffmanTable(table []HuffmanCode, code_lengths []byte
 	var key_step uint64
 	var step int
 	var table_size int
-	var sorted [BROTLI_CODE_LENGTH_CODES]int
+	var sorted [codeLengthCodes]int
 	var offset [BROTLI_HUFFMAN_MAX_CODE_LENGTH_CODE_LENGTH + 1]int
 	var bits int
 	var bits_count int
@@ -424,10 +424,10 @@ func BrotliBuildCodeLengthsHuffmanTable(table []HuffmanCode, code_lengths []byte
 	}
 
 	/* Symbols with code length 0 are placed after all other symbols. */
-	offset[0] = BROTLI_CODE_LENGTH_CODES - 1
+	offset[0] = codeLengthCodes - 1
 
 	/* Sort symbols by length, by symbol order within each length. */
-	symbol = BROTLI_CODE_LENGTH_CODES
+	symbol = codeLengthCodes
 
 	for {
 		var i int

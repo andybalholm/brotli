@@ -13,7 +13,7 @@ package brotli
    REQUIRES: "table_size" is a power of two
    OUTPUT: maximal copy distance <= |input_size|
    OUTPUT: maximal copy distance <= BROTLI_MAX_BACKWARD_LIMIT(18) */
-const MAX_DISTANCE = 262128
+const maxDistance = 262128
 
 /* kHashMul32_a multiplier has these properties:
    * The multiplier must be odd. Otherwise we may lose the highest bit.

@@ -16,7 +16,7 @@ type PrefixCodeRange1 struct {
 	nbits  byte
 }
 
-var kBlockLengthPrefixCode1 = [BROTLI_NUM_BLOCK_LEN_SYMBOLS]struct {
+var kBlockLengthPrefixCode1 = [numBlockLenSymbols]struct {
 	offset uint16
 	nbits  byte
 }{
@@ -135,7 +135,7 @@ type CmdLutElement struct {
 	copy_len_offset       uint16
 }
 
-var kCmdLut = [BROTLI_NUM_COMMAND_SYMBOLS]CmdLutElement{
+var kCmdLut = [numCommandSymbols]CmdLutElement{
 	CmdLutElement{0x00, 0x00, 0, 0x00, 0x0000, 0x0002},
 	CmdLutElement{0x00, 0x00, 0, 0x01, 0x0000, 0x0003},
 	CmdLutElement{0x00, 0x00, 0, 0x02, 0x0000, 0x0004},

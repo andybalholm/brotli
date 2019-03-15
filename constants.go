@@ -7,54 +7,54 @@ package brotli
 */
 
 /* Specification: 7.3. Encoding of the context map */
-const BROTLI_CONTEXT_MAP_MAX_RLE = 16
+const contextMapMaxRle = 16
 
 /* Specification: 2. Compressed representation overview */
-const BROTLI_MAX_NUMBER_OF_BLOCK_TYPES = 256
+const maxNumberOfBlockTypes = 256
 
 /* Specification: 3.3. Alphabet sizes: insert-and-copy length */
-const BROTLI_NUM_LITERAL_SYMBOLS = 256
+const numLiteralSymbols = 256
 
-const BROTLI_NUM_COMMAND_SYMBOLS = 704
+const numCommandSymbols = 704
 
-const BROTLI_NUM_BLOCK_LEN_SYMBOLS = 26
+const numBlockLenSymbols = 26
 
-const BROTLI_MAX_CONTEXT_MAP_SYMBOLS = (BROTLI_MAX_NUMBER_OF_BLOCK_TYPES + BROTLI_CONTEXT_MAP_MAX_RLE)
+const maxContextMapSymbols = (maxNumberOfBlockTypes + contextMapMaxRle)
 
-const BROTLI_MAX_BLOCK_TYPE_SYMBOLS = (BROTLI_MAX_NUMBER_OF_BLOCK_TYPES + 2)
+const maxBlockTypeSymbols = (maxNumberOfBlockTypes + 2)
 
 /* Specification: 3.5. Complex prefix codes */
-const BROTLI_REPEAT_PREVIOUS_CODE_LENGTH = 16
+const repeatPreviousCodeLength = 16
 
-const BROTLI_REPEAT_ZERO_CODE_LENGTH = 17
+const repeatZeroCodeLength = 17
 
-const BROTLI_CODE_LENGTH_CODES = (BROTLI_REPEAT_ZERO_CODE_LENGTH + 1)
+const codeLengthCodes = (repeatZeroCodeLength + 1)
 
 /* "code length of 8 is repeated" */
-const BROTLI_INITIAL_REPEATED_CODE_LENGTH = 8
+const initialRepeatedCodeLength = 8
 
 /* "Large Window Brotli" */
-const BROTLI_LARGE_MAX_DISTANCE_BITS = 62
+const largeMaxDistanceBits = 62
 
-const BROTLI_LARGE_MIN_WBITS = 10
+const largeMinWbits = 10
 
-const BROTLI_LARGE_MAX_WBITS = 30
+const largeMaxWbits = 30
 
 /* Specification: 4. Encoding of distances */
-const BROTLI_NUM_DISTANCE_SHORT_CODES = 16
+const numDistanceShortCodes = 16
 
-const BROTLI_MAX_NPOSTFIX = 3
+const maxNpostfix = 3
 
-const BROTLI_MAX_NDIRECT = 120
+const maxNdirect = 120
 
-const BROTLI_MAX_DISTANCE_BITS = 24
+const maxDistanceBits = 24
 
-func BROTLI_DISTANCE_ALPHABET_SIZE(NPOSTFIX uint, NDIRECT uint, MAXNBITS uint) uint {
-	return BROTLI_NUM_DISTANCE_SHORT_CODES + NDIRECT + uint(MAXNBITS<<(NPOSTFIX+1))
+func distanceAlphabetSize(NPOSTFIX uint, NDIRECT uint, MAXNBITS uint) uint {
+	return numDistanceShortCodes + NDIRECT + uint(MAXNBITS<<(NPOSTFIX+1))
 }
 
-/* BROTLI_NUM_DISTANCE_SYMBOLS == 1128 */
-const BROTLI_NUM_DISTANCE_SYMBOLS = 1128
+/* numDistanceSymbols == 1128 */
+const numDistanceSymbols = 1128
 
 const BROTLI_MAX_DISTANCE = 0x3FFFFFC
 

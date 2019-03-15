@@ -107,7 +107,7 @@ const HUFFMAN_TABLE_MASK = 0xFF
    - inserting transformed dictionary word (5 prefix + 24 base + 8 suffix) */
 var kRingBufferWriteAheadSlack uint32 = 42
 
-var kCodeLengthCodeOrder = [BROTLI_CODE_LENGTH_CODES]byte{1, 2, 3, 4, 0, 5, 17, 6, 16, 7, 8, 9, 10, 11, 12, 13, 14, 15}
+var kCodeLengthCodeOrder = [codeLengthCodes]byte{1, 2, 3, 4, 0, 5, 17, 6, 16, 7, 8, 9, 10, 11, 12, 13, 14, 15}
 
 /* Static prefix code for the complex code length code lengths. */
 var kCodeLengthPrefixLength = [16]byte{2, 2, 2, 3, 2, 2, 2, 4, 2, 2, 2, 3, 2, 2, 2, 4}
@@ -583,7 +583,7 @@ func ProcessRepeatedCodeLength(code_len uint32, repeat_delta uint32, alphabet_si
 	var old_repeat uint32 /* for BROTLI_REPEAT_ZERO_CODE_LENGTH */ /* for BROTLI_REPEAT_ZERO_CODE_LENGTH */
 	var extra_bits uint32 = 3
 	var new_len uint32 = 0
-	if code_len == BROTLI_REPEAT_PREVIOUS_CODE_LENGTH {
+	if code_len == repeatPreviousCodeLength {
 		new_len = *prev_code_len
 		extra_bits = 2
 	}
@@ -658,11 +658,11 @@ func ReadSymbolCodeLengths(alphabet_size uint32, s *Reader) int {
 		p = p[getBitsUnmasked(br)&uint64(bitMask(BROTLI_HUFFMAN_MAX_CODE_LENGTH_CODE_LENGTH)):]
 		dropBits(br, uint32(p[0].bits)) /* Use 1..5 bits. */
 		code_len = uint32(p[0].value)   /* code_len == 0..17 */
-		if code_len < BROTLI_REPEAT_PREVIOUS_CODE_LENGTH {
+		if code_len < repeatPreviousCodeLength {
 			ProcessSingleCodeLength(code_len, &symbol, &repeat, &space, &prev_code_len, symbol_lists, code_length_histo, next_symbol) /* code_len == 16..17, extra_bits == 2..3 */
 		} else {
 			var extra_bits uint32
-			if code_len == BROTLI_REPEAT_PREVIOUS_CODE_LENGTH {
+			if code_len == repeatPreviousCodeLength {
 				extra_bits = 2
 			} else {
 				extra_bits = 3
@@ -702,7 +702,7 @@ func SafeReadSymbolCodeLengths(alphabet_size uint32, s *Reader) int {
 		}
 
 		code_len = uint32(p[0].value) /* code_len == 0..17 */
-		if code_len < BROTLI_REPEAT_PREVIOUS_CODE_LENGTH {
+		if code_len < repeatPreviousCodeLength {
 			dropBits(br, uint32(p[0].bits))
 			ProcessSingleCodeLength(code_len, &s.symbol, &s.repeat, &s.space, &s.prev_code_len, s.symbol_lists, s.code_length_histo[:], s.next_symbol[:]) /* code_len == 16..17, extra_bits == 2..3 */
 		} else {
@@ -728,7 +728,7 @@ func ReadCodeLengthCodeLengths(s *Reader) int {
 	var num_codes uint32 = s.repeat
 	var space uint32 = s.space
 	var i uint32 = s.sub_loop_counter
-	for ; i < BROTLI_CODE_LENGTH_CODES; i++ {
+	for ; i < codeLengthCodes; i++ {
 		var code_len_idx byte = kCodeLengthCodeOrder[i]
 		var ix uint32
 		var v uint32
@@ -806,7 +806,7 @@ func ReadHuffmanCode(alphabet_size uint32, max_symbol uint32, table []HuffmanCod
 					s.code_length_histo[i] = 0
 				}
 
-				for i = 0; i < BROTLI_CODE_LENGTH_CODES; i++ {
+				for i = 0; i < codeLengthCodes; i++ {
 					s.code_length_code_lengths[i] = 0
 				}
 
@@ -879,7 +879,7 @@ func ReadHuffmanCode(alphabet_size uint32, max_symbol uint32, table []HuffmanCod
 				}
 
 				s.symbol = 0
-				s.prev_code_len = BROTLI_INITIAL_REPEATED_CODE_LENGTH
+				s.prev_code_len = initialRepeatedCodeLength
 				s.repeat = 0
 				s.repeat_code_len = 0
 				s.space = 32768
@@ -1651,7 +1651,7 @@ func ReadDistanceInternal(safe int, s *Reader, br *bitReader) bool {
 		}
 	}
 
-	s.distance_code = s.distance_code - BROTLI_NUM_DISTANCE_SHORT_CODES + 1
+	s.distance_code = s.distance_code - numDistanceShortCodes + 1
 	s.block_length[2]--
 	return true
 }
@@ -2098,8 +2098,8 @@ func SafeProcessCommands(s *Reader) int {
 /* Returns the maximum number of distance symbols which can only represent
    distances not exceeding BROTLI_MAX_ALLOWED_DISTANCE. */
 
-var BrotliMaxDistanceSymbol_bound = [BROTLI_MAX_NPOSTFIX + 1]uint32{0, 4, 12, 28}
-var BrotliMaxDistanceSymbol_diff = [BROTLI_MAX_NPOSTFIX + 1]uint32{73, 126, 228, 424}
+var BrotliMaxDistanceSymbol_bound = [maxNpostfix + 1]uint32{0, 4, 12, 28}
+var BrotliMaxDistanceSymbol_diff = [maxNpostfix + 1]uint32{73, 126, 228, 424}
 
 func BrotliMaxDistanceSymbol(ndirect uint32, npostfix uint32) uint32 {
 	var postfix uint32 = 1 << npostfix
@@ -2263,7 +2263,7 @@ func BrotliDecoderDecompressStream(s *Reader, available_in *uint, next_in *[]byt
 				break
 			}
 
-			if s.window_bits < BROTLI_LARGE_MIN_WBITS || s.window_bits > BROTLI_LARGE_MAX_WBITS {
+			if s.window_bits < largeMinWbits || s.window_bits > largeMaxWbits {
 				result = BROTLI_DECODER_ERROR_FORMAT_WINDOW_BITS
 				break
 			}
@@ -2305,7 +2305,7 @@ func BrotliDecoderDecompressStream(s *Reader, available_in *uint, next_in *[]byt
 			}
 
 			if s.is_metadata != 0 || s.is_uncompressed != 0 {
-				if !jumpToByteBoundary(br) {
+				if !bitReaderJumpToByteBoundary(br) {
 					result = BROTLI_DECODER_ERROR_FORMAT_PADDING_1
 					break
 				}
@@ -2393,7 +2393,7 @@ func BrotliDecoderDecompressStream(s *Reader, available_in *uint, next_in *[]byt
 			/* Fall through. */
 		case BROTLI_STATE_HUFFMAN_CODE_2:
 			{
-				var alphabet_size uint32 = BROTLI_NUM_BLOCK_LEN_SYMBOLS
+				var alphabet_size uint32 = numBlockLenSymbols
 				var tree_offset int = s.loop_counter * BROTLI_HUFFMAN_MAX_SIZE_26
 				result = ReadHuffmanCode(alphabet_size, alphabet_size, s.block_len_trees[tree_offset:], nil, s)
 				if result != BROTLI_DECODER_SUCCESS {
@@ -2427,7 +2427,7 @@ func BrotliDecoderDecompressStream(s *Reader, available_in *uint, next_in *[]byt
 
 				s.distance_postfix_bits = bits & bitMask(2)
 				bits >>= 2
-				s.num_direct_distance_codes = BROTLI_NUM_DISTANCE_SHORT_CODES + (bits << s.distance_postfix_bits)
+				s.num_direct_distance_codes = numDistanceShortCodes + (bits << s.distance_postfix_bits)
 				s.distance_postfix_mask = int(bitMask(s.distance_postfix_bits))
 				s.context_modes = make([]byte, uint(s.num_block_types[0]))
 				if s.context_modes == nil {
@@ -2465,14 +2465,14 @@ func BrotliDecoderDecompressStream(s *Reader, available_in *uint, next_in *[]byt
 		/* Fall through. */
 		case BROTLI_STATE_CONTEXT_MAP_2:
 			{
-				var num_direct_codes uint32 = s.num_direct_distance_codes - BROTLI_NUM_DISTANCE_SHORT_CODES
+				var num_direct_codes uint32 = s.num_direct_distance_codes - numDistanceShortCodes
 				var num_distance_codes uint32
 				var max_distance_symbol uint32
 				if s.large_window {
-					num_distance_codes = uint32(BROTLI_DISTANCE_ALPHABET_SIZE(uint(s.distance_postfix_bits), uint(num_direct_codes), BROTLI_LARGE_MAX_DISTANCE_BITS))
+					num_distance_codes = uint32(distanceAlphabetSize(uint(s.distance_postfix_bits), uint(num_direct_codes), largeMaxDistanceBits))
 					max_distance_symbol = BrotliMaxDistanceSymbol(num_direct_codes, s.distance_postfix_bits)
 				} else {
-					num_distance_codes = uint32(BROTLI_DISTANCE_ALPHABET_SIZE(uint(s.distance_postfix_bits), uint(num_direct_codes), BROTLI_MAX_DISTANCE_BITS))
+					num_distance_codes = uint32(distanceAlphabetSize(uint(s.distance_postfix_bits), uint(num_direct_codes), maxDistanceBits))
 					max_distance_symbol = num_distance_codes
 				}
 				var allocation_success bool = true
@@ -2481,11 +2481,11 @@ func BrotliDecoderDecompressStream(s *Reader, available_in *uint, next_in *[]byt
 					break
 				}
 
-				if !BrotliDecoderHuffmanTreeGroupInit(s, &s.literal_hgroup, BROTLI_NUM_LITERAL_SYMBOLS, BROTLI_NUM_LITERAL_SYMBOLS, s.num_literal_htrees) {
+				if !BrotliDecoderHuffmanTreeGroupInit(s, &s.literal_hgroup, numLiteralSymbols, numLiteralSymbols, s.num_literal_htrees) {
 					allocation_success = false
 				}
 
-				if !BrotliDecoderHuffmanTreeGroupInit(s, &s.insert_copy_hgroup, BROTLI_NUM_COMMAND_SYMBOLS, BROTLI_NUM_COMMAND_SYMBOLS, s.num_block_types[1]) {
+				if !BrotliDecoderHuffmanTreeGroupInit(s, &s.insert_copy_hgroup, numCommandSymbols, numCommandSymbols, s.num_block_types[1]) {
 					allocation_success = false
 				}
 
@@ -2607,7 +2607,7 @@ func BrotliDecoderDecompressStream(s *Reader, available_in *uint, next_in *[]byt
 				break
 			}
 
-			if !jumpToByteBoundary(br) {
+			if !bitReaderJumpToByteBoundary(br) {
 				result = BROTLI_DECODER_ERROR_FORMAT_PADDING_2
 				break
 			}

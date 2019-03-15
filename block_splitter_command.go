@@ -6,7 +6,7 @@ package brotli
    Distributed under MIT license.
    See file LICENSE for detail or copy at https://opensource.org/licenses/MIT
 */
-func InitialEntropyCodesCommand(data []uint16, length uint, stride uint, num_histograms uint, histograms []HistogramCommand) {
+func initialEntropyCodesCommand(data []uint16, length uint, stride uint, num_histograms uint, histograms []HistogramCommand) {
 	var seed uint32 = 7
 	var block_length uint = length / num_histograms
 	var i uint
@@ -14,7 +14,7 @@ func InitialEntropyCodesCommand(data []uint16, length uint, stride uint, num_his
 	for i = 0; i < num_histograms; i++ {
 		var pos uint = length * i / num_histograms
 		if i != 0 {
-			pos += uint(MyRand(&seed) % uint32(block_length))
+			pos += uint(myRand(&seed) % uint32(block_length))
 		}
 
 		if pos+stride >= length {
@@ -25,18 +25,18 @@ func InitialEntropyCodesCommand(data []uint16, length uint, stride uint, num_his
 	}
 }
 
-func RandomSampleCommand(seed *uint32, data []uint16, length uint, stride uint, sample *HistogramCommand) {
+func randomSampleCommand(seed *uint32, data []uint16, length uint, stride uint, sample *HistogramCommand) {
 	var pos uint = 0
 	if stride >= length {
 		stride = length
 	} else {
-		pos = uint(MyRand(seed) % uint32(length-stride+1))
+		pos = uint(myRand(seed) % uint32(length-stride+1))
 	}
 
 	HistogramAddVectorCommand(sample, data[pos:], stride)
 }
 
-func RefineEntropyCodesCommand(data []uint16, length uint, stride uint, num_histograms uint, histograms []HistogramCommand) {
+func refineEntropyCodesCommand(data []uint16, length uint, stride uint, num_histograms uint, histograms []HistogramCommand) {
 	var iters uint = kIterMulForRefining*length/stride + kMinItersForRefining
 	var seed uint32 = 7
 	var iter uint
@@ -44,7 +44,7 @@ func RefineEntropyCodesCommand(data []uint16, length uint, stride uint, num_hist
 	for iter = 0; iter < iters; iter++ {
 		var sample HistogramCommand
 		HistogramClearCommand(&sample)
-		RandomSampleCommand(&seed, data, length, stride, &sample)
+		randomSampleCommand(&seed, data, length, stride, &sample)
 		HistogramAddHistogramCommand(&histograms[iter%num_histograms], &sample)
 	}
 }
@@ -52,7 +52,7 @@ func RefineEntropyCodesCommand(data []uint16, length uint, stride uint, num_hist
 /* Assigns a block id from the range [0, num_histograms) to each data element
    in data[0..length) and fills in block_id[0..length) with the assigned values.
    Returns the number of blocks, i.e. one plus the number of block switches. */
-func FindBlocksCommand(data []uint16, length uint, block_switch_bitcost float64, num_histograms uint, histograms []HistogramCommand, insert_cost []float64, cost []float64, switch_signal []byte, block_id []byte) uint {
+func findBlocksCommand(data []uint16, length uint, block_switch_bitcost float64, num_histograms uint, histograms []HistogramCommand, insert_cost []float64, cost []float64, switch_signal []byte, block_id []byte) uint {
 	var data_size uint = HistogramDataSizeCommand()
 	var bitmaplen uint = (num_histograms + 7) >> 3
 	var num_blocks uint = 1
@@ -77,7 +77,7 @@ func FindBlocksCommand(data []uint16, length uint, block_switch_bitcost float64,
 	for i = data_size; i != 0; {
 		i--
 		for j = 0; j < num_histograms; j++ {
-			insert_cost[i*num_histograms+j] = insert_cost[j] - BitCost(uint(histograms[j].data_[i]))
+			insert_cost[i*num_histograms+j] = insert_cost[j] - bitCost(uint(histograms[j].data_[i]))
 		}
 	}
 
@@ -150,18 +150,18 @@ func FindBlocksCommand(data []uint16, length uint, block_switch_bitcost float64,
 	return num_blocks
 }
 
-var RemapBlockIdsCommand_kInvalidId uint16 = 256
+var remapBlockIdsCommand_kInvalidId uint16 = 256
 
-func RemapBlockIdsCommand(block_ids []byte, length uint, new_id []uint16, num_histograms uint) uint {
+func remapBlockIdsCommand(block_ids []byte, length uint, new_id []uint16, num_histograms uint) uint {
 	var next_id uint16 = 0
 	var i uint
 	for i = 0; i < num_histograms; i++ {
-		new_id[i] = RemapBlockIdsCommand_kInvalidId
+		new_id[i] = remapBlockIdsCommand_kInvalidId
 	}
 
 	for i = 0; i < length; i++ {
 		assert(uint(block_ids[i]) < num_histograms)
-		if new_id[block_ids[i]] == RemapBlockIdsCommand_kInvalidId {
+		if new_id[block_ids[i]] == remapBlockIdsCommand_kInvalidId {
 			new_id[block_ids[i]] = next_id
 			next_id++
 		}
@@ -176,7 +176,7 @@ func RemapBlockIdsCommand(block_ids []byte, length uint, new_id []uint16, num_hi
 	return uint(next_id)
 }
 
-func BuildBlockHistogramsCommand(data []uint16, length uint, block_ids []byte, num_histograms uint, histograms []HistogramCommand) {
+func buildBlockHistogramsCommand(data []uint16, length uint, block_ids []byte, num_histograms uint, histograms []HistogramCommand) {
 	var i uint
 	ClearHistogramsCommand(histograms, num_histograms)
 	for i = 0; i < length; i++ {
@@ -184,12 +184,12 @@ func BuildBlockHistogramsCommand(data []uint16, length uint, block_ids []byte, n
 	}
 }
 
-var ClusterBlocksCommand_kInvalidIndex uint32 = BROTLI_UINT32_MAX
+var clusterBlocksCommand_kInvalidIndex uint32 = BROTLI_UINT32_MAX
 
-func ClusterBlocksCommand(data []uint16, length uint, num_blocks uint, block_ids []byte, split *BlockSplit) {
+func clusterBlocksCommand(data []uint16, length uint, num_blocks uint, block_ids []byte, split *blockSplit) {
 	var histogram_symbols []uint32 = make([]uint32, num_blocks)
 	var block_lengths []uint32 = make([]uint32, num_blocks)
-	var expected_num_clusters uint = CLUSTERS_PER_BATCH * (num_blocks + HISTOGRAMS_PER_BATCH - 1) / HISTOGRAMS_PER_BATCH
+	var expected_num_clusters uint = clustersPerBatch * (num_blocks + histogramsPerBatch - 1) / histogramsPerBatch
 	var all_histograms_size uint = 0
 	var all_histograms_capacity uint = expected_num_clusters
 	var all_histograms []HistogramCommand = make([]HistogramCommand, all_histograms_capacity)
@@ -197,19 +197,19 @@ func ClusterBlocksCommand(data []uint16, length uint, num_blocks uint, block_ids
 	var cluster_size_capacity uint = expected_num_clusters
 	var cluster_size []uint32 = make([]uint32, cluster_size_capacity)
 	var num_clusters uint = 0
-	var histograms []HistogramCommand = make([]HistogramCommand, brotli_min_size_t(num_blocks, HISTOGRAMS_PER_BATCH))
-	var max_num_pairs uint = HISTOGRAMS_PER_BATCH * HISTOGRAMS_PER_BATCH / 2
+	var histograms []HistogramCommand = make([]HistogramCommand, brotli_min_size_t(num_blocks, histogramsPerBatch))
+	var max_num_pairs uint = histogramsPerBatch * histogramsPerBatch / 2
 	var pairs_capacity uint = max_num_pairs + 1
-	var pairs []HistogramPair = make([]HistogramPair, pairs_capacity)
+	var pairs []histogramPair = make([]histogramPair, pairs_capacity)
 	var pos uint = 0
 	var clusters []uint32
 	var num_final_clusters uint
 	var new_index []uint32
 	var i uint
-	var sizes = [HISTOGRAMS_PER_BATCH]uint32{0}
-	var new_clusters = [HISTOGRAMS_PER_BATCH]uint32{0}
-	var symbols = [HISTOGRAMS_PER_BATCH]uint32{0}
-	var remap = [HISTOGRAMS_PER_BATCH]uint32{0}
+	var sizes = [histogramsPerBatch]uint32{0}
+	var new_clusters = [histogramsPerBatch]uint32{0}
+	var symbols = [histogramsPerBatch]uint32{0}
+	var remap = [histogramsPerBatch]uint32{0}
 
 	for i := 0; i < int(num_blocks); i++ {
 		block_lengths[i] = 0
@@ -227,8 +227,8 @@ func ClusterBlocksCommand(data []uint16, length uint, num_blocks uint, block_ids
 		assert(block_idx == num_blocks)
 	}
 
-	for i = 0; i < num_blocks; i += HISTOGRAMS_PER_BATCH {
-		var num_to_combine uint = brotli_min_size_t(num_blocks-i, HISTOGRAMS_PER_BATCH)
+	for i = 0; i < num_blocks; i += histogramsPerBatch {
+		var num_to_combine uint = brotli_min_size_t(num_blocks-i, histogramsPerBatch)
 		var num_new_clusters uint
 		var j uint
 		for j = 0; j < num_to_combine; j++ {
@@ -245,7 +245,7 @@ func ClusterBlocksCommand(data []uint16, length uint, num_blocks uint, block_ids
 			sizes[j] = 1
 		}
 
-		num_new_clusters = BrotliHistogramCombineCommand(histograms, sizes[:], symbols[:], new_clusters[:], []HistogramPair(pairs), num_to_combine, num_to_combine, HISTOGRAMS_PER_BATCH, max_num_pairs)
+		num_new_clusters = histogramCombineCommand(histograms, sizes[:], symbols[:], new_clusters[:], []histogramPair(pairs), num_to_combine, num_to_combine, histogramsPerBatch, max_num_pairs)
 		if all_histograms_capacity < (all_histograms_size + num_new_clusters) {
 			var _new_size uint
 			if all_histograms_capacity == 0 {
@@ -289,7 +289,7 @@ func ClusterBlocksCommand(data []uint16, length uint, num_blocks uint, block_ids
 	max_num_pairs = brotli_min_size_t(64*num_clusters, (num_clusters/2)*num_clusters)
 	if pairs_capacity < max_num_pairs+1 {
 		pairs = nil
-		pairs = make([]HistogramPair, (max_num_pairs + 1))
+		pairs = make([]histogramPair, (max_num_pairs + 1))
 	}
 
 	clusters = make([]uint32, num_clusters)
@@ -297,13 +297,13 @@ func ClusterBlocksCommand(data []uint16, length uint, num_blocks uint, block_ids
 		clusters[i] = uint32(i)
 	}
 
-	num_final_clusters = BrotliHistogramCombineCommand(all_histograms, cluster_size, histogram_symbols, clusters, pairs, num_clusters, num_blocks, BROTLI_MAX_NUMBER_OF_BLOCK_TYPES, max_num_pairs)
+	num_final_clusters = histogramCombineCommand(all_histograms, cluster_size, histogram_symbols, clusters, pairs, num_clusters, num_blocks, maxNumberOfBlockTypes, max_num_pairs)
 	pairs = nil
 	cluster_size = nil
 
 	new_index = make([]uint32, num_clusters)
 	for i = 0; i < num_clusters; i++ {
-		new_index[i] = ClusterBlocksCommand_kInvalidIndex
+		new_index[i] = clusterBlocksCommand_kInvalidIndex
 	}
 	pos = 0
 	{
@@ -324,9 +324,9 @@ func ClusterBlocksCommand(data []uint16, length uint, num_blocks uint, block_ids
 			} else {
 				best_out = histogram_symbols[i-1]
 			}
-			best_bits = BrotliHistogramBitCostDistanceCommand(&histo, &all_histograms[best_out])
+			best_bits = histogramBitCostDistanceCommand(&histo, &all_histograms[best_out])
 			for j = 0; j < num_final_clusters; j++ {
-				var cur_bits float64 = BrotliHistogramBitCostDistanceCommand(&histo, &all_histograms[clusters[j]])
+				var cur_bits float64 = histogramBitCostDistanceCommand(&histo, &all_histograms[clusters[j]])
 				if cur_bits < best_bits {
 					best_bits = cur_bits
 					best_out = clusters[j]
@@ -334,7 +334,7 @@ func ClusterBlocksCommand(data []uint16, length uint, num_blocks uint, block_ids
 			}
 
 			histogram_symbols[i] = best_out
-			if new_index[best_out] == ClusterBlocksCommand_kInvalidIndex {
+			if new_index[best_out] == clusterBlocksCommand_kInvalidIndex {
 				new_index[best_out] = next_index
 				next_index++
 			}
@@ -370,7 +370,7 @@ func ClusterBlocksCommand(data []uint16, length uint, num_blocks uint, block_ids
 	histogram_symbols = nil
 }
 
-func SplitByteVectorCommand(data []uint16, length uint, literals_per_histogram uint, max_histograms uint, sampling_stride_length uint, block_switch_cost float64, params *BrotliEncoderParams, split *BlockSplit) {
+func splitByteVectorCommand(data []uint16, length uint, literals_per_histogram uint, max_histograms uint, sampling_stride_length uint, block_switch_cost float64, params *BrotliEncoderParams, split *blockSplit) {
 	var data_size uint = HistogramDataSizeCommand()
 	var num_histograms uint = length/literals_per_histogram + 1
 	var histograms []HistogramCommand
@@ -394,9 +394,9 @@ func SplitByteVectorCommand(data []uint16, length uint, literals_per_histogram u
 	histograms = make([]HistogramCommand, num_histograms)
 
 	/* Find good entropy codes. */
-	InitialEntropyCodesCommand(data, length, sampling_stride_length, num_histograms, histograms)
+	initialEntropyCodesCommand(data, length, sampling_stride_length, num_histograms, histograms)
 
-	RefineEntropyCodesCommand(data, length, sampling_stride_length, num_histograms, histograms)
+	refineEntropyCodesCommand(data, length, sampling_stride_length, num_histograms, histograms)
 	{
 		var block_ids []byte = make([]byte, length)
 		var num_blocks uint = 0
@@ -415,9 +415,9 @@ func SplitByteVectorCommand(data []uint16, length uint, literals_per_histogram u
 
 		var i uint
 		for i = 0; i < iters; i++ {
-			num_blocks = FindBlocksCommand(data, length, block_switch_cost, num_histograms, histograms, insert_cost, cost, switch_signal, block_ids)
-			num_histograms = RemapBlockIdsCommand(block_ids, length, new_id, num_histograms)
-			BuildBlockHistogramsCommand(data, length, block_ids, num_histograms, histograms)
+			num_blocks = findBlocksCommand(data, length, block_switch_cost, num_histograms, histograms, insert_cost, cost, switch_signal, block_ids)
+			num_histograms = remapBlockIdsCommand(block_ids, length, new_id, num_histograms)
+			buildBlockHistogramsCommand(data, length, block_ids, num_histograms, histograms)
 		}
 
 		insert_cost = nil
@@ -425,7 +425,7 @@ func SplitByteVectorCommand(data []uint16, length uint, literals_per_histogram u
 		switch_signal = nil
 		new_id = nil
 		histograms = nil
-		ClusterBlocksCommand(data, length, num_blocks, block_ids, split)
+		clusterBlocksCommand(data, length, num_blocks, block_ids, split)
 		block_ids = nil
 	}
 }

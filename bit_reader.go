@@ -221,7 +221,7 @@ func safeReadBits(br *bitReader, n_bits uint32, val *uint32) bool {
 
 /* Advances the bit reader position to the next byte boundary and verifies
    that any skipped bits are set to zero. */
-func jumpToByteBoundary(br *bitReader) bool {
+func bitReaderJumpToByteBoundary(br *bitReader) bool {
 	var pad_bits_count uint32 = getAvailableBits(br) & 0x7
 	var pad_bits uint32 = 0
 	if pad_bits_count != 0 {

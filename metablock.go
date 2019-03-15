@@ -32,9 +32,9 @@ package brotli
 /* Algorithms for distributing the literals and commands of a metablock between
    block types and contexts. */
 type MetaBlockSplit struct {
-	literal_split             BlockSplit
-	command_split             BlockSplit
-	distance_split            BlockSplit
+	literal_split             blockSplit
+	command_split             blockSplit
+	distance_split            blockSplit
 	literal_context_map       []uint32
 	literal_context_map_size  uint
 	distance_context_map      []uint32
@@ -48,9 +48,9 @@ type MetaBlockSplit struct {
 }
 
 func InitMetaBlockSplit(mb *MetaBlockSplit) {
-	BrotliInitBlockSplit(&mb.literal_split)
-	BrotliInitBlockSplit(&mb.command_split)
-	BrotliInitBlockSplit(&mb.distance_split)
+	initBlockSplit(&mb.literal_split)
+	initBlockSplit(&mb.command_split)
+	initBlockSplit(&mb.distance_split)
 	mb.literal_context_map = nil
 	mb.literal_context_map_size = 0
 	mb.distance_context_map = nil
@@ -64,9 +64,9 @@ func InitMetaBlockSplit(mb *MetaBlockSplit) {
 }
 
 func DestroyMetaBlockSplit(mb *MetaBlockSplit) {
-	BrotliDestroyBlockSplit(&mb.literal_split)
-	BrotliDestroyBlockSplit(&mb.command_split)
-	BrotliDestroyBlockSplit(&mb.distance_split)
+	destroyBlockSplit(&mb.literal_split)
+	destroyBlockSplit(&mb.command_split)
+	destroyBlockSplit(&mb.distance_split)
 	mb.literal_context_map = nil
 	mb.distance_context_map = nil
 	mb.literal_histograms = nil
@@ -90,13 +90,13 @@ func BrotliInitDistanceParams(params *BrotliEncoderParams, npostfix uint32, ndir
 	dist_params.distance_postfix_bits = npostfix
 	dist_params.num_direct_distance_codes = ndirect
 
-	alphabet_size = uint32(BROTLI_DISTANCE_ALPHABET_SIZE(uint(npostfix), uint(ndirect), BROTLI_MAX_DISTANCE_BITS))
-	max_distance = ndirect + (1 << (BROTLI_MAX_DISTANCE_BITS + npostfix + 2)) - (1 << (npostfix + 2))
+	alphabet_size = uint32(distanceAlphabetSize(uint(npostfix), uint(ndirect), maxDistanceBits))
+	max_distance = ndirect + (1 << (maxDistanceBits + npostfix + 2)) - (1 << (npostfix + 2))
 
 	if params.large_window {
-		var bound = [BROTLI_MAX_NPOSTFIX + 1]uint32{0, 4, 12, 28}
+		var bound = [maxNpostfix + 1]uint32{0, 4, 12, 28}
 		var postfix uint32 = 1 << npostfix
-		alphabet_size = uint32(BROTLI_DISTANCE_ALPHABET_SIZE(uint(npostfix), uint(ndirect), BROTLI_LARGE_MAX_DISTANCE_BITS))
+		alphabet_size = uint32(distanceAlphabetSize(uint(npostfix), uint(ndirect), largeMaxDistanceBits))
 
 		/* The maximum distance is set so that no distance symbol used can encode
 		   a distance larger than BROTLI_MAX_ALLOWED_DISTANCE with all
@@ -114,7 +114,7 @@ func BrotliInitDistanceParams(params *BrotliEncoderParams, npostfix uint32, ndir
 	dist_params.max_distance = uint(max_distance)
 }
 
-func RecomputeDistancePrefixes(cmds []Command, num_commands uint, orig_params *BrotliDistanceParams, new_params *BrotliDistanceParams) {
+func RecomputeDistancePrefixes(cmds []command, num_commands uint, orig_params *BrotliDistanceParams, new_params *BrotliDistanceParams) {
 	var i uint
 
 	if orig_params.distance_postfix_bits == new_params.distance_postfix_bits && orig_params.num_direct_distance_codes == new_params.num_direct_distance_codes {
@@ -122,14 +122,14 @@ func RecomputeDistancePrefixes(cmds []Command, num_commands uint, orig_params *B
 	}
 
 	for i = 0; i < num_commands; i++ {
-		var cmd *Command = &cmds[i]
-		if CommandCopyLen(cmd) != 0 && cmd.cmd_prefix_ >= 128 {
-			PrefixEncodeCopyDistance(uint(CommandRestoreDistanceCode(cmd, orig_params)), uint(new_params.num_direct_distance_codes), uint(new_params.distance_postfix_bits), &cmd.dist_prefix_, &cmd.dist_extra_)
+		var cmd *command = &cmds[i]
+		if commandCopyLen(cmd) != 0 && cmd.cmd_prefix_ >= 128 {
+			PrefixEncodeCopyDistance(uint(commandRestoreDistanceCode(cmd, orig_params)), uint(new_params.num_direct_distance_codes), uint(new_params.distance_postfix_bits), &cmd.dist_prefix_, &cmd.dist_extra_)
 		}
 	}
 }
 
-func ComputeDistanceCost(cmds []Command, num_commands uint, orig_params *BrotliDistanceParams, new_params *BrotliDistanceParams, cost *float64) bool {
+func ComputeDistanceCost(cmds []command, num_commands uint, orig_params *BrotliDistanceParams, new_params *BrotliDistanceParams, cost *float64) bool {
 	var i uint
 	var equal_params bool = false
 	var dist_prefix uint16
@@ -143,12 +143,12 @@ func ComputeDistanceCost(cmds []Command, num_commands uint, orig_params *BrotliD
 	}
 
 	for i = 0; i < num_commands; i++ {
-		var cmd *Command = &cmds[i]
-		if CommandCopyLen(cmd) != 0 && cmd.cmd_prefix_ >= 128 {
+		var cmd *command = &cmds[i]
+		if commandCopyLen(cmd) != 0 && cmd.cmd_prefix_ >= 128 {
 			if equal_params {
 				dist_prefix = cmd.dist_prefix_
 			} else {
-				var distance uint32 = CommandRestoreDistanceCode(cmd, orig_params)
+				var distance uint32 = commandRestoreDistanceCode(cmd, orig_params)
 				if distance > uint32(new_params.max_distance) {
 					return false
 				}
@@ -167,7 +167,7 @@ func ComputeDistanceCost(cmds []Command, num_commands uint, orig_params *BrotliD
 
 var BrotliBuildMetaBlock_kMaxNumberOfHistograms uint = 256
 
-func BrotliBuildMetaBlock(ringbuffer []byte, pos uint, mask uint, params *BrotliEncoderParams, prev_byte byte, prev_byte2 byte, cmds []Command, num_commands uint, literal_context_mode int, mb *MetaBlockSplit) {
+func BrotliBuildMetaBlock(ringbuffer []byte, pos uint, mask uint, params *BrotliEncoderParams, prev_byte byte, prev_byte2 byte, cmds []command, num_commands uint, literal_context_mode int, mb *MetaBlockSplit) {
 	var distance_histograms []HistogramDistance
 	var literal_histograms []HistogramLiteral
 	var literal_context_modes []int = nil
@@ -184,7 +184,7 @@ func BrotliBuildMetaBlock(ringbuffer []byte, pos uint, mask uint, params *Brotli
 
 	var new_params BrotliEncoderParams = *params
 
-	for npostfix = 0; npostfix <= BROTLI_MAX_NPOSTFIX; npostfix++ {
+	for npostfix = 0; npostfix <= maxNpostfix; npostfix++ {
 		for ; ndirect_msb < 16; ndirect_msb++ {
 			var ndirect uint32 = ndirect_msb << npostfix
 			var skip bool
@@ -221,7 +221,7 @@ func BrotliBuildMetaBlock(ringbuffer []byte, pos uint, mask uint, params *Brotli
 
 	RecomputeDistancePrefixes(cmds, num_commands, &orig_params.dist, &params.dist)
 
-	BrotliSplitBlock(cmds, num_commands, ringbuffer, pos, mask, params, &mb.literal_split, &mb.command_split, &mb.distance_split)
+	splitBlock(cmds, num_commands, ringbuffer, pos, mask, params, &mb.literal_split, &mb.command_split, &mb.distance_split)
 
 	if !params.disable_literal_context_modeling {
 		literal_context_multiplier = 1 << BROTLI_LITERAL_CONTEXT_BITS
@@ -255,7 +255,7 @@ func BrotliBuildMetaBlock(ringbuffer []byte, pos uint, mask uint, params *Brotli
 	mb.literal_histograms_size = mb.literal_context_map_size
 	mb.literal_histograms = make([]HistogramLiteral, (mb.literal_histograms_size))
 
-	BrotliClusterHistogramsLiteral(literal_histograms, literal_histograms_size, BrotliBuildMetaBlock_kMaxNumberOfHistograms, mb.literal_histograms, &mb.literal_histograms_size, mb.literal_context_map)
+	clusterHistogramsLiteral(literal_histograms, literal_histograms_size, BrotliBuildMetaBlock_kMaxNumberOfHistograms, mb.literal_histograms, &mb.literal_histograms_size, mb.literal_context_map)
 	literal_histograms = nil
 
 	if params.disable_literal_context_modeling {
@@ -277,7 +277,7 @@ func BrotliBuildMetaBlock(ringbuffer []byte, pos uint, mask uint, params *Brotli
 	mb.distance_histograms_size = mb.distance_context_map_size
 	mb.distance_histograms = make([]HistogramDistance, (mb.distance_histograms_size))
 
-	BrotliClusterHistogramsDistance(distance_histograms, mb.distance_context_map_size, BrotliBuildMetaBlock_kMaxNumberOfHistograms, mb.distance_histograms, &mb.distance_histograms_size, mb.distance_context_map)
+	clusterHistogramsDistance(distance_histograms, mb.distance_context_map_size, BrotliBuildMetaBlock_kMaxNumberOfHistograms, mb.distance_histograms, &mb.distance_histograms_size, mb.distance_context_map)
 	distance_histograms = nil
 }
 
@@ -292,7 +292,7 @@ type ContextBlockSplitter struct {
 	min_block_size_    uint
 	split_threshold_   float64
 	num_blocks_        uint
-	split_             *BlockSplit
+	split_             *blockSplit
 	histograms_        []HistogramLiteral
 	histograms_size_   *uint
 	target_block_size_ uint
@@ -303,14 +303,14 @@ type ContextBlockSplitter struct {
 	merge_last_count_  uint
 }
 
-func InitContextBlockSplitter(self *ContextBlockSplitter, alphabet_size uint, num_contexts uint, min_block_size uint, split_threshold float64, num_symbols uint, split *BlockSplit, histograms *[]HistogramLiteral, histograms_size *uint) {
+func InitContextBlockSplitter(self *ContextBlockSplitter, alphabet_size uint, num_contexts uint, min_block_size uint, split_threshold float64, num_symbols uint, split *blockSplit, histograms *[]HistogramLiteral, histograms_size *uint) {
 	var max_num_blocks uint = num_symbols/min_block_size + 1
 	var max_num_types uint
 	assert(num_contexts <= BROTLI_MAX_STATIC_CONTEXTS)
 
 	self.alphabet_size_ = alphabet_size
 	self.num_contexts_ = num_contexts
-	self.max_block_types_ = BROTLI_MAX_NUMBER_OF_BLOCK_TYPES / num_contexts
+	self.max_block_types_ = maxNumberOfBlockTypes / num_contexts
 	self.min_block_size_ = min_block_size
 	self.split_threshold_ = split_threshold
 	self.num_blocks_ = 0
@@ -345,7 +345,7 @@ func InitContextBlockSplitter(self *ContextBlockSplitter, alphabet_size uint, nu
    (2) emits the current block with the type of the second last block;
    (3) merges the current block with the last block. */
 func ContextBlockSplitterFinishBlock(self *ContextBlockSplitter, is_final bool) {
-	var split *BlockSplit = self.split_
+	var split *blockSplit = self.split_
 	var num_contexts uint = self.num_contexts_
 	var last_entropy []float64 = self.last_entropy_[:]
 	var histograms []HistogramLiteral = self.histograms_
@@ -496,7 +496,7 @@ func MapStaticContexts(num_contexts uint, static_context_map []uint32, mb *MetaB
 	}
 }
 
-func BrotliBuildMetaBlockGreedyInternal(ringbuffer []byte, pos uint, mask uint, prev_byte byte, prev_byte2 byte, literal_context_lut ContextLut, num_contexts uint, static_context_map []uint32, commands []Command, n_commands uint, mb *MetaBlockSplit) {
+func BrotliBuildMetaBlockGreedyInternal(ringbuffer []byte, pos uint, mask uint, prev_byte byte, prev_byte2 byte, literal_context_lut ContextLut, num_contexts uint, static_context_map []uint32, commands []command, n_commands uint, mb *MetaBlockSplit) {
 	var lit_blocks struct {
 		plain BlockSplitterLiteral
 		ctx   ContextBlockSplitter
@@ -515,11 +515,11 @@ func BrotliBuildMetaBlockGreedyInternal(ringbuffer []byte, pos uint, mask uint, 
 		InitContextBlockSplitter(&lit_blocks.ctx, 256, num_contexts, 512, 400.0, num_literals, &mb.literal_split, &mb.literal_histograms, &mb.literal_histograms_size)
 	}
 
-	InitBlockSplitterCommand(&cmd_blocks, BROTLI_NUM_COMMAND_SYMBOLS, 1024, 500.0, n_commands, &mb.command_split, &mb.command_histograms, &mb.command_histograms_size)
+	InitBlockSplitterCommand(&cmd_blocks, numCommandSymbols, 1024, 500.0, n_commands, &mb.command_split, &mb.command_histograms, &mb.command_histograms_size)
 	InitBlockSplitterDistance(&dist_blocks, 64, 512, 100.0, n_commands, &mb.distance_split, &mb.distance_histograms, &mb.distance_histograms_size)
 
 	for i = 0; i < n_commands; i++ {
-		var cmd Command = commands[i]
+		var cmd command = commands[i]
 		var j uint
 		BlockSplitterAddSymbolCommand(&cmd_blocks, uint(cmd.cmd_prefix_))
 		for j = uint(cmd.insert_len_); j != 0; j-- {
@@ -536,8 +536,8 @@ func BrotliBuildMetaBlockGreedyInternal(ringbuffer []byte, pos uint, mask uint, 
 			pos++
 		}
 
-		pos += uint(CommandCopyLen(&cmd))
-		if CommandCopyLen(&cmd) != 0 {
+		pos += uint(commandCopyLen(&cmd))
+		if commandCopyLen(&cmd) != 0 {
 			prev_byte2 = ringbuffer[(pos-2)&mask]
 			prev_byte = ringbuffer[(pos-1)&mask]
 			if cmd.cmd_prefix_ >= 128 {
@@ -560,7 +560,7 @@ func BrotliBuildMetaBlockGreedyInternal(ringbuffer []byte, pos uint, mask uint, 
 	}
 }
 
-func BrotliBuildMetaBlockGreedy(ringbuffer []byte, pos uint, mask uint, prev_byte byte, prev_byte2 byte, literal_context_lut ContextLut, num_contexts uint, static_context_map []uint32, commands []Command, n_commands uint, mb *MetaBlockSplit) {
+func BrotliBuildMetaBlockGreedy(ringbuffer []byte, pos uint, mask uint, prev_byte byte, prev_byte2 byte, literal_context_lut ContextLut, num_contexts uint, static_context_map []uint32, commands []command, n_commands uint, mb *MetaBlockSplit) {
 	if num_contexts == 1 {
 		BrotliBuildMetaBlockGreedyInternal(ringbuffer, pos, mask, prev_byte, prev_byte2, literal_context_lut, 1, nil, commands, n_commands, mb)
 	} else {
@@ -569,14 +569,14 @@ func BrotliBuildMetaBlockGreedy(ringbuffer []byte, pos uint, mask uint, prev_byt
 }
 
 func BrotliOptimizeHistograms(num_distance_codes uint32, mb *MetaBlockSplit) {
-	var good_for_rle [BROTLI_NUM_COMMAND_SYMBOLS]byte
+	var good_for_rle [numCommandSymbols]byte
 	var i uint
 	for i = 0; i < mb.literal_histograms_size; i++ {
 		BrotliOptimizeHuffmanCountsForRle(256, mb.literal_histograms[i].data_[:], good_for_rle[:])
 	}
 
 	for i = 0; i < mb.command_histograms_size; i++ {
-		BrotliOptimizeHuffmanCountsForRle(BROTLI_NUM_COMMAND_SYMBOLS, mb.command_histograms[i].data_[:], good_for_rle[:])
+		BrotliOptimizeHuffmanCountsForRle(numCommandSymbols, mb.command_histograms[i].data_[:], good_for_rle[:])
 	}
 
 	for i = 0; i < mb.distance_histograms_size; i++ {

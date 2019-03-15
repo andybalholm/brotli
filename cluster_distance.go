@@ -9,9 +9,9 @@ package brotli
 
 /* Computes the bit cost reduction by combining out[idx1] and out[idx2] and if
    it is below a threshold, stores the pair (idx1, idx2) in the *pairs queue. */
-func BrotliCompareAndPushToQueueDistance(out []HistogramDistance, cluster_size []uint32, idx1 uint32, idx2 uint32, max_num_pairs uint, pairs []HistogramPair, num_pairs *uint) {
+func compareAndPushToQueueDistance(out []HistogramDistance, cluster_size []uint32, idx1 uint32, idx2 uint32, max_num_pairs uint, pairs []histogramPair, num_pairs *uint) {
 	var is_good_pair bool = false
-	var p HistogramPair
+	var p histogramPair
 	p.idx2 = 0
 	p.idx1 = p.idx2
 	p.cost_combo = 0
@@ -28,7 +28,7 @@ func BrotliCompareAndPushToQueueDistance(out []HistogramDistance, cluster_size [
 
 	p.idx1 = idx1
 	p.idx2 = idx2
-	p.cost_diff = 0.5 * ClusterCostDiff(uint(cluster_size[idx1]), uint(cluster_size[idx2]))
+	p.cost_diff = 0.5 * clusterCostDiff(uint(cluster_size[idx1]), uint(cluster_size[idx2]))
 	p.cost_diff -= out[idx1].bit_cost_
 	p.cost_diff -= out[idx2].bit_cost_
 
@@ -57,7 +57,7 @@ func BrotliCompareAndPushToQueueDistance(out []HistogramDistance, cluster_size [
 
 	if is_good_pair {
 		p.cost_diff += p.cost_combo
-		if *num_pairs > 0 && HistogramPairIsLess(&pairs[0], &p) {
+		if *num_pairs > 0 && histogramPairIsLess(&pairs[0], &p) {
 			/* Replace the top of the queue if needed. */
 			if *num_pairs < max_num_pairs {
 				pairs[*num_pairs] = pairs[0]
@@ -72,7 +72,7 @@ func BrotliCompareAndPushToQueueDistance(out []HistogramDistance, cluster_size [
 	}
 }
 
-func BrotliHistogramCombineDistance(out []HistogramDistance, cluster_size []uint32, symbols []uint32, clusters []uint32, pairs []HistogramPair, num_clusters uint, symbols_size uint, max_clusters uint, max_num_pairs uint) uint {
+func histogramCombineDistance(out []HistogramDistance, cluster_size []uint32, symbols []uint32, clusters []uint32, pairs []histogramPair, num_clusters uint, symbols_size uint, max_clusters uint, max_num_pairs uint) uint {
 	var cost_diff_threshold float64 = 0.0
 	var min_cluster_size uint = 1
 	var num_pairs uint = 0
@@ -83,7 +83,7 @@ func BrotliHistogramCombineDistance(out []HistogramDistance, cluster_size []uint
 		for idx1 = 0; idx1 < num_clusters; idx1++ {
 			var idx2 uint
 			for idx2 = idx1 + 1; idx2 < num_clusters; idx2++ {
-				BrotliCompareAndPushToQueueDistance(out, cluster_size, clusters[idx1], clusters[idx2], max_num_pairs, pairs[0:], &num_pairs)
+				compareAndPushToQueueDistance(out, cluster_size, clusters[idx1], clusters[idx2], max_num_pairs, pairs[0:], &num_pairs)
 			}
 		}
 	}
@@ -123,15 +123,15 @@ func BrotliHistogramCombineDistance(out []HistogramDistance, cluster_size []uint
 			/* Remove pairs intersecting the just combined best pair. */
 			var copy_to_idx uint = 0
 			for i = 0; i < num_pairs; i++ {
-				var p *HistogramPair = &pairs[i]
+				var p *histogramPair = &pairs[i]
 				if p.idx1 == best_idx1 || p.idx2 == best_idx1 || p.idx1 == best_idx2 || p.idx2 == best_idx2 {
 					/* Remove invalid pair from the queue. */
 					continue
 				}
 
-				if HistogramPairIsLess(&pairs[0], p) {
+				if histogramPairIsLess(&pairs[0], p) {
 					/* Replace the top of the queue if needed. */
-					var front HistogramPair = pairs[0]
+					var front histogramPair = pairs[0]
 					pairs[0] = *p
 					pairs[copy_to_idx] = front
 				} else {
@@ -146,7 +146,7 @@ func BrotliHistogramCombineDistance(out []HistogramDistance, cluster_size []uint
 
 		/* Push new pairs formed with the combined histogram to the heap. */
 		for i = 0; i < num_clusters; i++ {
-			BrotliCompareAndPushToQueueDistance(out, cluster_size, best_idx1, clusters[i], max_num_pairs, pairs[0:], &num_pairs)
+			compareAndPushToQueueDistance(out, cluster_size, best_idx1, clusters[i], max_num_pairs, pairs[0:], &num_pairs)
 		}
 	}
 
@@ -154,7 +154,7 @@ func BrotliHistogramCombineDistance(out []HistogramDistance, cluster_size []uint
 }
 
 /* What is the bit cost of moving histogram from cur_symbol to candidate. */
-func BrotliHistogramBitCostDistanceDistance(histogram *HistogramDistance, candidate *HistogramDistance) float64 {
+func histogramBitCostDistanceDistance(histogram *HistogramDistance, candidate *HistogramDistance) float64 {
 	if histogram.total_count_ == 0 {
 		return 0.0
 	} else {
@@ -168,7 +168,7 @@ func BrotliHistogramBitCostDistanceDistance(histogram *HistogramDistance, candid
    When called, clusters[0..num_clusters) contains the unique values from
    symbols[0..in_size), but this property is not preserved in this function.
    Note: we assume that out[]->bit_cost_ is already up-to-date. */
-func BrotliHistogramRemapDistance(in []HistogramDistance, in_size uint, clusters []uint32, num_clusters uint, out []HistogramDistance, symbols []uint32) {
+func histogramRemapDistance(in []HistogramDistance, in_size uint, clusters []uint32, num_clusters uint, out []HistogramDistance, symbols []uint32) {
 	var i uint
 	for i = 0; i < in_size; i++ {
 		var best_out uint32
@@ -177,10 +177,10 @@ func BrotliHistogramRemapDistance(in []HistogramDistance, in_size uint, clusters
 		} else {
 			best_out = symbols[i-1]
 		}
-		var best_bits float64 = BrotliHistogramBitCostDistanceDistance(&in[i], &out[best_out])
+		var best_bits float64 = histogramBitCostDistanceDistance(&in[i], &out[best_out])
 		var j uint
 		for j = 0; j < num_clusters; j++ {
-			var cur_bits float64 = BrotliHistogramBitCostDistanceDistance(&in[i], &out[clusters[j]])
+			var cur_bits float64 = histogramBitCostDistanceDistance(&in[i], &out[clusters[j]])
 			if cur_bits < best_bits {
 				best_bits = cur_bits
 				best_out = clusters[j]
@@ -211,20 +211,20 @@ func BrotliHistogramRemapDistance(in []HistogramDistance, in_size uint, clusters
        increasing order.
    Returns N, the number of unique values in symbols[]. */
 
-var BrotliHistogramReindexDistance_kInvalidIndex uint32 = BROTLI_UINT32_MAX
+var histogramReindexDistance_kInvalidIndex uint32 = BROTLI_UINT32_MAX
 
-func BrotliHistogramReindexDistance(out []HistogramDistance, symbols []uint32, length uint) uint {
+func histogramReindexDistance(out []HistogramDistance, symbols []uint32, length uint) uint {
 	var new_index []uint32 = make([]uint32, length)
 	var next_index uint32
 	var tmp []HistogramDistance
 	var i uint
 	for i = 0; i < length; i++ {
-		new_index[i] = BrotliHistogramReindexDistance_kInvalidIndex
+		new_index[i] = histogramReindexDistance_kInvalidIndex
 	}
 
 	next_index = 0
 	for i = 0; i < length; i++ {
-		if new_index[symbols[i]] == BrotliHistogramReindexDistance_kInvalidIndex {
+		if new_index[symbols[i]] == histogramReindexDistance_kInvalidIndex {
 			new_index[symbols[i]] = next_index
 			next_index++
 		}
@@ -253,13 +253,13 @@ func BrotliHistogramReindexDistance(out []HistogramDistance, symbols []uint32, l
 	return uint(next_index)
 }
 
-func BrotliClusterHistogramsDistance(in []HistogramDistance, in_size uint, max_histograms uint, out []HistogramDistance, out_size *uint, histogram_symbols []uint32) {
+func clusterHistogramsDistance(in []HistogramDistance, in_size uint, max_histograms uint, out []HistogramDistance, out_size *uint, histogram_symbols []uint32) {
 	var cluster_size []uint32 = make([]uint32, in_size)
 	var clusters []uint32 = make([]uint32, in_size)
 	var num_clusters uint = 0
 	var max_input_histograms uint = 64
 	var pairs_capacity uint = max_input_histograms * max_input_histograms / 2
-	var pairs []HistogramPair = make([]HistogramPair, (pairs_capacity + 1))
+	var pairs []histogramPair = make([]histogramPair, (pairs_capacity + 1))
 	var i uint
 
 	/* For the first pass of clustering, we allow all pairs. */
@@ -281,7 +281,7 @@ func BrotliClusterHistogramsDistance(in []HistogramDistance, in_size uint, max_h
 			clusters[num_clusters+j] = uint32(i + j)
 		}
 
-		num_new_clusters = BrotliHistogramCombineDistance(out, cluster_size, histogram_symbols[i:], clusters[num_clusters:], pairs, num_to_combine, num_to_combine, max_histograms, pairs_capacity)
+		num_new_clusters = histogramCombineDistance(out, cluster_size, histogram_symbols[i:], clusters[num_clusters:], pairs, num_to_combine, num_to_combine, max_histograms, pairs_capacity)
 		num_clusters += num_new_clusters
 	}
 	{
@@ -295,11 +295,11 @@ func BrotliClusterHistogramsDistance(in []HistogramDistance, in_size uint, max_h
 			} else {
 				_new_size = pairs_capacity
 			}
-			var new_array []HistogramPair
+			var new_array []histogramPair
 			for _new_size < (max_num_pairs + 1) {
 				_new_size *= 2
 			}
-			new_array = make([]HistogramPair, _new_size)
+			new_array = make([]histogramPair, _new_size)
 			if pairs_capacity != 0 {
 				copy(new_array, pairs[:pairs_capacity])
 			}
@@ -309,17 +309,17 @@ func BrotliClusterHistogramsDistance(in []HistogramDistance, in_size uint, max_h
 		}
 
 		/* Collapse similar histograms. */
-		num_clusters = BrotliHistogramCombineDistance(out, cluster_size, histogram_symbols, clusters, pairs, num_clusters, in_size, max_histograms, max_num_pairs)
+		num_clusters = histogramCombineDistance(out, cluster_size, histogram_symbols, clusters, pairs, num_clusters, in_size, max_histograms, max_num_pairs)
 	}
 
 	pairs = nil
 	cluster_size = nil
 
 	/* Find the optimal map from original histograms to the final ones. */
-	BrotliHistogramRemapDistance(in, in_size, clusters, num_clusters, out, histogram_symbols)
+	histogramRemapDistance(in, in_size, clusters, num_clusters, out, histogram_symbols)
 
 	clusters = nil
 
 	/* Convert the context map to a canonical form. */
-	*out_size = BrotliHistogramReindexDistance(out, histogram_symbols, in_size)
+	*out_size = histogramReindexDistance(out, histogram_symbols, in_size)
 }

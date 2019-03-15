@@ -111,7 +111,7 @@ func populationCostLiteral(histogram *HistogramLiteral) float64 {
 	}
 	{
 		var max_depth uint = 1
-		var depth_histo = [BROTLI_CODE_LENGTH_CODES]uint32{0}
+		var depth_histo = [codeLengthCodes]uint32{0}
 		/* In this loop we compute the entropy of the histogram and simultaneously
 		   build a simplified histogram of the code length codes where we use the
 		   zero repeat code 17, but we don't use the non-zero repeat code 16. */
@@ -159,7 +159,7 @@ func populationCostLiteral(histogram *HistogramLiteral) float64 {
 				} else {
 					reps -= 2
 					for reps > 0 {
-						depth_histo[BROTLI_REPEAT_ZERO_CODE_LENGTH]++
+						depth_histo[repeatZeroCodeLength]++
 
 						/* Add the 3 extra bits for the 17 code length code. */
 						bits += 3
@@ -174,7 +174,7 @@ func populationCostLiteral(histogram *HistogramLiteral) float64 {
 		bits += float64(18 + 2*max_depth)
 
 		/* Add the entropy of the code length code histogram. */
-		bits += bitsEntropy(depth_histo[:], BROTLI_CODE_LENGTH_CODES)
+		bits += bitsEntropy(depth_histo[:], codeLengthCodes)
 	}
 
 	return bits
@@ -242,7 +242,7 @@ func populationCostCommand(histogram *HistogramCommand) float64 {
 	}
 	{
 		var max_depth uint = 1
-		var depth_histo = [BROTLI_CODE_LENGTH_CODES]uint32{0}
+		var depth_histo = [codeLengthCodes]uint32{0}
 		/* In this loop we compute the entropy of the histogram and simultaneously
 		   build a simplified histogram of the code length codes where we use the
 		   zero repeat code 17, but we don't use the non-zero repeat code 16. */
@@ -290,7 +290,7 @@ func populationCostCommand(histogram *HistogramCommand) float64 {
 				} else {
 					reps -= 2
 					for reps > 0 {
-						depth_histo[BROTLI_REPEAT_ZERO_CODE_LENGTH]++
+						depth_histo[repeatZeroCodeLength]++
 
 						/* Add the 3 extra bits for the 17 code length code. */
 						bits += 3
@@ -305,7 +305,7 @@ func populationCostCommand(histogram *HistogramCommand) float64 {
 		bits += float64(18 + 2*max_depth)
 
 		/* Add the entropy of the code length code histogram. */
-		bits += bitsEntropy(depth_histo[:], BROTLI_CODE_LENGTH_CODES)
+		bits += bitsEntropy(depth_histo[:], codeLengthCodes)
 	}
 
 	return bits
@@ -373,7 +373,7 @@ func populationCostDistance(histogram *HistogramDistance) float64 {
 	}
 	{
 		var max_depth uint = 1
-		var depth_histo = [BROTLI_CODE_LENGTH_CODES]uint32{0}
+		var depth_histo = [codeLengthCodes]uint32{0}
 		/* In this loop we compute the entropy of the histogram and simultaneously
 		   build a simplified histogram of the code length codes where we use the
 		   zero repeat code 17, but we don't use the non-zero repeat code 16. */
@@ -421,7 +421,7 @@ func populationCostDistance(histogram *HistogramDistance) float64 {
 				} else {
 					reps -= 2
 					for reps > 0 {
-						depth_histo[BROTLI_REPEAT_ZERO_CODE_LENGTH]++
+						depth_histo[repeatZeroCodeLength]++
 
 						/* Add the 3 extra bits for the 17 code length code. */
 						bits += 3
@@ -436,7 +436,7 @@ func populationCostDistance(histogram *HistogramDistance) float64 {
 		bits += float64(18 + 2*max_depth)
 
 		/* Add the entropy of the code length code histogram. */
-		bits += bitsEntropy(depth_histo[:], BROTLI_CODE_LENGTH_CODES)
+		bits += bitsEntropy(depth_histo[:], codeLengthCodes)
 	}
 
 	return bits

@@ -149,9 +149,9 @@ type Reader struct {
 	space                       uint32
 	table                       [32]HuffmanCode
 	symbol_lists                SymbolList
-	symbols_lists_array         [BROTLI_HUFFMAN_MAX_CODE_LENGTH + 1 + BROTLI_NUM_COMMAND_SYMBOLS]uint16
+	symbols_lists_array         [BROTLI_HUFFMAN_MAX_CODE_LENGTH + 1 + numCommandSymbols]uint16
 	next_symbol                 [32]int
-	code_length_code_lengths    [BROTLI_CODE_LENGTH_CODES]byte
+	code_length_code_lengths    [codeLengthCodes]byte
 	code_length_histo           [16]uint16
 	htree_index                 int
 	next                        []HuffmanCode
