@@ -925,8 +925,8 @@ func readBlockLength(table []huffmanCode, br *bitReader) uint32 {
 	var code uint32
 	var nbits uint32
 	code = readSymbol(table, br)
-	nbits = uint32(kBlockLengthPrefixCode1[code].nbits) /* nbits == 2..24 */
-	return uint32(kBlockLengthPrefixCode1[code].offset) + readBits(br, nbits)
+	nbits = kBlockLengthPrefixCode[code].nbits /* nbits == 2..24 */
+	return kBlockLengthPrefixCode[code].offset + readBits(br, nbits)
 }
 
 /* WARNING: if state is not BROTLI_STATE_READ_BLOCK_LENGTH_NONE, then
@@ -942,14 +942,14 @@ func safeReadBlockLength(s *Reader, result *uint32, table []huffmanCode, br *bit
 	}
 	{
 		var bits uint32 /* nbits == 2..24 */
-		var nbits uint32 = uint32(kBlockLengthPrefixCode1[index].nbits)
+		var nbits uint32 = kBlockLengthPrefixCode[index].nbits
 		if !safeReadBits(br, nbits, &bits) {
 			s.block_length_index = index
 			s.substate_read_block_length = BROTLI_STATE_READ_BLOCK_LENGTH_SUFFIX
 			return false
 		}
 
-		*result = uint32(kBlockLengthPrefixCode1[index].offset) + bits
+		*result = kBlockLengthPrefixCode[index].offset + bits
 		s.substate_read_block_length = BROTLI_STATE_READ_BLOCK_LENGTH_NONE
 		return true
 	}
