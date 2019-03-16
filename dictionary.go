@@ -12,7 +12,7 @@ package brotli
 */
 
 /* Collection of static dictionary words. */
-type BrotliDictionary struct {
+type dictionary struct {
 	size_bits_by_length [32]byte
 	offsets_by_length   [32]uint32
 	data_size           uint
@@ -28,9 +28,9 @@ type BrotliDictionary struct {
  * This method is used ONLY in multi-client environment (e.g. C + Java),
  * to reduce storage by sharing single dictionary between implementations.
  */
-const BROTLI_MIN_DICTIONARY_WORD_LENGTH = 4
+const minDictionaryWordLength = 4
 
-const BROTLI_MAX_DICTIONARY_WORD_LENGTH = 24
+const maxDictionaryWordLength = 24
 
 var kBrotliDictionaryData = []byte{
 	116,
@@ -122819,7 +122819,7 @@ var kBrotliDictionaryData = []byte{
 	190,
 }
 
-var kBrotliDictionary = BrotliDictionary{
+var kBrotliDictionary = dictionary{
 	/* size_bits_by_length */
 	[32]byte{
 		0,
@@ -122899,12 +122899,6 @@ var kBrotliDictionary = BrotliDictionary{
 	kBrotliDictionaryData,
 }
 
-func BrotliGetDictionary() *BrotliDictionary {
+func getDictionary() *dictionary {
 	return &kBrotliDictionary
-}
-
-func BrotliSetDictionaryData(data []byte) {
-	if !(data == nil) && kBrotliDictionary.data == nil {
-		kBrotliDictionary.data = data
-	}
 }

@@ -39,7 +39,7 @@ func PrefixEncodeCopyDistance(distance_code uint, num_direct_codes uint, postfix
 		return
 	} else {
 		var dist uint = (uint(1) << (postfix_bits + 2)) + (distance_code - numDistanceShortCodes - num_direct_codes)
-		var bucket uint = uint(Log2FloorNonZero(dist) - 1)
+		var bucket uint = uint(log2FloorNonZero(dist) - 1)
 		var postfix_mask uint = (1 << postfix_bits) - 1
 		var postfix uint = dist & postfix_mask
 		var prefix uint = (dist >> bucket) & 1

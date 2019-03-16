@@ -37,7 +37,7 @@ func (h *hashLongestMatchQuickly) HashBytes(data []byte) uint32 {
    This is a hash map of fixed size (1 << 16). Starting from the
    given index, 1 buckets are used to store values of a key. */
 type hashLongestMatchQuickly struct {
-	HasherCommon
+	hasherCommon
 
 	bucketBits    uint
 	bucketSweep   int
@@ -47,7 +47,7 @@ type hashLongestMatchQuickly struct {
 	buckets []uint32
 }
 
-func (h *hashLongestMatchQuickly) Initialize(params *BrotliEncoderParams) {
+func (h *hashLongestMatchQuickly) Initialize(params *encoderParams) {
 	h.buckets = make([]uint32, 1<<h.bucketBits+h.bucketSweep)
 }
 
@@ -112,7 +112,7 @@ func (*hashLongestMatchQuickly) PrepareDistanceCache(distance_cache []int) {
    Does not look for matches further away than max_backward.
    Writes the best match into |out|.
    |out|->score is updated only if a better match is found. */
-func (h *hashLongestMatchQuickly) FindLongestMatch(dictionary *BrotliEncoderDictionary, data []byte, ring_buffer_mask uint, distance_cache []int, cur_ix uint, max_length uint, max_backward uint, gap uint, max_distance uint, out *HasherSearchResult) {
+func (h *hashLongestMatchQuickly) FindLongestMatch(dictionary *encoderDictionary, data []byte, ring_buffer_mask uint, distance_cache []int, cur_ix uint, max_length uint, max_backward uint, gap uint, max_distance uint, out *hasherSearchResult) {
 	var best_len_in uint = out.len
 	var cur_ix_masked uint = cur_ix & ring_buffer_mask
 	var key uint32 = h.HashBytes(data[cur_ix_masked:])
@@ -127,9 +127,9 @@ func (h *hashLongestMatchQuickly) FindLongestMatch(dictionary *BrotliEncoderDict
 	if prev_ix < cur_ix {
 		prev_ix &= uint(uint32(ring_buffer_mask))
 		if compare_char == int(data[prev_ix+best_len]) {
-			var len uint = FindMatchLengthWithLimit(data[prev_ix:], data[cur_ix_masked:], max_length)
+			var len uint = findMatchLengthWithLimit(data[prev_ix:], data[cur_ix_masked:], max_length)
 			if len >= 4 {
-				var score uint = BackwardReferenceScoreUsingLastDistance(uint(len))
+				var score uint = backwardReferenceScoreUsingLastDistance(uint(len))
 				if best_score < score {
 					best_score = score
 					best_len = uint(len)
@@ -164,9 +164,9 @@ func (h *hashLongestMatchQuickly) FindLongestMatch(dictionary *BrotliEncoderDict
 			return
 		}
 
-		len = FindMatchLengthWithLimit(data[prev_ix:], data[cur_ix_masked:], max_length)
+		len = findMatchLengthWithLimit(data[prev_ix:], data[cur_ix_masked:], max_length)
 		if len >= 4 {
-			var score uint = BackwardReferenceScore(uint(len), backward)
+			var score uint = backwardReferenceScore(uint(len), backward)
 			if best_score < score {
 				out.len = uint(len)
 				out.distance = backward
@@ -191,9 +191,9 @@ func (h *hashLongestMatchQuickly) FindLongestMatch(dictionary *BrotliEncoderDict
 				continue
 			}
 
-			len = FindMatchLengthWithLimit(data[prev_ix:], data[cur_ix_masked:], max_length)
+			len = findMatchLengthWithLimit(data[prev_ix:], data[cur_ix_masked:], max_length)
 			if len >= 4 {
-				var score uint = BackwardReferenceScore(uint(len), backward)
+				var score uint = backwardReferenceScore(uint(len), backward)
 				if best_score < score {
 					best_score = score
 					best_len = uint(len)
@@ -207,7 +207,7 @@ func (h *hashLongestMatchQuickly) FindLongestMatch(dictionary *BrotliEncoderDict
 	}
 
 	if h.useDictionary && min_score == out.score {
-		SearchInStaticDictionary(dictionary, h, data[cur_ix_masked:], max_length, max_backward+gap, max_distance, out, true)
+		searchInStaticDictionary(dictionary, h, data[cur_ix_masked:], max_length, max_backward+gap, max_distance, out, true)
 	}
 
 	h.buckets[key+uint32((cur_ix>>3)%uint(h.bucketSweep))] = uint32(cur_ix)

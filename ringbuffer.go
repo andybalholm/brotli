@@ -42,7 +42,7 @@ func RingBufferInit(rb *RingBuffer) {
 	rb.buffer_ = nil
 }
 
-func RingBufferSetup(params *BrotliEncoderParams, rb *RingBuffer) {
+func RingBufferSetup(params *encoderParams, rb *RingBuffer) {
 	var window_bits int = ComputeRbBits(params)
 	var tail_bits int = params.lgblock
 	*(*uint32)(&rb.size_) = 1 << uint(window_bits)

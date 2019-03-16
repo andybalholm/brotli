@@ -31,24 +31,24 @@ func AddMatch(distance uint, len uint, len_code uint, matches []uint32) {
 	matches[len] = brotli_min_uint32_t(matches[len], match)
 }
 
-func DictMatchLength(dictionary *BrotliDictionary, data []byte, id uint, len uint, maxlen uint) uint {
-	var offset uint = uint(dictionary.offsets_by_length[len]) + len*id
-	return FindMatchLengthWithLimit(dictionary.data[offset:], data, brotli_min_size_t(uint(len), maxlen))
+func DictMatchLength(dict *dictionary, data []byte, id uint, len uint, maxlen uint) uint {
+	var offset uint = uint(dict.offsets_by_length[len]) + len*id
+	return findMatchLengthWithLimit(dict.data[offset:], data, brotli_min_size_t(uint(len), maxlen))
 }
 
-func IsMatch(dictionary *BrotliDictionary, w DictWord, data []byte, max_length uint) bool {
+func IsMatch(d *dictionary, w DictWord, data []byte, max_length uint) bool {
 	if uint(w.len) > max_length {
 		return false
 	} else {
-		var offset uint = uint(dictionary.offsets_by_length[w.len]) + uint(w.len)*uint(w.idx)
-		var dict []byte = dictionary.data[offset:]
+		var offset uint = uint(d.offsets_by_length[w.len]) + uint(w.len)*uint(w.idx)
+		var dict []byte = d.data[offset:]
 		if w.transform == 0 {
 			/* Match against base dictionary word. */
-			return FindMatchLengthWithLimit(dict, data, uint(w.len)) == uint(w.len)
+			return findMatchLengthWithLimit(dict, data, uint(w.len)) == uint(w.len)
 		} else if w.transform == 10 {
 			/* Match against uppercase first transform.
 			   Note that there are only ASCII uppercase words in the lookup table. */
-			return dict[0] >= 'a' && dict[0] <= 'z' && (dict[0]^32) == data[0] && FindMatchLengthWithLimit(dict[1:], data[1:], uint(w.len)-1) == uint(w.len-1)
+			return dict[0] >= 'a' && dict[0] <= 'z' && (dict[0]^32) == data[0] && findMatchLengthWithLimit(dict[1:], data[1:], uint(w.len)-1) == uint(w.len-1)
 		} else {
 			/* Match against uppercase all transform.
 			   Note that there are only ASCII uppercase words in the lookup table. */
@@ -70,22 +70,22 @@ func IsMatch(dictionary *BrotliDictionary, w DictWord, data []byte, max_length u
 	}
 }
 
-func BrotliFindAllStaticDictionaryMatches(dictionary *BrotliEncoderDictionary, data []byte, min_length uint, max_length uint, matches []uint32) bool {
+func BrotliFindAllStaticDictionaryMatches(dict *encoderDictionary, data []byte, min_length uint, max_length uint, matches []uint32) bool {
 	var has_found_match bool = false
 	{
-		var offset uint = uint(dictionary.buckets[Hash(data)])
+		var offset uint = uint(dict.buckets[Hash(data)])
 		var end bool = offset == 0
 		for !end {
 			var w DictWord
-			w = dictionary.dict_words[offset]
+			w = dict.dict_words[offset]
 			offset++
 			var l uint = uint(w.len) & 0x1F
-			var n uint = uint(1) << dictionary.words.size_bits_by_length[l]
+			var n uint = uint(1) << dict.words.size_bits_by_length[l]
 			var id uint = uint(w.idx)
 			end = !(w.len&0x80 == 0)
 			w.len = byte(l)
 			if w.transform == 0 {
-				var matchlen uint = DictMatchLength(dictionary.words, data, id, l, max_length)
+				var matchlen uint = DictMatchLength(dict.words, data, id, l, max_length)
 				var s []byte
 				var minlen uint
 				var maxlen uint
@@ -117,7 +117,7 @@ func BrotliFindAllStaticDictionaryMatches(dictionary *BrotliEncoderDictionary, d
 				maxlen = brotli_min_size_t(matchlen, l-2)
 				for len = minlen; len <= maxlen; len++ {
 					var cut uint = l - len
-					var transform_id uint = (cut << 2) + uint((dictionary.cutoffTransforms>>(cut*6))&0x3F)
+					var transform_id uint = (cut << 2) + uint((dict.cutoffTransforms>>(cut*6))&0x3F)
 					AddMatch(id+transform_id*n, uint(len), l, matches)
 					has_found_match = true
 				}
@@ -305,7 +305,7 @@ func BrotliFindAllStaticDictionaryMatches(dictionary *BrotliEncoderDictionary, d
 				transform. */
 
 				var s []byte
-				if !IsMatch(dictionary.words, w, data, max_length) {
+				if !IsMatch(dict.words, w, data, max_length) {
 					continue
 				}
 
@@ -427,20 +427,20 @@ func BrotliFindAllStaticDictionaryMatches(dictionary *BrotliEncoderDictionary, d
 	/* Transforms with prefixes " " and "." */
 	if max_length >= 5 && (data[0] == ' ' || data[0] == '.') {
 		var is_space bool = (data[0] == ' ')
-		var offset uint = uint(dictionary.buckets[Hash(data[1:])])
+		var offset uint = uint(dict.buckets[Hash(data[1:])])
 		var end bool = offset == 0
 		for !end {
 			var w DictWord
-			w = dictionary.dict_words[offset]
+			w = dict.dict_words[offset]
 			offset++
 			var l uint = uint(w.len) & 0x1F
-			var n uint = uint(1) << dictionary.words.size_bits_by_length[l]
+			var n uint = uint(1) << dict.words.size_bits_by_length[l]
 			var id uint = uint(w.idx)
 			end = !(w.len&0x80 == 0)
 			w.len = byte(l)
 			if w.transform == 0 {
 				var s []byte
-				if !IsMatch(dictionary.words, w, data[1:], max_length-1) {
+				if !IsMatch(dict.words, w, data[1:], max_length-1) {
 					continue
 				}
 
@@ -506,7 +506,7 @@ func BrotliFindAllStaticDictionaryMatches(dictionary *BrotliEncoderDictionary, d
 				transform. */
 
 				var s []byte
-				if !IsMatch(dictionary.words, w, data[1:], max_length-1) {
+				if !IsMatch(dict.words, w, data[1:], max_length-1) {
 					continue
 				}
 
@@ -592,18 +592,18 @@ func BrotliFindAllStaticDictionaryMatches(dictionary *BrotliEncoderDictionary, d
 	if max_length >= 6 {
 		/* Transforms with prefixes "e ", "s ", ", " and "\xC2\xA0" */
 		if (data[1] == ' ' && (data[0] == 'e' || data[0] == 's' || data[0] == ',')) || (data[0] == 0xC2 && data[1] == 0xA0) {
-			var offset uint = uint(dictionary.buckets[Hash(data[2:])])
+			var offset uint = uint(dict.buckets[Hash(data[2:])])
 			var end bool = offset == 0
 			for !end {
 				var w DictWord
-				w = dictionary.dict_words[offset]
+				w = dict.dict_words[offset]
 				offset++
 				var l uint = uint(w.len) & 0x1F
-				var n uint = uint(1) << dictionary.words.size_bits_by_length[l]
+				var n uint = uint(1) << dict.words.size_bits_by_length[l]
 				var id uint = uint(w.idx)
 				end = !(w.len&0x80 == 0)
 				w.len = byte(l)
-				if w.transform == 0 && IsMatch(dictionary.words, w, data[2:], max_length-2) {
+				if w.transform == 0 && IsMatch(dict.words, w, data[2:], max_length-2) {
 					if data[0] == 0xC2 {
 						AddMatch(id+102*n, l+2, l, matches)
 						has_found_match = true
@@ -625,18 +625,18 @@ func BrotliFindAllStaticDictionaryMatches(dictionary *BrotliEncoderDictionary, d
 	if max_length >= 9 {
 		/* Transforms with prefixes " the " and ".com/" */
 		if (data[0] == ' ' && data[1] == 't' && data[2] == 'h' && data[3] == 'e' && data[4] == ' ') || (data[0] == '.' && data[1] == 'c' && data[2] == 'o' && data[3] == 'm' && data[4] == '/') {
-			var offset uint = uint(dictionary.buckets[Hash(data[5:])])
+			var offset uint = uint(dict.buckets[Hash(data[5:])])
 			var end bool = offset == 0
 			for !end {
 				var w DictWord
-				w = dictionary.dict_words[offset]
+				w = dict.dict_words[offset]
 				offset++
 				var l uint = uint(w.len) & 0x1F
-				var n uint = uint(1) << dictionary.words.size_bits_by_length[l]
+				var n uint = uint(1) << dict.words.size_bits_by_length[l]
 				var id uint = uint(w.idx)
 				end = !(w.len&0x80 == 0)
 				w.len = byte(l)
-				if w.transform == 0 && IsMatch(dictionary.words, w, data[5:], max_length-5) {
+				if w.transform == 0 && IsMatch(dict.words, w, data[5:], max_length-5) {
 					var tmp int
 					if data[0] == ' ' {
 						tmp = 41

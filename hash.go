@@ -18,31 +18,31 @@ import (
  * HasherHandle by value.
  *
  * Typically hasher data consists of 3 sections:
- * * HasherCommon structure
+ * * hasherCommon structure
  * * private structured hasher data, depending on hasher type
  * * private dynamic hasher data, depending on hasher type and parameters
  *
  */
-type HasherCommon struct {
-	params           BrotliHasherParams
+type hasherCommon struct {
+	params           hasherParams
 	is_prepared_     bool
 	dict_num_lookups uint
 	dict_num_matches uint
 }
 
-func (h *HasherCommon) Common() *HasherCommon {
+func (h *hasherCommon) Common() *hasherCommon {
 	return h
 }
 
-type HasherHandle interface {
-	Common() *HasherCommon
-	Initialize(params *BrotliEncoderParams)
+type hasherHandle interface {
+	Common() *hasherCommon
+	Initialize(params *encoderParams)
 	Prepare(one_shot bool, input_size uint, data []byte)
 	StitchToPreviousBlock(num_bytes uint, position uint, ringbuffer []byte, ringbuffer_mask uint)
 	HashTypeLength() uint
 	StoreLookahead() uint
 	PrepareDistanceCache(distance_cache []int)
-	FindLongestMatch(dictionary *BrotliEncoderDictionary, data []byte, ring_buffer_mask uint, distance_cache []int, cur_ix uint, max_length uint, max_backward uint, gap uint, max_distance uint, out *HasherSearchResult)
+	FindLongestMatch(dictionary *encoderDictionary, data []byte, ring_buffer_mask uint, distance_cache []int, cur_ix uint, max_length uint, max_backward uint, gap uint, max_distance uint, out *hasherSearchResult)
 	StoreRange(data []byte, mask uint, ix_start uint, ix_end uint)
 	Store(data []byte, mask uint, ix uint)
 }
@@ -55,7 +55,7 @@ var kCutoffTransformsCount uint32 = 10
 /* 0+0, 4+8, 8+19, 12+11, 16+26, 20+43, 24+32, 28+20, 32+27, 36+28 */
 var kCutoffTransforms uint64 = 0x071B520ADA2D3200
 
-type HasherSearchResult struct {
+type hasherSearchResult struct {
 	len            uint
 	distance       uint
 	score          uint
@@ -74,7 +74,7 @@ var kHashMul64 uint64 = 0x1E35A7BD1E35A7BD
 
 var kHashMul64Long uint64 = 0x1FE35A7BD3579BD3
 
-func Hash14(data []byte) uint32 {
+func hash14(data []byte) uint32 {
 	var h uint32 = binary.LittleEndian.Uint32(data) * kHashMul32
 
 	/* The higher bits contain more mixture from the multiplication,
@@ -82,7 +82,7 @@ func Hash14(data []byte) uint32 {
 	return h >> (32 - 14)
 }
 
-func PrepareDistanceCache(distance_cache []int, num_distances int) {
+func prepareDistanceCache(distance_cache []int, num_distances int) {
 	if num_distances > 4 {
 		var last_distance int = distance_cache[0]
 		distance_cache[4] = last_distance - 1
@@ -103,12 +103,12 @@ func PrepareDistanceCache(distance_cache []int, num_distances int) {
 	}
 }
 
-const BROTLI_LITERAL_BYTE_SCORE = 135
+const literalByteScore = 135
 
-const BROTLI_DISTANCE_BIT_PENALTY = 30
+const distanceBitPenalty = 30
 
 /* Score must be positive after applying maximal penalty. */
-const BROTLI_SCORE_BASE = (BROTLI_DISTANCE_BIT_PENALTY * 8 * 8)
+const scoreBase = (distanceBitPenalty * 8 * 8)
 
 /* Usually, we always choose the longest backward reference. This function
    allows for the exception of that rule.
@@ -126,19 +126,19 @@ const BROTLI_SCORE_BASE = (BROTLI_DISTANCE_BIT_PENALTY * 8 * 8)
    than the saved literals.
 
    backward_reference_offset MUST be positive. */
-func BackwardReferenceScore(copy_length uint, backward_reference_offset uint) uint {
-	return BROTLI_SCORE_BASE + BROTLI_LITERAL_BYTE_SCORE*uint(copy_length) - BROTLI_DISTANCE_BIT_PENALTY*uint(Log2FloorNonZero(backward_reference_offset))
+func backwardReferenceScore(copy_length uint, backward_reference_offset uint) uint {
+	return scoreBase + literalByteScore*uint(copy_length) - distanceBitPenalty*uint(log2FloorNonZero(backward_reference_offset))
 }
 
-func BackwardReferenceScoreUsingLastDistance(copy_length uint) uint {
-	return BROTLI_LITERAL_BYTE_SCORE*uint(copy_length) + BROTLI_SCORE_BASE + 15
+func backwardReferenceScoreUsingLastDistance(copy_length uint) uint {
+	return literalByteScore*uint(copy_length) + scoreBase + 15
 }
 
-func BackwardReferencePenaltyUsingLastDistance(distance_short_code uint) uint {
+func backwardReferencePenaltyUsingLastDistance(distance_short_code uint) uint {
 	return uint(39) + ((0x1CA10 >> (distance_short_code & 0xE)) & 0xE)
 }
 
-func TestStaticDictionaryItem(dictionary *BrotliEncoderDictionary, item uint, data []byte, max_length uint, max_backward uint, max_distance uint, out *HasherSearchResult) bool {
+func testStaticDictionaryItem(dictionary *encoderDictionary, item uint, data []byte, max_length uint, max_backward uint, max_distance uint, out *hasherSearchResult) bool {
 	var len uint
 	var word_idx uint
 	var offset uint
@@ -152,7 +152,7 @@ func TestStaticDictionaryItem(dictionary *BrotliEncoderDictionary, item uint, da
 		return false
 	}
 
-	matchlen = FindMatchLengthWithLimit(data, dictionary.words.data[offset:], uint(len))
+	matchlen = findMatchLengthWithLimit(data, dictionary.words.data[offset:], uint(len))
 	if matchlen+uint(dictionary.cutoffTransformsCount) <= len || matchlen == 0 {
 		return false
 	}
@@ -166,7 +166,7 @@ func TestStaticDictionaryItem(dictionary *BrotliEncoderDictionary, item uint, da
 		return false
 	}
 
-	score = BackwardReferenceScore(matchlen, backward)
+	score = backwardReferenceScore(matchlen, backward)
 	if score < out.score {
 		return false
 	}
@@ -178,15 +178,15 @@ func TestStaticDictionaryItem(dictionary *BrotliEncoderDictionary, item uint, da
 	return true
 }
 
-func SearchInStaticDictionary(dictionary *BrotliEncoderDictionary, handle HasherHandle, data []byte, max_length uint, max_backward uint, max_distance uint, out *HasherSearchResult, shallow bool) {
+func searchInStaticDictionary(dictionary *encoderDictionary, handle hasherHandle, data []byte, max_length uint, max_backward uint, max_distance uint, out *hasherSearchResult, shallow bool) {
 	var key uint
 	var i uint
-	var self *HasherCommon = handle.Common()
+	var self *hasherCommon = handle.Common()
 	if self.dict_num_matches < self.dict_num_lookups>>7 {
 		return
 	}
 
-	key = uint(Hash14(data) << 1)
+	key = uint(hash14(data) << 1)
 	for i = 0; ; (func() { i++; key++ })() {
 		var tmp uint
 		if shallow {
@@ -200,7 +200,7 @@ func SearchInStaticDictionary(dictionary *BrotliEncoderDictionary, handle Hasher
 		var item uint = uint(dictionary.hash_table[key])
 		self.dict_num_lookups++
 		if item != 0 {
-			var item_matches bool = TestStaticDictionaryItem(dictionary, item, data, max_length, max_backward, max_distance, out)
+			var item_matches bool = testStaticDictionaryItem(dictionary, item, data, max_length, max_backward, max_distance, out)
 			if item_matches {
 				self.dict_num_matches++
 			}
@@ -208,17 +208,17 @@ func SearchInStaticDictionary(dictionary *BrotliEncoderDictionary, handle Hasher
 	}
 }
 
-type BackwardMatch struct {
+type backwardMatch struct {
 	distance        uint32
 	length_and_code uint32
 }
 
-func InitBackwardMatch(self *BackwardMatch, dist uint, len uint) {
+func initBackwardMatch(self *backwardMatch, dist uint, len uint) {
 	self.distance = uint32(dist)
 	self.length_and_code = uint32(len << 5)
 }
 
-func InitDictionaryBackwardMatch(self *BackwardMatch, dist uint, len uint, len_code uint) {
+func initDictionaryBackwardMatch(self *backwardMatch, dist uint, len uint, len_code uint) {
 	self.distance = uint32(dist)
 	var tmp uint
 	if len == len_code {
@@ -229,34 +229,27 @@ func InitDictionaryBackwardMatch(self *BackwardMatch, dist uint, len uint, len_c
 	self.length_and_code = uint32(len<<5 | tmp)
 }
 
-func BackwardMatchLength(self *BackwardMatch) uint {
+func backwardMatchLength(self *backwardMatch) uint {
 	return uint(self.length_and_code >> 5)
 }
 
-func BackwardMatchLengthCode(self *BackwardMatch) uint {
+func backwardMatchLengthCode(self *backwardMatch) uint {
 	var code uint = uint(self.length_and_code) & 31
 	if code != 0 {
 		return code
 	} else {
-		return BackwardMatchLength(self)
+		return backwardMatchLength(self)
 	}
 }
 
-func DestroyHasher(handle *HasherHandle) {
-	if *handle == nil {
-		return
-	}
-	*handle = nil
-}
-
-func HasherReset(handle HasherHandle) {
+func hasherReset(handle hasherHandle) {
 	if handle == nil {
 		return
 	}
 	handle.Common().is_prepared_ = false
 }
 
-func newHasher(typ int) HasherHandle {
+func newHasher(typ int) hasherHandle {
 	switch typ {
 	case 2:
 		return &hashLongestMatchQuickly{
@@ -280,11 +273,11 @@ func newHasher(typ int) HasherHandle {
 			useDictionary: true,
 		}
 	case 5:
-		return new(H5)
+		return new(h5)
 	case 6:
-		return new(H6)
+		return new(h6)
 	case 10:
-		return new(H10)
+		return new(h10)
 	case 35:
 		return &hashComposite{
 			ha: newHasher(3),
@@ -333,9 +326,9 @@ func newHasher(typ int) HasherHandle {
 	panic(fmt.Sprintf("unknown hasher type: %d", typ))
 }
 
-func HasherSetup(handle *HasherHandle, params *BrotliEncoderParams, data []byte, position uint, input_size uint, is_last bool) {
-	var self HasherHandle = nil
-	var common *HasherCommon = nil
+func hasherSetup(handle *hasherHandle, params *encoderParams, data []byte, position uint, input_size uint, is_last bool) {
+	var self hasherHandle = nil
+	var common *hasherCommon = nil
 	var one_shot bool = (position == 0 && is_last)
 	if *handle == nil {
 		ChooseHasher(params, &params.hasher)
@@ -361,9 +354,9 @@ func HasherSetup(handle *HasherHandle, params *BrotliEncoderParams, data []byte,
 	}
 }
 
-func InitOrStitchToPreviousBlock(handle *HasherHandle, data []byte, mask uint, params *BrotliEncoderParams, position uint, input_size uint, is_last bool) {
-	var self HasherHandle
-	HasherSetup(handle, params, data, position, input_size, is_last)
+func initOrStitchToPreviousBlock(handle *hasherHandle, data []byte, mask uint, params *encoderParams, position uint, input_size uint, is_last bool) {
+	var self hasherHandle
+	hasherSetup(handle, params, data, position, input_size, is_last)
 	self = *handle
 	self.StitchToPreviousBlock(input_size, position, data, mask)
 }

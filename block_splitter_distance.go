@@ -6,11 +6,11 @@ package brotli
    Distributed under MIT license.
    See file LICENSE for detail or copy at https://opensource.org/licenses/MIT
 */
-func initialEntropyCodesDistance(data []uint16, length uint, stride uint, num_histograms uint, histograms []HistogramDistance) {
+func initialEntropyCodesDistance(data []uint16, length uint, stride uint, num_histograms uint, histograms []histogramDistance) {
 	var seed uint32 = 7
 	var block_length uint = length / num_histograms
 	var i uint
-	ClearHistogramsDistance(histograms, num_histograms)
+	clearHistogramsDistance(histograms, num_histograms)
 	for i = 0; i < num_histograms; i++ {
 		var pos uint = length * i / num_histograms
 		if i != 0 {
@@ -21,11 +21,11 @@ func initialEntropyCodesDistance(data []uint16, length uint, stride uint, num_hi
 			pos = length - stride - 1
 		}
 
-		HistogramAddVectorDistance(&histograms[i], data[pos:], stride)
+		histogramAddVectorDistance(&histograms[i], data[pos:], stride)
 	}
 }
 
-func randomSampleDistance(seed *uint32, data []uint16, length uint, stride uint, sample *HistogramDistance) {
+func randomSampleDistance(seed *uint32, data []uint16, length uint, stride uint, sample *histogramDistance) {
 	var pos uint = 0
 	if stride >= length {
 		stride = length
@@ -33,27 +33,27 @@ func randomSampleDistance(seed *uint32, data []uint16, length uint, stride uint,
 		pos = uint(myRand(seed) % uint32(length-stride+1))
 	}
 
-	HistogramAddVectorDistance(sample, data[pos:], stride)
+	histogramAddVectorDistance(sample, data[pos:], stride)
 }
 
-func refineEntropyCodesDistance(data []uint16, length uint, stride uint, num_histograms uint, histograms []HistogramDistance) {
+func refineEntropyCodesDistance(data []uint16, length uint, stride uint, num_histograms uint, histograms []histogramDistance) {
 	var iters uint = kIterMulForRefining*length/stride + kMinItersForRefining
 	var seed uint32 = 7
 	var iter uint
 	iters = ((iters + num_histograms - 1) / num_histograms) * num_histograms
 	for iter = 0; iter < iters; iter++ {
-		var sample HistogramDistance
-		HistogramClearDistance(&sample)
+		var sample histogramDistance
+		histogramClearDistance(&sample)
 		randomSampleDistance(&seed, data, length, stride, &sample)
-		HistogramAddHistogramDistance(&histograms[iter%num_histograms], &sample)
+		histogramAddHistogramDistance(&histograms[iter%num_histograms], &sample)
 	}
 }
 
 /* Assigns a block id from the range [0, num_histograms) to each data element
    in data[0..length) and fills in block_id[0..length) with the assigned values.
    Returns the number of blocks, i.e. one plus the number of block switches. */
-func findBlocksDistance(data []uint16, length uint, block_switch_bitcost float64, num_histograms uint, histograms []HistogramDistance, insert_cost []float64, cost []float64, switch_signal []byte, block_id []byte) uint {
-	var data_size uint = HistogramDataSizeDistance()
+func findBlocksDistance(data []uint16, length uint, block_switch_bitcost float64, num_histograms uint, histograms []histogramDistance, insert_cost []float64, cost []float64, switch_signal []byte, block_id []byte) uint {
+	var data_size uint = histogramDataSizeDistance()
 	var bitmaplen uint = (num_histograms + 7) >> 3
 	var num_blocks uint = 1
 	var i uint
@@ -71,7 +71,7 @@ func findBlocksDistance(data []uint16, length uint, block_switch_bitcost float64
 		insert_cost[i] = 0
 	}
 	for i = 0; i < num_histograms; i++ {
-		insert_cost[i] = FastLog2(uint(uint32(histograms[i].total_count_)))
+		insert_cost[i] = fastLog2(uint(uint32(histograms[i].total_count_)))
 	}
 
 	for i = data_size; i != 0; {
@@ -176,11 +176,11 @@ func remapBlockIdsDistance(block_ids []byte, length uint, new_id []uint16, num_h
 	return uint(next_id)
 }
 
-func buildBlockHistogramsDistance(data []uint16, length uint, block_ids []byte, num_histograms uint, histograms []HistogramDistance) {
+func buildBlockHistogramsDistance(data []uint16, length uint, block_ids []byte, num_histograms uint, histograms []histogramDistance) {
 	var i uint
-	ClearHistogramsDistance(histograms, num_histograms)
+	clearHistogramsDistance(histograms, num_histograms)
 	for i = 0; i < length; i++ {
-		HistogramAddDistance(&histograms[block_ids[i]], uint(data[i]))
+		histogramAddDistance(&histograms[block_ids[i]], uint(data[i]))
 	}
 }
 
@@ -192,12 +192,12 @@ func clusterBlocksDistance(data []uint16, length uint, num_blocks uint, block_id
 	var expected_num_clusters uint = clustersPerBatch * (num_blocks + histogramsPerBatch - 1) / histogramsPerBatch
 	var all_histograms_size uint = 0
 	var all_histograms_capacity uint = expected_num_clusters
-	var all_histograms []HistogramDistance = make([]HistogramDistance, all_histograms_capacity)
+	var all_histograms []histogramDistance = make([]histogramDistance, all_histograms_capacity)
 	var cluster_size_size uint = 0
 	var cluster_size_capacity uint = expected_num_clusters
 	var cluster_size []uint32 = make([]uint32, cluster_size_capacity)
 	var num_clusters uint = 0
-	var histograms []HistogramDistance = make([]HistogramDistance, brotli_min_size_t(num_blocks, histogramsPerBatch))
+	var histograms []histogramDistance = make([]histogramDistance, brotli_min_size_t(num_blocks, histogramsPerBatch))
 	var max_num_pairs uint = histogramsPerBatch * histogramsPerBatch / 2
 	var pairs_capacity uint = max_num_pairs + 1
 	var pairs []histogramPair = make([]histogramPair, pairs_capacity)
@@ -233,9 +233,9 @@ func clusterBlocksDistance(data []uint16, length uint, num_blocks uint, block_id
 		var j uint
 		for j = 0; j < num_to_combine; j++ {
 			var k uint
-			HistogramClearDistance(&histograms[j])
+			histogramClearDistance(&histograms[j])
 			for k = 0; uint32(k) < block_lengths[i+j]; k++ {
-				HistogramAddDistance(&histograms[j], uint(data[pos]))
+				histogramAddDistance(&histograms[j], uint(data[pos]))
 				pos++
 			}
 
@@ -253,11 +253,11 @@ func clusterBlocksDistance(data []uint16, length uint, num_blocks uint, block_id
 			} else {
 				_new_size = all_histograms_capacity
 			}
-			var new_array []HistogramDistance
+			var new_array []histogramDistance
 			for _new_size < (all_histograms_size + num_new_clusters) {
 				_new_size *= 2
 			}
-			new_array = make([]HistogramDistance, _new_size)
+			new_array = make([]histogramDistance, _new_size)
 			if all_histograms_capacity != 0 {
 				copy(new_array, all_histograms[:all_histograms_capacity])
 			}
@@ -309,13 +309,13 @@ func clusterBlocksDistance(data []uint16, length uint, num_blocks uint, block_id
 	{
 		var next_index uint32 = 0
 		for i = 0; i < num_blocks; i++ {
-			var histo HistogramDistance
+			var histo histogramDistance
 			var j uint
 			var best_out uint32
 			var best_bits float64
-			HistogramClearDistance(&histo)
+			histogramClearDistance(&histo)
 			for j = 0; uint32(j) < block_lengths[i]; j++ {
-				HistogramAddDistance(&histo, uint(data[pos]))
+				histogramAddDistance(&histo, uint(data[pos]))
 				pos++
 			}
 
@@ -370,10 +370,10 @@ func clusterBlocksDistance(data []uint16, length uint, num_blocks uint, block_id
 	histogram_symbols = nil
 }
 
-func splitByteVectorDistance(data []uint16, length uint, literals_per_histogram uint, max_histograms uint, sampling_stride_length uint, block_switch_cost float64, params *BrotliEncoderParams, split *blockSplit) {
-	var data_size uint = HistogramDataSizeDistance()
+func splitByteVectorDistance(data []uint16, length uint, literals_per_histogram uint, max_histograms uint, sampling_stride_length uint, block_switch_cost float64, params *encoderParams, split *blockSplit) {
+	var data_size uint = histogramDataSizeDistance()
 	var num_histograms uint = length/literals_per_histogram + 1
-	var histograms []HistogramDistance
+	var histograms []histogramDistance
 	if num_histograms > max_histograms {
 		num_histograms = max_histograms
 	}
@@ -391,7 +391,7 @@ func splitByteVectorDistance(data []uint16, length uint, literals_per_histogram 
 		return
 	}
 
-	histograms = make([]HistogramDistance, num_histograms)
+	histograms = make([]histogramDistance, num_histograms)
 
 	/* Find good entropy codes. */
 	initialEntropyCodesDistance(data, length, sampling_stride_length, num_histograms, histograms)

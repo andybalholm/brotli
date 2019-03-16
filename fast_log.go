@@ -29,7 +29,7 @@ import "math"
 */
 
 /* Utilities for fast computation of logarithms. */
-func Log2FloorNonZero(n uint) uint32 {
+func log2FloorNonZero(n uint) uint32 {
 	/* TODO: generalize and move to platform.h */
 	var result uint32 = 0
 	for {
@@ -305,10 +305,8 @@ var kLog2Table = []float32{
 	7.9943534368588578,
 }
 
-const LOG_2_INV = 1.4426950408889634
-
 /* Faster logarithm for small integers, with the property of log2(0) == 0. */
-func FastLog2(v uint) float64 {
+func fastLog2(v uint) float64 {
 	if v < uint(len(kLog2Table)) {
 		return float64(kLog2Table[v])
 	}

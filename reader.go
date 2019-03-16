@@ -8,7 +8,7 @@ import (
 type decodeError int
 
 func (err decodeError) Error() string {
-	return "brotli: " + string(BrotliDecoderErrorString(int(err)))
+	return "brotli: " + string(decoderErrorString(int(err)))
 }
 
 var errExcessiveInput = errors.New("brotli: excessive input")
@@ -30,7 +30,7 @@ func NewReader(src io.Reader) *Reader {
 }
 
 func (r *Reader) Read(p []byte) (n int, err error) {
-	if !BrotliDecoderHasMoreOutput(r) && len(r.in) == 0 {
+	if !decoderHasMoreOutput(r) && len(r.in) == 0 {
 		m, readErr := r.src.Read(r.buf)
 		if m == 0 {
 			// If readErr is `nil`, we just proxy underlying stream behavior.
@@ -49,24 +49,24 @@ func (r *Reader) Read(p []byte) (n int, err error) {
 		out_len := uint(len(p))
 		in_remaining := in_len
 		out_remaining := out_len
-		result := BrotliDecoderDecompressStream(r, &in_remaining, &r.in, &out_remaining, &p)
+		result := decoderDecompressStream(r, &in_remaining, &r.in, &out_remaining, &p)
 		written = out_len - out_remaining
 		n = int(written)
 
 		switch result {
-		case BROTLI_DECODER_RESULT_SUCCESS:
+		case decoderResultSuccess:
 			if len(r.in) > 0 {
 				return n, errExcessiveInput
 			}
 			return n, nil
-		case BROTLI_DECODER_RESULT_ERROR:
-			return n, decodeError(BrotliDecoderGetErrorCode(r))
-		case BROTLI_DECODER_RESULT_NEEDS_MORE_OUTPUT:
+		case decoderResultError:
+			return n, decodeError(decoderGetErrorCode(r))
+		case decoderResultNeedsMoreOutput:
 			if n == 0 {
 				return 0, io.ErrShortBuffer
 			}
 			return n, nil
-		case BROTLI_DECODER_NEEDS_MORE_INPUT:
+		case decoderNeedsMoreInput:
 		}
 
 		if len(r.in) != 0 {

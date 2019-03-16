@@ -115,15 +115,15 @@ type Reader struct {
 	sub_loop_counter            uint32
 	ringbuffer                  []byte
 	ringbuffer_end              []byte
-	htree_command               []HuffmanCode
+	htree_command               []huffmanCode
 	context_lookup              []byte
 	context_map_slice           []byte
 	dist_context_map_slice      []byte
-	literal_hgroup              HuffmanTreeGroup
-	insert_copy_hgroup          HuffmanTreeGroup
-	distance_hgroup             HuffmanTreeGroup
-	block_type_trees            []HuffmanCode
-	block_len_trees             []HuffmanCode
+	literal_hgroup              huffmanTreeGroup
+	insert_copy_hgroup          huffmanTreeGroup
+	distance_hgroup             huffmanTreeGroup
+	block_type_trees            []huffmanCode
+	block_len_trees             []huffmanCode
 	trivial_literal_context     int
 	distance_context            int
 	meta_block_remaining_len    int
@@ -136,7 +136,7 @@ type Reader struct {
 	distance_postfix_mask       int
 	num_dist_htrees             uint32
 	dist_context_map            []byte
-	literal_htree               []HuffmanCode
+	literal_htree               []huffmanCode
 	dist_htree_index            byte
 	repeat_code_len             uint32
 	prev_code_len               uint32
@@ -147,18 +147,18 @@ type Reader struct {
 	symbol                      uint32
 	repeat                      uint32
 	space                       uint32
-	table                       [32]HuffmanCode
+	table                       [32]huffmanCode
 	symbol_lists                SymbolList
-	symbols_lists_array         [BROTLI_HUFFMAN_MAX_CODE_LENGTH + 1 + numCommandSymbols]uint16
+	symbols_lists_array         [huffmanMaxCodeLength + 1 + numCommandSymbols]uint16
 	next_symbol                 [32]int
 	code_length_code_lengths    [codeLengthCodes]byte
 	code_length_histo           [16]uint16
 	htree_index                 int
-	next                        []HuffmanCode
+	next                        []huffmanCode
 	context_index               uint32
 	max_run_length_prefix       uint32
 	code                        uint32
-	context_map_table           [BROTLI_HUFFMAN_MAX_SIZE_272]HuffmanCode
+	context_map_table           [huffmanMaxSize272]huffmanCode
 	substate_metablock_header   int
 	substate_tree_group         int
 	substate_context_map        int
@@ -178,7 +178,7 @@ type Reader struct {
 	num_literal_htrees          uint32
 	context_map                 []byte
 	context_modes               []byte
-	dictionary                  *BrotliDictionary
+	dictionary                  *dictionary
 	transforms                  *BrotliTransforms
 	trivial_literal_contexts    [8]uint32
 }
@@ -242,9 +242,9 @@ func BrotliDecoderStateInit(s *Reader) bool {
 	s.block_len_trees = nil
 
 	s.symbol_lists.storage = s.symbols_lists_array[:]
-	s.symbol_lists.offset = BROTLI_HUFFMAN_MAX_CODE_LENGTH + 1
+	s.symbol_lists.offset = huffmanMaxCodeLength + 1
 
-	s.dictionary = BrotliGetDictionary()
+	s.dictionary = getDictionary()
 	s.transforms = BrotliGetTransforms()
 
 	return true
@@ -296,12 +296,12 @@ func BrotliDecoderStateCleanup(s *Reader) {
 	s.block_type_trees = nil
 }
 
-func BrotliDecoderHuffmanTreeGroupInit(s *Reader, group *HuffmanTreeGroup, alphabet_size uint32, max_symbol uint32, ntrees uint32) bool {
+func BrotliDecoderHuffmanTreeGroupInit(s *Reader, group *huffmanTreeGroup, alphabet_size uint32, max_symbol uint32, ntrees uint32) bool {
 	var max_table_size uint = uint(kMaxHuffmanTableSize[(alphabet_size+31)>>5])
 	group.alphabet_size = uint16(alphabet_size)
 	group.max_symbol = uint16(max_symbol)
 	group.num_htrees = uint16(ntrees)
-	group.htrees = make([][]HuffmanCode, ntrees)
-	group.codes = make([]HuffmanCode, (uint(ntrees) * max_table_size))
+	group.htrees = make([][]huffmanCode, ntrees)
+	group.codes = make([]huffmanCode, (uint(ntrees) * max_table_size))
 	return !(group.codes == nil)
 }

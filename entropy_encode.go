@@ -16,13 +16,13 @@ package brotli
 /* Entropy encoding (Huffman) utilities. */
 
 /* A node of a Huffman tree. */
-type HuffmanTree struct {
+type huffmanTree struct {
 	total_count_          uint32
 	index_left_           int16
 	index_right_or_value_ int16
 }
 
-func InitHuffmanTree(self *HuffmanTree, count uint32, left int16, right int16) {
+func initHuffmanTree(self *huffmanTree, count uint32, left int16, right int16) {
 	self.total_count_ = count
 	self.index_left_ = left
 	self.index_right_or_value_ = right
@@ -58,16 +58,16 @@ func InitHuffmanTree(self *HuffmanTree, count uint32, left int16, right int16) {
 /* Get the actual bit values for a tree of bit depths. */
 
 /* Input size optimized Shell sort. */
-type HuffmanTreeComparator func(*HuffmanTree, *HuffmanTree) bool
+type huffmanTreeComparator func(*huffmanTree, *huffmanTree) bool
 
-var SortHuffmanTreeItems_gaps = []uint{132, 57, 23, 10, 4, 1}
+var sortHuffmanTreeItems_gaps = []uint{132, 57, 23, 10, 4, 1}
 
-func SortHuffmanTreeItems(items []HuffmanTree, n uint, comparator HuffmanTreeComparator) {
+func sortHuffmanTreeItems(items []huffmanTree, n uint, comparator huffmanTreeComparator) {
 	if n < 13 {
 		/* Insertion sort. */
 		var i uint
 		for i = 1; i < n; i++ {
-			var tmp HuffmanTree = items[i]
+			var tmp huffmanTree = items[i]
 			var k uint = i
 			var j uint = i - 1
 			for comparator(&tmp, &items[j]) {
@@ -92,11 +92,11 @@ func SortHuffmanTreeItems(items []HuffmanTree, n uint, comparator HuffmanTreeCom
 			g = 0
 		}
 		for ; g < 6; g++ {
-			var gap uint = SortHuffmanTreeItems_gaps[g]
+			var gap uint = sortHuffmanTreeItems_gaps[g]
 			var i uint
 			for i = gap; i < n; i++ {
 				var j uint = i
-				var tmp HuffmanTree = items[i]
+				var tmp huffmanTree = items[i]
 				for ; j >= gap && comparator(&tmp, &items[j-gap]); j -= gap {
 					items[j] = items[j-gap]
 				}
@@ -107,7 +107,7 @@ func SortHuffmanTreeItems(items []HuffmanTree, n uint, comparator HuffmanTreeCom
 	}
 }
 
-func BrotliSetDepth(p0 int, pool []HuffmanTree, depth []byte, max_depth int) bool {
+func setDepth(p0 int, pool []huffmanTree, depth []byte, max_depth int) bool {
 	var stack [16]int
 	var level int = 0
 	var p int = p0
@@ -138,7 +138,7 @@ func BrotliSetDepth(p0 int, pool []HuffmanTree, depth []byte, max_depth int) boo
 }
 
 /* Sort the root nodes, least popular first. */
-func SortHuffmanTree(v0 *HuffmanTree, v1 *HuffmanTree) bool {
+func sortHuffmanTree(v0 *huffmanTree, v1 *huffmanTree) bool {
 	if v0.total_count_ != v1.total_count_ {
 		return v0.total_count_ < v1.total_count_
 	}
@@ -161,10 +161,10 @@ func SortHuffmanTree(v0 *HuffmanTree, v1 *HuffmanTree) bool {
    we are not planning to use this with extremely long blocks.
 
    See http://en.wikipedia.org/wiki/Huffman_coding */
-func BrotliCreateHuffmanTree(data []uint32, length uint, tree_limit int, tree []HuffmanTree, depth []byte) {
+func createHuffmanTree(data []uint32, length uint, tree_limit int, tree []huffmanTree, depth []byte) {
 	var count_limit uint32
-	var sentinel HuffmanTree
-	InitHuffmanTree(&sentinel, BROTLI_UINT32_MAX, -1, -1)
+	var sentinel huffmanTree
+	initHuffmanTree(&sentinel, BROTLI_UINT32_MAX, -1, -1)
 
 	/* For block sizes below 64 kB, we never need to do a second iteration
 	   of this loop. Probably all of our block sizes will be smaller than
@@ -179,7 +179,7 @@ func BrotliCreateHuffmanTree(data []uint32, length uint, tree_limit int, tree []
 			i--
 			if data[i] != 0 {
 				var count uint32 = brotli_max_uint32_t(data[i], count_limit)
-				InitHuffmanTree(&tree[n], count, -1, int16(i))
+				initHuffmanTree(&tree[n], count, -1, int16(i))
 				n++
 			}
 		}
@@ -189,7 +189,7 @@ func BrotliCreateHuffmanTree(data []uint32, length uint, tree_limit int, tree []
 			break
 		}
 
-		SortHuffmanTreeItems(tree, n, HuffmanTreeComparator(SortHuffmanTree))
+		sortHuffmanTreeItems(tree, n, huffmanTreeComparator(sortHuffmanTree))
 
 		/* The nodes are:
 		   [0, n): the sorted leaf nodes that we start with.
@@ -234,7 +234,7 @@ func BrotliCreateHuffmanTree(data []uint32, length uint, tree_limit int, tree []
 			}
 		}
 
-		if BrotliSetDepth(int(2*n-1), tree[0:], depth, tree_limit) {
+		if setDepth(int(2*n-1), tree[0:], depth, tree_limit) {
 			/* We need to pack the Huffman tree in tree_limit bits. If this was not
 			   successful, add fake entities to the lowest values and retry. */
 			break
@@ -242,7 +242,7 @@ func BrotliCreateHuffmanTree(data []uint32, length uint, tree_limit int, tree []
 	}
 }
 
-func Reverse(v []byte, start uint, end uint) {
+func reverse(v []byte, start uint, end uint) {
 	end--
 	for start < end {
 		var tmp byte = v[start]
@@ -253,7 +253,7 @@ func Reverse(v []byte, start uint, end uint) {
 	}
 }
 
-func BrotliWriteHuffmanTreeRepetitions(previous_value byte, value byte, repetitions uint, tree_size *uint, tree []byte, extra_bits_data []byte) {
+func writeHuffmanTreeRepetitions(previous_value byte, value byte, repetitions uint, tree_size *uint, tree []byte, extra_bits_data []byte) {
 	assert(repetitions > 0)
 	if previous_value != value {
 		tree[*tree_size] = value
@@ -291,12 +291,12 @@ func BrotliWriteHuffmanTreeRepetitions(previous_value byte, value byte, repetiti
 			repetitions--
 		}
 
-		Reverse(tree, start, *tree_size)
-		Reverse(extra_bits_data, start, *tree_size)
+		reverse(tree, start, *tree_size)
+		reverse(extra_bits_data, start, *tree_size)
 	}
 }
 
-func BrotliWriteHuffmanTreeRepetitionsZeros(repetitions uint, tree_size *uint, tree []byte, extra_bits_data []byte) {
+func writeHuffmanTreeRepetitionsZeros(repetitions uint, tree_size *uint, tree []byte, extra_bits_data []byte) {
 	if repetitions == 11 {
 		tree[*tree_size] = 0
 		extra_bits_data[*tree_size] = 0
@@ -326,12 +326,12 @@ func BrotliWriteHuffmanTreeRepetitionsZeros(repetitions uint, tree_size *uint, t
 			repetitions--
 		}
 
-		Reverse(tree, start, *tree_size)
-		Reverse(extra_bits_data, start, *tree_size)
+		reverse(tree, start, *tree_size)
+		reverse(extra_bits_data, start, *tree_size)
 	}
 }
 
-func BrotliOptimizeHuffmanCountsForRle(length uint, counts []uint32, good_for_rle []byte) {
+func optimizeHuffmanCountsForRLE(length uint, counts []uint32, good_for_rle []byte) {
 	var nonzero_count uint = 0
 	var stride uint
 	var limit uint
@@ -477,7 +477,7 @@ func BrotliOptimizeHuffmanCountsForRle(length uint, counts []uint32, good_for_rl
 	}
 }
 
-func DecideOverRleUse(depth []byte, length uint, use_rle_for_non_zero *bool, use_rle_for_zero *bool) {
+func decideOverRLEUse(depth []byte, length uint, use_rle_for_non_zero *bool, use_rle_for_zero *bool) {
 	var total_reps_zero uint = 0
 	var total_reps_non_zero uint = 0
 	var count_reps_zero uint = 1
@@ -508,7 +508,7 @@ func DecideOverRleUse(depth []byte, length uint, use_rle_for_non_zero *bool, use
 	*use_rle_for_zero = total_reps_zero > count_reps_zero*2
 }
 
-func BrotliWriteHuffmanTree(depth []byte, length uint, tree_size *uint, tree []byte, extra_bits_data []byte) {
+func writeHuffmanTree(depth []byte, length uint, tree_size *uint, tree []byte, extra_bits_data []byte) {
 	var previous_value byte = initialRepeatedCodeLength
 	var i uint
 	var use_rle_for_non_zero bool = false
@@ -527,7 +527,7 @@ func BrotliWriteHuffmanTree(depth []byte, length uint, tree_size *uint, tree []b
 	if length > 50 {
 		/* Find RLE coding for longer codes.
 		   Shorter codes seem not to benefit from RLE. */
-		DecideOverRleUse(depth, new_length, &use_rle_for_non_zero, &use_rle_for_zero)
+		decideOverRLEUse(depth, new_length, &use_rle_for_non_zero, &use_rle_for_zero)
 	}
 
 	/* Actual RLE coding. */
@@ -542,9 +542,9 @@ func BrotliWriteHuffmanTree(depth []byte, length uint, tree_size *uint, tree []b
 		}
 
 		if value == 0 {
-			BrotliWriteHuffmanTreeRepetitionsZeros(reps, tree_size, tree, extra_bits_data)
+			writeHuffmanTreeRepetitionsZeros(reps, tree_size, tree, extra_bits_data)
 		} else {
-			BrotliWriteHuffmanTreeRepetitions(previous_value, value, reps, tree_size, tree, extra_bits_data)
+			writeHuffmanTreeRepetitions(previous_value, value, reps, tree_size, tree, extra_bits_data)
 			previous_value = value
 		}
 
@@ -552,7 +552,7 @@ func BrotliWriteHuffmanTree(depth []byte, length uint, tree_size *uint, tree []b
 	}
 }
 
-var BrotliReverseBits_kLut = [16]uint{
+var reverseBits_kLut = [16]uint{
 	0x00,
 	0x08,
 	0x04,
@@ -571,13 +571,13 @@ var BrotliReverseBits_kLut = [16]uint{
 	0x0F,
 }
 
-func BrotliReverseBits(num_bits uint, bits uint16) uint16 {
-	var retval uint = BrotliReverseBits_kLut[bits&0x0F]
+func reverseBits(num_bits uint, bits uint16) uint16 {
+	var retval uint = reverseBits_kLut[bits&0x0F]
 	var i uint
 	for i = 4; i < num_bits; i += 4 {
 		retval <<= 4
 		bits = uint16(bits >> 4)
-		retval |= BrotliReverseBits_kLut[bits&0x0F]
+		retval |= reverseBits_kLut[bits&0x0F]
 	}
 
 	retval >>= ((0 - num_bits) & 0x03)
@@ -585,11 +585,11 @@ func BrotliReverseBits(num_bits uint, bits uint16) uint16 {
 }
 
 /* 0..15 are values for bits */
-const MAX_HUFFMAN_BITS = 16
+const maxHuffmanBits = 16
 
-func BrotliConvertBitDepthsToSymbols(depth []byte, len uint, bits []uint16) {
-	var bl_count = [MAX_HUFFMAN_BITS]uint16{0}
-	var next_code [MAX_HUFFMAN_BITS]uint16
+func convertBitDepthsToSymbols(depth []byte, len uint, bits []uint16) {
+	var bl_count = [maxHuffmanBits]uint16{0}
+	var next_code [maxHuffmanBits]uint16
 	var i uint
 	/* In Brotli, all bit depths are [1..15]
 	   0 bit depth means that the symbol does not exist. */
@@ -601,14 +601,14 @@ func BrotliConvertBitDepthsToSymbols(depth []byte, len uint, bits []uint16) {
 
 	bl_count[0] = 0
 	next_code[0] = 0
-	for i = 1; i < MAX_HUFFMAN_BITS; i++ {
+	for i = 1; i < maxHuffmanBits; i++ {
 		code = (code + int(bl_count[i-1])) << 1
 		next_code[i] = uint16(code)
 	}
 
 	for i = 0; i < len; i++ {
 		if depth[i] != 0 {
-			bits[i] = BrotliReverseBits(uint(depth[i]), next_code[depth[i]])
+			bits[i] = reverseBits(uint(depth[i]), next_code[depth[i]])
 			next_code[depth[i]]++
 		}
 	}

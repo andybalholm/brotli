@@ -22,70 +22,70 @@ import "io"
  */
 
 /** Minimal value for ::BROTLI_PARAM_LGWIN parameter. */
-const BROTLI_MIN_WINDOW_BITS = 10
+const minWindowBits = 10
 
 /**
  * Maximal value for ::BROTLI_PARAM_LGWIN parameter.
  *
  * @note equal to @c BROTLI_MAX_DISTANCE_BITS constant.
  */
-const BROTLI_MAX_WINDOW_BITS = 24
+const maxWindowBits = 24
 
 /**
  * Maximal value for ::BROTLI_PARAM_LGWIN parameter
  * in "Large Window Brotli" (32-bit).
  */
-const BROTLI_LARGE_MAX_WINDOW_BITS = 30
+const largeMaxWindowBits = 30
 
 /** Minimal value for ::BROTLI_PARAM_LGBLOCK parameter. */
-const BROTLI_MIN_INPUT_BLOCK_BITS = 16
+const minInputBlockBits = 16
 
 /** Maximal value for ::BROTLI_PARAM_LGBLOCK parameter. */
-const BROTLI_MAX_INPUT_BLOCK_BITS = 24
+const maxInputBlockBits = 24
 
 /** Minimal value for ::BROTLI_PARAM_QUALITY parameter. */
-const BROTLI_MIN_QUALITY = 0
+const minQuality = 0
 
 /** Maximal value for ::BROTLI_PARAM_QUALITY parameter. */
-const BROTLI_MAX_QUALITY = 11
+const maxQuality = 11
 
 /** Options for ::BROTLI_PARAM_MODE parameter. */
 const (
-	BROTLI_MODE_GENERIC = 0
-	BROTLI_MODE_TEXT    = 1
-	BROTLI_MODE_FONT    = 2
+	modeGeneric = 0
+	modeText    = 1
+	modeFont    = 2
 )
 
 /** Default value for ::BROTLI_PARAM_QUALITY parameter. */
-const BROTLI_DEFAULT_QUALITY = 11
+const defaultQuality = 11
 
 /** Default value for ::BROTLI_PARAM_LGWIN parameter. */
-const BROTLI_DEFAULT_WINDOW = 22
+const defaultWindow = 22
 
 /** Default value for ::BROTLI_PARAM_MODE parameter. */
-const BROTLI_DEFAULT_MODE = BROTLI_MODE_GENERIC
+const defaultMode = modeGeneric
 
 /** Operations that can be performed by streaming encoder. */
 const (
-	BROTLI_OPERATION_PROCESS       = 0
-	BROTLI_OPERATION_FLUSH         = 1
-	BROTLI_OPERATION_FINISH        = 2
-	BROTLI_OPERATION_EMIT_METADATA = 3
+	operationProcess      = 0
+	operationFlush        = 1
+	operationFinish       = 2
+	operationEmitMetadata = 3
 )
 
 const (
-	BROTLI_STREAM_PROCESSING      = 0
-	BROTLI_STREAM_FLUSH_REQUESTED = 1
-	BROTLI_STREAM_FINISHED        = 2
-	BROTLI_STREAM_METADATA_HEAD   = 3
-	BROTLI_STREAM_METADATA_BODY   = 4
+	streamProcessing     = 0
+	streamFlushRequested = 1
+	streamFinished       = 2
+	streamMetadataHead   = 3
+	streamMetadataBody   = 4
 )
 
 type Writer struct {
 	dst io.Writer
 
-	params              BrotliEncoderParams
-	hasher_             HasherHandle
+	params              encoderParams
+	hasher_             hasherHandle
 	input_pos_          uint64
 	ringbuffer_         RingBuffer
 	cmd_alloc_size_     uint
@@ -125,17 +125,17 @@ type Writer struct {
 	is_initialized_           bool
 }
 
-func InputBlockSize(s *Writer) uint {
+func inputBlockSize(s *Writer) uint {
 	return uint(1) << uint(s.params.lgblock)
 }
 
-func UnprocessedInputSize(s *Writer) uint64 {
+func unprocessedInputSize(s *Writer) uint64 {
 	return s.input_pos_ - s.last_processed_pos_
 }
 
-func RemainingInputBlockSize(s *Writer) uint {
-	var delta uint64 = UnprocessedInputSize(s)
-	var block_size uint = InputBlockSize(s)
+func remainingInputBlockSize(s *Writer) uint {
+	var delta uint64 = unprocessedInputSize(s)
+	var block_size uint = inputBlockSize(s)
 	if delta >= uint64(block_size) {
 		return 0
 	}
@@ -144,7 +144,7 @@ func RemainingInputBlockSize(s *Writer) uint {
 
 /* Wraps 64-bit input position to 32-bit ring-buffer position preserving
    "not-a-first-lap" feature. */
-func WrapPosition(position uint64) uint32 {
+func wrapPosition(position uint64) uint32 {
 	var result uint32 = uint32(position)
 	var gb uint64 = position >> 30
 	if gb > 2 {
@@ -155,7 +155,7 @@ func WrapPosition(position uint64) uint32 {
 	return result
 }
 
-func GetBrotliStorage(s *Writer, size uint) []byte {
+func getBrotliStorage(s *Writer, size uint) []byte {
 	if s.storage_size_ < size {
 		s.storage_ = nil
 		s.storage_ = make([]byte, size)
@@ -165,7 +165,7 @@ func GetBrotliStorage(s *Writer, size uint) []byte {
 	return s.storage_
 }
 
-func HashTableSize(max_table_size uint, input_size uint) uint {
+func hashTableSize(max_table_size uint, input_size uint) uint {
 	var htsize uint = 256
 	for htsize < max_table_size && htsize < input_size {
 		htsize <<= 1
@@ -174,9 +174,9 @@ func HashTableSize(max_table_size uint, input_size uint) uint {
 	return htsize
 }
 
-func GetHashTable(s *Writer, quality int, input_size uint, table_size *uint) []int {
+func getHashTable(s *Writer, quality int, input_size uint, table_size *uint) []int {
 	var max_table_size uint = MaxHashTableSize(quality)
-	var htsize uint = HashTableSize(max_table_size, input_size)
+	var htsize uint = hashTableSize(max_table_size, input_size)
 	/* Use smaller hash table when input.size() is smaller, since we
 	   fill the table, incurring O(hash table size) overhead for
 	   compression, and if the input is short, we won't need that
@@ -210,7 +210,7 @@ func GetHashTable(s *Writer, quality int, input_size uint, table_size *uint) []i
 	return table
 }
 
-func EncodeWindowBits(lgwin int, large_window bool, last_bytes *uint16, last_bytes_bits *byte) {
+func encodeWindowBits(lgwin int, large_window bool, last_bytes *uint16, last_bytes_bits *byte) {
 	if large_window {
 		*last_bytes = uint16((lgwin&0x3F)<<8 | 0x11)
 		*last_bytes_bits = 14
@@ -233,7 +233,7 @@ func EncodeWindowBits(lgwin int, large_window bool, last_bytes *uint16, last_byt
 
 /* Initializes the command and distance prefix codes for the first block. */
 
-var InitCommandPrefixCodes_kDefaultCommandDepths = [128]byte{
+var initCommandPrefixCodes_kDefaultCommandDepths = [128]byte{
 	0,
 	4,
 	4,
@@ -359,7 +359,7 @@ var InitCommandPrefixCodes_kDefaultCommandDepths = [128]byte{
 	12,
 	12,
 }
-var InitCommandPrefixCodes_kDefaultCommandBits = [128]uint16{
+var initCommandPrefixCodes_kDefaultCommandBits = [128]uint16{
 	0,
 	0,
 	8,
@@ -485,7 +485,7 @@ var InitCommandPrefixCodes_kDefaultCommandBits = [128]uint16{
 	2047,
 	4095,
 }
-var InitCommandPrefixCodes_kDefaultCommandCode = []byte{
+var initCommandPrefixCodes_kDefaultCommandCode = []byte{
 	0xff,
 	0x77,
 	0xd5,
@@ -544,17 +544,17 @@ var InitCommandPrefixCodes_kDefaultCommandCode = []byte{
 	0x04,
 	0x00,
 }
-var InitCommandPrefixCodes_kDefaultCommandCodeNumBits uint = 448
+var initCommandPrefixCodes_kDefaultCommandCodeNumBits uint = 448
 
-func InitCommandPrefixCodes(cmd_depths []byte, cmd_bits []uint16, cmd_code []byte, cmd_code_numbits *uint) {
-	copy(cmd_depths, InitCommandPrefixCodes_kDefaultCommandDepths[:])
-	copy(cmd_bits, InitCommandPrefixCodes_kDefaultCommandBits[:])
+func initCommandPrefixCodes(cmd_depths []byte, cmd_bits []uint16, cmd_code []byte, cmd_code_numbits *uint) {
+	copy(cmd_depths, initCommandPrefixCodes_kDefaultCommandDepths[:])
+	copy(cmd_bits, initCommandPrefixCodes_kDefaultCommandBits[:])
 
 	/* Initialize the pre-compressed form of the command and distance prefix
 	   codes. */
-	copy(cmd_code, InitCommandPrefixCodes_kDefaultCommandCode)
+	copy(cmd_code, initCommandPrefixCodes_kDefaultCommandCode)
 
-	*cmd_code_numbits = InitCommandPrefixCodes_kDefaultCommandCodeNumBits
+	*cmd_code_numbits = initCommandPrefixCodes_kDefaultCommandCodeNumBits
 }
 
 /* Decide about the context map based on the ability of the prediction
@@ -565,7 +565,7 @@ func InitCommandPrefixCodes(cmd_depths []byte, cmd_bits []uint16, cmd_code []byt
    BitsEntropy will assume that symbol to be stored alone using Huffman
    coding. */
 
-var ChooseContextMap_kStaticContextMapContinuation = [64]uint32{
+var kStaticContextMapContinuation = [64]uint32{
 	1,
 	1,
 	2,
@@ -631,7 +631,7 @@ var ChooseContextMap_kStaticContextMapContinuation = [64]uint32{
 	0,
 	0,
 }
-var ChooseContextMap_kStaticContextMapSimpleUTF8 = [64]uint32{
+var kStaticContextMapSimpleUTF8 = [64]uint32{
 	0,
 	0,
 	1,
@@ -698,7 +698,7 @@ var ChooseContextMap_kStaticContextMapSimpleUTF8 = [64]uint32{
 	0,
 }
 
-func ChooseContextMap(quality int, bigram_histo []uint32, num_literal_contexts *uint, literal_context_map *[]uint32) {
+func chooseContextMap(quality int, bigram_histo []uint32, num_literal_contexts *uint, literal_context_map *[]uint32) {
 	var monogram_histo = [3]uint32{0}
 	var two_prefix_histo = [6]uint32{0}
 	var total uint
@@ -735,10 +735,10 @@ func ChooseContextMap(quality int, bigram_histo []uint32, num_literal_contexts *
 		*num_literal_contexts = 1
 	} else if entropy[2]-entropy[3] < 0.02 {
 		*num_literal_contexts = 2
-		*literal_context_map = ChooseContextMap_kStaticContextMapSimpleUTF8[:]
+		*literal_context_map = kStaticContextMapSimpleUTF8[:]
 	} else {
 		*num_literal_contexts = 3
-		*literal_context_map = ChooseContextMap_kStaticContextMapContinuation[:]
+		*literal_context_map = kStaticContextMapContinuation[:]
 	}
 }
 
@@ -746,7 +746,7 @@ func ChooseContextMap(quality int, bigram_histo []uint32, num_literal_contexts *
    context values, based on the entropy reduction of histograms over the
    first 5 bits of literals. */
 
-var ShouldUseComplexStaticContextMap_kStaticContextMapComplexUTF8 = [64]uint32{
+var kStaticContextMapComplexUTF8 = [64]uint32{
 	11,
 	11,
 	12,
@@ -813,7 +813,7 @@ var ShouldUseComplexStaticContextMap_kStaticContextMapComplexUTF8 = [64]uint32{
 	6,
 }
 
-func ShouldUseComplexStaticContextMap(input []byte, start_pos uint, length uint, mask uint, quality int, size_hint uint, num_literal_contexts *uint, literal_context_map *[]uint32) bool {
+func shouldUseComplexStaticContextMap(input []byte, start_pos uint, length uint, mask uint, quality int, size_hint uint, num_literal_contexts *uint, literal_context_map *[]uint32) bool {
 	/* Try the more complex static context map only for long data. */
 	if size_hint < 1<<20 {
 		return false
@@ -825,7 +825,7 @@ func ShouldUseComplexStaticContextMap(input []byte, start_pos uint, length uint,
 		var entropy [3]float64
 		var dummy uint
 		var i uint
-		var utf8_lut ContextLut = BROTLI_CONTEXT_LUT(CONTEXT_UTF8)
+		var utf8_lut contextLUT = getContextLUT(contextUTF8)
 		/* To make entropy calculations faster and to fit on the stack, we collect
 		   histograms over the 5 most significant bits of literals. One histogram
 		   without context and 13 additional histograms for each context value. */
@@ -839,7 +839,7 @@ func ShouldUseComplexStaticContextMap(input []byte, start_pos uint, length uint,
 			   strides at every 4kB intervals. */
 			for pos = start_pos + 2; pos < stride_end_pos; pos++ {
 				var literal byte = input[pos&mask]
-				var context byte = byte(ShouldUseComplexStaticContextMap_kStaticContextMapComplexUTF8[BROTLI_CONTEXT(prev1, prev2, utf8_lut)])
+				var context byte = byte(kStaticContextMapComplexUTF8[getContext(prev1, prev2, utf8_lut)])
 				total++
 				combined_histo[literal>>3]++
 				context_histo[context][literal>>3]++
@@ -869,16 +869,16 @@ func ShouldUseComplexStaticContextMap(input []byte, start_pos uint, length uint,
 			return false
 		} else {
 			*num_literal_contexts = 13
-			*literal_context_map = ShouldUseComplexStaticContextMap_kStaticContextMapComplexUTF8[:]
+			*literal_context_map = kStaticContextMapComplexUTF8[:]
 			return true
 		}
 	}
 }
 
-func DecideOverLiteralContextModeling(input []byte, start_pos uint, length uint, mask uint, quality int, size_hint uint, num_literal_contexts *uint, literal_context_map *[]uint32) {
+func decideOverLiteralContextModeling(input []byte, start_pos uint, length uint, mask uint, quality int, size_hint uint, num_literal_contexts *uint, literal_context_map *[]uint32) {
 	if quality < MIN_QUALITY_FOR_CONTEXT_MODELING || length < 64 {
 		return
-	} else if ShouldUseComplexStaticContextMap(input, start_pos, length, mask, quality, size_hint, num_literal_contexts, literal_context_map) {
+	} else if shouldUseComplexStaticContextMap(input, start_pos, length, mask, quality, size_hint, num_literal_contexts, literal_context_map) {
 	} else /* Context map was already set, nothing else to do. */
 	{
 		var end_pos uint = start_pos + length
@@ -899,11 +899,11 @@ func DecideOverLiteralContextModeling(input []byte, start_pos uint, length uint,
 			}
 		}
 
-		ChooseContextMap(quality, bigram_prefix_histo[0:], num_literal_contexts, literal_context_map)
+		chooseContextMap(quality, bigram_prefix_histo[0:], num_literal_contexts, literal_context_map)
 	}
 }
 
-func ShouldCompress_encode(data []byte, mask uint, last_flush_pos uint64, bytes uint, num_literals uint, num_commands uint) bool {
+func shouldCompress_encode(data []byte, mask uint, last_flush_pos uint64, bytes uint, num_literals uint, num_commands uint) bool {
 	/* TODO: find more precise minimal block overhead. */
 	if bytes <= 2 {
 		return false
@@ -932,22 +932,22 @@ func ShouldCompress_encode(data []byte, mask uint, last_flush_pos uint64, bytes 
 }
 
 /* Chooses the literal context mode for a metablock */
-func ChooseContextMode(params *BrotliEncoderParams, data []byte, pos uint, mask uint, length uint) int {
+func chooseContextMode(params *encoderParams, data []byte, pos uint, mask uint, length uint) int {
 	/* We only do the computation for the option of something else than
 	   CONTEXT_UTF8 for the highest qualities */
 	if params.quality >= MIN_QUALITY_FOR_HQ_BLOCK_SPLITTING && !BrotliIsMostlyUTF8(data, pos, mask, length, kMinUTF8Ratio) {
-		return CONTEXT_SIGNED
+		return contextSigned
 	}
 
-	return CONTEXT_UTF8
+	return contextUTF8
 }
 
-func WriteMetaBlockInternal(data []byte, mask uint, last_flush_pos uint64, bytes uint, is_last bool, literal_context_mode int, params *BrotliEncoderParams, prev_byte byte, prev_byte2 byte, num_literals uint, num_commands uint, commands []command, saved_dist_cache []int, dist_cache []int, storage_ix *uint, storage []byte) {
-	var wrapped_last_flush_pos uint32 = WrapPosition(last_flush_pos)
+func writeMetaBlockInternal(data []byte, mask uint, last_flush_pos uint64, bytes uint, is_last bool, literal_context_mode int, params *encoderParams, prev_byte byte, prev_byte2 byte, num_literals uint, num_commands uint, commands []command, saved_dist_cache []int, dist_cache []int, storage_ix *uint, storage []byte) {
+	var wrapped_last_flush_pos uint32 = wrapPosition(last_flush_pos)
 	var last_bytes uint16
 	var last_bytes_bits byte
-	var literal_context_lut ContextLut = BROTLI_CONTEXT_LUT(literal_context_mode)
-	var block_params BrotliEncoderParams = *params
+	var literal_context_lut contextLUT = getContextLUT(literal_context_mode)
+	var block_params encoderParams = *params
 
 	if bytes == 0 {
 		/* Write the ISLAST and ISEMPTY bits. */
@@ -957,7 +957,7 @@ func WriteMetaBlockInternal(data []byte, mask uint, last_flush_pos uint64, bytes
 		return
 	}
 
-	if !ShouldCompress_encode(data, mask, last_flush_pos, bytes, num_literals, num_commands) {
+	if !shouldCompress_encode(data, mask, last_flush_pos, bytes, num_literals, num_commands) {
 		/* Restore the distance cache, as its last update by
 		   CreateBackwardReferences is now unused. */
 		copy(dist_cache, saved_dist_cache[:4])
@@ -974,18 +974,18 @@ func WriteMetaBlockInternal(data []byte, mask uint, last_flush_pos uint64, bytes
 	} else if params.quality < MIN_QUALITY_FOR_BLOCK_SPLIT {
 		storeMetaBlockTrivial(data, uint(wrapped_last_flush_pos), bytes, mask, is_last, params, commands, num_commands, storage_ix, storage)
 	} else {
-		var mb MetaBlockSplit
-		InitMetaBlockSplit(&mb)
+		var mb metaBlockSplit
+		initMetaBlockSplit(&mb)
 		if params.quality < MIN_QUALITY_FOR_HQ_BLOCK_SPLITTING {
 			var num_literal_contexts uint = 1
 			var literal_context_map []uint32 = nil
 			if !params.disable_literal_context_modeling {
-				DecideOverLiteralContextModeling(data, uint(wrapped_last_flush_pos), bytes, mask, params.quality, params.size_hint, &num_literal_contexts, &literal_context_map)
+				decideOverLiteralContextModeling(data, uint(wrapped_last_flush_pos), bytes, mask, params.quality, params.size_hint, &num_literal_contexts, &literal_context_map)
 			}
 
-			BrotliBuildMetaBlockGreedy(data, uint(wrapped_last_flush_pos), mask, prev_byte, prev_byte2, literal_context_lut, num_literal_contexts, literal_context_map, commands, num_commands, &mb)
+			buildMetaBlockGreedy(data, uint(wrapped_last_flush_pos), mask, prev_byte, prev_byte2, literal_context_lut, num_literal_contexts, literal_context_map, commands, num_commands, &mb)
 		} else {
-			BrotliBuildMetaBlock(data, uint(wrapped_last_flush_pos), mask, &block_params, prev_byte, prev_byte2, commands, num_commands, literal_context_mode, &mb)
+			buildMetaBlock(data, uint(wrapped_last_flush_pos), mask, &block_params, prev_byte, prev_byte2, commands, num_commands, literal_context_mode, &mb)
 		}
 
 		if params.quality >= MIN_QUALITY_FOR_OPTIMIZE_HISTOGRAMS {
@@ -993,15 +993,15 @@ func WriteMetaBlockInternal(data []byte, mask uint, last_flush_pos uint64, bytes
 			   histograms. It might be less than distance alphabet size
 			   for "Large Window Brotli" (32-bit). */
 			var num_effective_dist_codes uint32 = block_params.dist.alphabet_size
-			if num_effective_dist_codes > BROTLI_NUM_HISTOGRAM_DISTANCE_SYMBOLS {
-				num_effective_dist_codes = BROTLI_NUM_HISTOGRAM_DISTANCE_SYMBOLS
+			if num_effective_dist_codes > numHistogramDistanceSymbols {
+				num_effective_dist_codes = numHistogramDistanceSymbols
 			}
 
-			BrotliOptimizeHistograms(num_effective_dist_codes, &mb)
+			optimizeHistograms(num_effective_dist_codes, &mb)
 		}
 
 		storeMetaBlock(data, uint(wrapped_last_flush_pos), bytes, mask, prev_byte, prev_byte2, is_last, &block_params, literal_context_mode, commands, num_commands, &mb, storage_ix, storage)
-		DestroyMetaBlockSplit(&mb)
+		destroyMetaBlockSplit(&mb)
 	}
 
 	if bytes+4 < *storage_ix>>3 {
@@ -1015,13 +1015,13 @@ func WriteMetaBlockInternal(data []byte, mask uint, last_flush_pos uint64, bytes
 	}
 }
 
-func ChooseDistanceParams(params *BrotliEncoderParams) {
+func chooseDistanceParams(params *encoderParams) {
 	var distance_postfix_bits uint32 = 0
 	var num_direct_distance_codes uint32 = 0
 
 	if params.quality >= MIN_QUALITY_FOR_NONZERO_DISTANCE_PARAMS {
 		var ndirect_msb uint32
-		if params.mode == BROTLI_MODE_FONT {
+		if params.mode == modeFont {
 			distance_postfix_bits = 1
 			num_direct_distance_codes = 12
 		} else {
@@ -1036,10 +1036,10 @@ func ChooseDistanceParams(params *BrotliEncoderParams) {
 		}
 	}
 
-	BrotliInitDistanceParams(params, distance_postfix_bits, num_direct_distance_codes)
+	initDistanceParams(params, distance_postfix_bits, num_direct_distance_codes)
 }
 
-func EnsureInitialized(s *Writer) bool {
+func ensureInitialized(s *Writer) bool {
 	if s.is_initialized_ {
 		return true
 	}
@@ -1050,7 +1050,7 @@ func EnsureInitialized(s *Writer) bool {
 
 	SanitizeParams(&s.params)
 	s.params.lgblock = ComputeLgBlock(&s.params)
-	ChooseDistanceParams(&s.params)
+	chooseDistanceParams(&s.params)
 
 	RingBufferSetup(&s.params, &s.ringbuffer_)
 
@@ -1061,34 +1061,34 @@ func EnsureInitialized(s *Writer) bool {
 			lgwin = brotli_max_int(lgwin, 18)
 		}
 
-		EncodeWindowBits(lgwin, s.params.large_window, &s.last_bytes_, &s.last_bytes_bits_)
+		encodeWindowBits(lgwin, s.params.large_window, &s.last_bytes_, &s.last_bytes_bits_)
 	}
 
 	if s.params.quality == FAST_ONE_PASS_COMPRESSION_QUALITY {
-		InitCommandPrefixCodes(s.cmd_depths_[:], s.cmd_bits_[:], s.cmd_code_[:], &s.cmd_code_numbits_)
+		initCommandPrefixCodes(s.cmd_depths_[:], s.cmd_bits_[:], s.cmd_code_[:], &s.cmd_code_numbits_)
 	}
 
 	s.is_initialized_ = true
 	return true
 }
 
-func BrotliEncoderInitParams(params *BrotliEncoderParams) {
-	params.mode = BROTLI_DEFAULT_MODE
+func encoderInitParams(params *encoderParams) {
+	params.mode = defaultMode
 	params.large_window = false
-	params.quality = BROTLI_DEFAULT_QUALITY
-	params.lgwin = BROTLI_DEFAULT_WINDOW
+	params.quality = defaultQuality
+	params.lgwin = defaultWindow
 	params.lgblock = 0
 	params.size_hint = 0
 	params.disable_literal_context_modeling = false
-	BrotliInitEncoderDictionary(&params.dictionary)
+	initEncoderDictionary(&params.dictionary)
 	params.dist.distance_postfix_bits = 0
 	params.dist.num_direct_distance_codes = 0
 	params.dist.alphabet_size = uint32(distanceAlphabetSize(0, 0, maxDistanceBits))
-	params.dist.max_distance = BROTLI_MAX_DISTANCE
+	params.dist.max_distance = maxDistance
 }
 
-func BrotliEncoderInitState(s *Writer) {
-	BrotliEncoderInitParams(&s.params)
+func encoderInitState(s *Writer) {
+	encoderInitParams(&s.params)
 	s.input_pos_ = 0
 	s.num_commands_ = 0
 	s.num_literals_ = 0
@@ -1108,7 +1108,7 @@ func BrotliEncoderInitState(s *Writer) {
 	s.next_out_ = nil
 	s.available_out_ = 0
 	s.total_out_ = 0
-	s.stream_state_ = BROTLI_STREAM_PROCESSING
+	s.stream_state_ = streamProcessing
 	s.is_last_block_emitted_ = false
 	s.is_initialized_ = false
 
@@ -1129,25 +1129,6 @@ func BrotliEncoderInitState(s *Writer) {
 	copy(s.saved_dist_cache_[:], s.dist_cache_[:])
 }
 
-func BrotliEncoderCleanupState(s *Writer) {
-	s.storage_ = nil
-	s.commands_ = nil
-	RingBufferFree(&s.ringbuffer_)
-	DestroyHasher(&s.hasher_)
-	s.large_table_ = nil
-	s.command_buf_ = nil
-	s.literal_buf_ = nil
-}
-
-/* Deinitializes and frees BrotliEncoderState instance. */
-func BrotliEncoderDestroyInstance(state *Writer) {
-	if state == nil {
-		return
-	} else {
-		BrotliEncoderCleanupState(state)
-	}
-}
-
 /*
    Copies the given input data to the internal ring buffer of the compressor.
    No processing of the data occurs at this time and this function can be
@@ -1155,7 +1136,7 @@ func BrotliEncoderDestroyInstance(state *Writer) {
    accumulated input. At most input_block_size() bytes of input data can be
    copied to the ring buffer, otherwise the next WriteBrotliData() will fail.
 */
-func CopyInputToRingBuffer(s *Writer, input_size uint, input_buffer []byte) {
+func copyInputToRingBuffer(s *Writer, input_size uint, input_buffer []byte) {
 	var ringbuffer_ *RingBuffer = &s.ringbuffer_
 	RingBufferWrite(input_buffer, input_size, ringbuffer_)
 	s.input_pos_ += uint64(input_size)
@@ -1210,18 +1191,18 @@ func CopyInputToRingBuffer(s *Writer, input_size uint, input_buffer []byte) {
 
 /* Marks all input as processed.
    Returns true if position wrapping occurs. */
-func UpdateLastProcessedPos(s *Writer) bool {
-	var wrapped_last_processed_pos uint32 = WrapPosition(s.last_processed_pos_)
-	var wrapped_input_pos uint32 = WrapPosition(s.input_pos_)
+func updateLastProcessedPos(s *Writer) bool {
+	var wrapped_last_processed_pos uint32 = wrapPosition(s.last_processed_pos_)
+	var wrapped_input_pos uint32 = wrapPosition(s.input_pos_)
 	s.last_processed_pos_ = s.input_pos_
 	return wrapped_input_pos < wrapped_last_processed_pos
 }
 
-func ExtendLastCommand(s *Writer, bytes *uint32, wrapped_last_processed_pos *uint32) {
+func extendLastCommand(s *Writer, bytes *uint32, wrapped_last_processed_pos *uint32) {
 	var last_command *command = &s.commands_[s.num_commands_-1]
 	var data []byte = s.ringbuffer_.buffer_
 	var mask uint32 = s.ringbuffer_.mask_
-	var max_backward_distance uint64 = ((uint64(1)) << s.params.lgwin) - BROTLI_WINDOW_GAP
+	var max_backward_distance uint64 = ((uint64(1)) << s.params.lgwin) - windowGap
 	var last_copy_len uint64 = uint64(last_command.copy_len_) & 0x1FFFFFF
 	var last_processed_pos uint64 = s.last_processed_pos_ - last_copy_len
 	var max_distance uint64
@@ -1258,10 +1239,10 @@ func ExtendLastCommand(s *Writer, bytes *uint32, wrapped_last_processed_pos *uin
    Returns false if the size of the input data is larger than
    input_block_size().
 */
-func EncodeData(s *Writer, is_last bool, force_flush bool, out_size *uint, output *[]byte) bool {
-	var delta uint64 = UnprocessedInputSize(s)
+func encodeData(s *Writer, is_last bool, force_flush bool, out_size *uint, output *[]byte) bool {
+	var delta uint64 = unprocessedInputSize(s)
 	var bytes uint32 = uint32(delta)
-	var wrapped_last_processed_pos uint32 = WrapPosition(s.last_processed_pos_)
+	var wrapped_last_processed_pos uint32 = wrapPosition(s.last_processed_pos_)
 	var data []byte
 	var mask uint32
 	var literal_context_mode int
@@ -1277,7 +1258,7 @@ func EncodeData(s *Writer, is_last bool, force_flush bool, out_size *uint, outpu
 		s.is_last_block_emitted_ = true
 	}
 
-	if delta > uint64(InputBlockSize(s)) {
+	if delta > uint64(inputBlockSize(s)) {
 		return false
 	}
 
@@ -1300,10 +1281,10 @@ func EncodeData(s *Writer, is_last bool, force_flush bool, out_size *uint, outpu
 			return true
 		}
 
-		storage = GetBrotliStorage(s, uint(2*bytes+503))
+		storage = getBrotliStorage(s, uint(2*bytes+503))
 		storage[0] = byte(s.last_bytes_)
 		storage[1] = byte(s.last_bytes_ >> 8)
-		table = GetHashTable(s, s.params.quality, uint(bytes), &table_size)
+		table = getHashTable(s, s.params.quality, uint(bytes), &table_size)
 		if s.params.quality == FAST_ONE_PASS_COMPRESSION_QUALITY {
 			compressFragmentFast(data[wrapped_last_processed_pos&mask:], uint(bytes), is_last, table, table_size, s.cmd_depths_[:], s.cmd_bits_[:], &s.cmd_code_numbits_, s.cmd_code_[:], &storage_ix, storage)
 		} else {
@@ -1312,7 +1293,7 @@ func EncodeData(s *Writer, is_last bool, force_flush bool, out_size *uint, outpu
 
 		s.last_bytes_ = uint16(storage[storage_ix>>3])
 		s.last_bytes_bits_ = byte(storage_ix & 7)
-		UpdateLastProcessedPos(s)
+		updateLastProcessedPos(s)
 		*output = storage[0:]
 		*out_size = storage_ix >> 3
 		return true
@@ -1338,17 +1319,17 @@ func EncodeData(s *Writer, is_last bool, force_flush bool, out_size *uint, outpu
 		}
 	}
 
-	InitOrStitchToPreviousBlock(&s.hasher_, data, uint(mask), &s.params, uint(wrapped_last_processed_pos), uint(bytes), is_last)
+	initOrStitchToPreviousBlock(&s.hasher_, data, uint(mask), &s.params, uint(wrapped_last_processed_pos), uint(bytes), is_last)
 
-	literal_context_mode = ChooseContextMode(&s.params, data, uint(WrapPosition(s.last_flush_pos_)), uint(mask), uint(s.input_pos_-s.last_flush_pos_))
+	literal_context_mode = chooseContextMode(&s.params, data, uint(wrapPosition(s.last_flush_pos_)), uint(mask), uint(s.input_pos_-s.last_flush_pos_))
 
 	if s.num_commands_ != 0 && s.last_insert_len_ == 0 {
-		ExtendLastCommand(s, &bytes, &wrapped_last_processed_pos)
+		extendLastCommand(s, &bytes, &wrapped_last_processed_pos)
 	}
 
 	if s.params.quality == ZOPFLIFICATION_QUALITY {
 		assert(s.params.hasher.type_ == 10)
-		createZopfliBackwardReferences(uint(bytes), uint(wrapped_last_processed_pos), data, uint(mask), &s.params, s.hasher_.(*H10), s.dist_cache_[:], &s.last_insert_len_, s.commands_[s.num_commands_:], &s.num_commands_, &s.num_literals_)
+		createZopfliBackwardReferences(uint(bytes), uint(wrapped_last_processed_pos), data, uint(mask), &s.params, s.hasher_.(*h10), s.dist_cache_[:], &s.last_insert_len_, s.commands_[s.num_commands_:], &s.num_commands_, &s.num_literals_)
 	} else if s.params.quality == HQ_ZOPFLIFICATION_QUALITY {
 		assert(s.params.hasher.type_ == 10)
 		createHqZopfliBackwardReferences(uint(bytes), uint(wrapped_last_processed_pos), data, uint(mask), &s.params, s.hasher_, s.dist_cache_[:], &s.last_insert_len_, s.commands_[s.num_commands_:], &s.num_commands_, &s.num_literals_)
@@ -1360,7 +1341,7 @@ func EncodeData(s *Writer, is_last bool, force_flush bool, out_size *uint, outpu
 		var max_literals uint = max_length / 8
 		var max_commands uint = max_length / 8
 		var processed_bytes uint = uint(s.input_pos_ - s.last_flush_pos_)
-		var next_input_fits_metablock bool = (processed_bytes+InputBlockSize(s) <= max_length)
+		var next_input_fits_metablock bool = (processed_bytes+inputBlockSize(s) <= max_length)
 		var should_flush bool = (s.params.quality < MIN_QUALITY_FOR_BLOCK_SPLIT && s.num_literals_+s.num_commands_ >= MAX_NUM_DELAYED_SYMBOLS)
 		/* If maximal possible additional block doesn't fit metablock, flush now. */
 		/* TODO: Postpone decision until next block arrives? */
@@ -1369,8 +1350,8 @@ func EncodeData(s *Writer, is_last bool, force_flush bool, out_size *uint, outpu
 		   amount of commands / literals produced. */
 		if !is_last && !force_flush && !should_flush && next_input_fits_metablock && s.num_literals_ < max_literals && s.num_commands_ < max_commands {
 			/* Merge with next input block. Everything will happen later. */
-			if UpdateLastProcessedPos(s) {
-				HasherReset(s.hasher_)
+			if updateLastProcessedPos(s) {
+				hasherReset(s.hasher_)
 			}
 
 			*out_size = 0
@@ -1399,16 +1380,16 @@ func EncodeData(s *Writer, is_last bool, force_flush bool, out_size *uint, outpu
 	assert(s.input_pos_-s.last_flush_pos_ <= 1<<24)
 	{
 		var metablock_size uint32 = uint32(s.input_pos_ - s.last_flush_pos_)
-		var storage []byte = GetBrotliStorage(s, uint(2*metablock_size+503))
+		var storage []byte = getBrotliStorage(s, uint(2*metablock_size+503))
 		var storage_ix uint = uint(s.last_bytes_bits_)
 		storage[0] = byte(s.last_bytes_)
 		storage[1] = byte(s.last_bytes_ >> 8)
-		WriteMetaBlockInternal(data, uint(mask), s.last_flush_pos_, uint(metablock_size), is_last, literal_context_mode, &s.params, s.prev_byte_, s.prev_byte2_, s.num_literals_, s.num_commands_, s.commands_, s.saved_dist_cache_[:], s.dist_cache_[:], &storage_ix, storage)
+		writeMetaBlockInternal(data, uint(mask), s.last_flush_pos_, uint(metablock_size), is_last, literal_context_mode, &s.params, s.prev_byte_, s.prev_byte2_, s.num_literals_, s.num_commands_, s.commands_, s.saved_dist_cache_[:], s.dist_cache_[:], &storage_ix, storage)
 		s.last_bytes_ = uint16(storage[storage_ix>>3])
 		s.last_bytes_bits_ = byte(storage_ix & 7)
 		s.last_flush_pos_ = s.input_pos_
-		if UpdateLastProcessedPos(s) {
-			HasherReset(s.hasher_)
+		if updateLastProcessedPos(s) {
+			hasherReset(s.hasher_)
 		}
 
 		if s.last_flush_pos_ > 0 {
@@ -1436,7 +1417,7 @@ func EncodeData(s *Writer, is_last bool, force_flush bool, out_size *uint, outpu
    Returns number of produced bytes.
    REQUIRED: |header| should be 8-byte aligned and at least 16 bytes long.
    REQUIRED: |block_size| <= (1 << 24). */
-func WriteMetadataHeader(s *Writer, block_size uint, header []byte) uint {
+func writeMetadataHeader(s *Writer, block_size uint, header []byte) uint {
 	var storage_ix uint
 	storage_ix = uint(s.last_bytes_bits_)
 	header[0] = byte(s.last_bytes_)
@@ -1454,7 +1435,7 @@ func WriteMetadataHeader(s *Writer, block_size uint, header []byte) uint {
 		if block_size == 1 {
 			nbits = 0
 		} else {
-			nbits = Log2FloorNonZero(uint(uint32(block_size)-1)) + 1
+			nbits = log2FloorNonZero(uint(uint32(block_size)-1)) + 1
 		}
 		var nbytes uint32 = (nbits + 7) / 8
 		BrotliWriteBits(2, uint64(nbytes), &storage_ix, header)
@@ -1464,261 +1445,7 @@ func WriteMetadataHeader(s *Writer, block_size uint, header []byte) uint {
 	return (storage_ix + 7) >> 3
 }
 
-func BrotliCompressBufferQuality10(lgwin int, input_size uint, input_buffer []byte, encoded_size *uint, encoded_buffer []byte) bool {
-	var mask uint = BROTLI_SIZE_MAX >> 1
-	var dist_cache = [4]int{4, 11, 15, 16}
-	var saved_dist_cache = [4]int{4, 11, 15, 16}
-	var ok bool = true
-	var max_out_size uint = *encoded_size
-	var total_out_size uint = 0
-	var last_bytes uint16
-	var last_bytes_bits byte
-	var hasher HasherHandle = nil
-	var hasher_eff_size uint = brotli_min_size_t(input_size, BROTLI_MAX_BACKWARD_LIMIT(uint(lgwin))+BROTLI_WINDOW_GAP)
-	var params BrotliEncoderParams
-	var lgmetablock int = brotli_min_int(24, lgwin+1)
-	var max_block_size uint
-	var max_metablock_size uint = uint(1) << uint(lgmetablock)
-	var max_literals_per_metablock uint = max_metablock_size / 8
-	var max_commands_per_metablock uint = max_metablock_size / 8
-	var metablock_start uint = 0
-	var prev_byte byte = 0
-	var prev_byte2 byte = 0
-
-	BrotliEncoderInitParams(&params)
-	params.quality = 10
-	params.lgwin = uint(lgwin)
-	if lgwin > BROTLI_MAX_WINDOW_BITS {
-		params.large_window = true
-	}
-
-	SanitizeParams(&params)
-	params.lgblock = ComputeLgBlock(&params)
-	ChooseDistanceParams(&params)
-	max_block_size = uint(1) << uint(params.lgblock)
-
-	assert(input_size <= mask+1)
-	EncodeWindowBits(lgwin, params.large_window, &last_bytes, &last_bytes_bits)
-	InitOrStitchToPreviousBlock(&hasher, input_buffer, mask, &params, 0, hasher_eff_size, true)
-
-	for ok && metablock_start < input_size {
-		var metablock_end uint = brotli_min_size_t(input_size, metablock_start+max_metablock_size)
-		var expected_num_commands uint = (metablock_end-metablock_start)/12 + 16
-		var commands []command = nil
-		var num_commands uint = 0
-		var last_insert_len uint = 0
-		var num_literals uint = 0
-		var metablock_size uint = 0
-		var cmd_alloc_size uint = 0
-		var is_last bool
-		var storage []byte
-		var storage_ix uint
-		var literal_context_mode int = ChooseContextMode(&params, input_buffer, metablock_start, mask, metablock_end-metablock_start)
-		var block_start uint
-		for block_start = metablock_start; block_start < metablock_end; {
-			var block_size uint = brotli_min_size_t(metablock_end-block_start, max_block_size)
-			var nodes []zopfliNode = make([]zopfliNode, (block_size + 1))
-			var path_size uint
-			var new_cmd_alloc_size uint
-			initZopfliNodes(nodes, block_size+1)
-			hasher.StitchToPreviousBlock(block_size, block_start, input_buffer, mask)
-			path_size = zopfliComputeShortestPath(block_size, block_start, input_buffer, mask, &params, dist_cache[:], hasher.(*H10), nodes)
-
-			/* We allocate a command buffer in the first iteration of this loop that
-			   will be likely big enough for the whole metablock, so that for most
-			   inputs we will not have to reallocate in later iterations. We do the
-			   allocation here and not before the loop, because if the input is small,
-			   this will be allocated after the Zopfli cost model is freed, so this
-			   will not increase peak memory usage.
-			   TODO: If the first allocation is too small, increase command
-			   buffer size exponentially. */
-			new_cmd_alloc_size = brotli_max_size_t(expected_num_commands, num_commands+path_size+1)
-
-			if cmd_alloc_size != new_cmd_alloc_size {
-				var new_commands []command = make([]command, new_cmd_alloc_size)
-				cmd_alloc_size = new_cmd_alloc_size
-				if commands != nil {
-					copy(new_commands, commands[:num_commands])
-					commands = nil
-				}
-
-				commands = new_commands
-			}
-
-			zopfliCreateCommands(block_size, block_start, nodes[0:], dist_cache[:], &last_insert_len, &params, commands[num_commands:], &num_literals)
-			num_commands += path_size
-			block_start += block_size
-			metablock_size += block_size
-			nodes = nil
-			if num_literals > max_literals_per_metablock || num_commands > max_commands_per_metablock {
-				break
-			}
-		}
-
-		if last_insert_len > 0 {
-			initInsertCommand(&commands[num_commands], last_insert_len)
-			num_commands++
-			num_literals += last_insert_len
-		}
-
-		is_last = (metablock_start+metablock_size == input_size)
-		storage = nil
-		storage_ix = uint(last_bytes_bits)
-
-		if metablock_size == 0 {
-			/* Write the ISLAST and ISEMPTY bits. */
-			storage = make([]byte, 16)
-
-			storage[0] = byte(last_bytes)
-			storage[1] = byte(last_bytes >> 8)
-			BrotliWriteBits(2, 3, &storage_ix, storage)
-			storage_ix = (storage_ix + 7) &^ 7
-		} else if !ShouldCompress_encode(input_buffer, mask, uint64(metablock_start), metablock_size, num_literals, num_commands) {
-			/* Restore the distance cache, as its last update by
-			   CreateBackwardReferences is now unused. */
-			copy(dist_cache[:], saved_dist_cache[:4])
-
-			storage = make([]byte, (metablock_size + 16))
-			storage[0] = byte(last_bytes)
-			storage[1] = byte(last_bytes >> 8)
-			storeUncompressedMetaBlock(is_last, input_buffer, metablock_start, mask, metablock_size, &storage_ix, storage)
-		} else {
-			var mb MetaBlockSplit
-			var block_params BrotliEncoderParams = params
-			InitMetaBlockSplit(&mb)
-			BrotliBuildMetaBlock(input_buffer, metablock_start, mask, &block_params, prev_byte, prev_byte2, commands, num_commands, literal_context_mode, &mb)
-			{
-				/* The number of distance symbols effectively used for distance
-				   histograms. It might be less than distance alphabet size
-				   for "Large Window Brotli" (32-bit). */
-				var num_effective_dist_codes uint32 = block_params.dist.alphabet_size
-				if num_effective_dist_codes > BROTLI_NUM_HISTOGRAM_DISTANCE_SYMBOLS {
-					num_effective_dist_codes = BROTLI_NUM_HISTOGRAM_DISTANCE_SYMBOLS
-				}
-
-				BrotliOptimizeHistograms(num_effective_dist_codes, &mb)
-			}
-
-			storage = make([]byte, (2*metablock_size + 503))
-			storage[0] = byte(last_bytes)
-			storage[1] = byte(last_bytes >> 8)
-			storeMetaBlock(input_buffer, metablock_start, metablock_size, mask, prev_byte, prev_byte2, is_last, &block_params, literal_context_mode, commands, num_commands, &mb, &storage_ix, storage)
-			if metablock_size+4 < storage_ix>>3 {
-				/* Restore the distance cache and last byte. */
-				copy(dist_cache[:], saved_dist_cache[:4])
-
-				storage[0] = byte(last_bytes)
-				storage[1] = byte(last_bytes >> 8)
-				storage_ix = uint(last_bytes_bits)
-				storeUncompressedMetaBlock(is_last, input_buffer, metablock_start, mask, metablock_size, &storage_ix, storage)
-			}
-
-			DestroyMetaBlockSplit(&mb)
-		}
-
-		last_bytes = uint16(storage[storage_ix>>3])
-		last_bytes_bits = byte(storage_ix & 7)
-		metablock_start += metablock_size
-		if metablock_start < input_size {
-			prev_byte = input_buffer[metablock_start-1]
-			prev_byte2 = input_buffer[metablock_start-2]
-		}
-
-		/* Save the state of the distance cache in case we need to restore it for
-		   emitting an uncompressed block. */
-		copy(saved_dist_cache[:], dist_cache[:4])
-		{
-			var out_size uint = storage_ix >> 3
-			total_out_size += out_size
-			if total_out_size <= max_out_size {
-				copy(encoded_buffer, storage[:out_size])
-				encoded_buffer = encoded_buffer[out_size:]
-			} else {
-				ok = false
-			}
-		}
-
-		storage = nil
-		commands = nil
-	}
-
-	*encoded_size = total_out_size
-	DestroyHasher(&hasher)
-	return ok
-}
-
-func BrotliEncoderMaxCompressedSize(input_size uint) uint {
-	var num_large_blocks uint = input_size >> 14
-	var overhead uint = 2 + (4 * num_large_blocks) + 3 + 1
-	/* [window bits / empty metadata] + N * [uncompressed] + [last empty] */
-
-	var result uint = input_size + overhead
-	if input_size == 0 {
-		return 2
-	}
-	if result < input_size {
-		return 0
-	} else {
-		return result
-	}
-}
-
-/* Wraps data to uncompressed brotli stream with minimal window size.
-   |output| should point at region with at least BrotliEncoderMaxCompressedSize
-   addressable bytes.
-   Returns the length of stream. */
-func MakeUncompressedStream(input []byte, input_size uint, output []byte) uint {
-	var size uint = input_size
-	var result uint = 0
-	var offset uint = 0
-	if input_size == 0 {
-		output[0] = 6
-		return 1
-	}
-
-	output[result] = 0x21
-	result++ /* window bits = 10, is_last = false */
-	output[result] = 0x03
-	result++ /* empty metadata, padding */
-	for size > 0 {
-		var nibbles uint32 = 0
-		var chunk_size uint32
-		var bits uint32
-		if size > 1<<24 {
-			chunk_size = 1 << 24
-		} else {
-			chunk_size = uint32(size)
-		}
-		if chunk_size > 1<<16 {
-			if chunk_size > 1<<20 {
-				nibbles = 2
-			} else {
-				nibbles = 1
-			}
-		}
-		bits = nibbles<<1 | (chunk_size-1)<<3 | 1<<(19+4*nibbles)
-		output[result] = byte(bits)
-		result++
-		output[result] = byte(bits >> 8)
-		result++
-		output[result] = byte(bits >> 16)
-		result++
-		if nibbles == 2 {
-			output[result] = byte(bits >> 24)
-			result++
-		}
-		copy(output[result:], input[offset:][:chunk_size])
-		result += uint(chunk_size)
-		offset += uint(chunk_size)
-		size -= uint(chunk_size)
-	}
-
-	output[result] = 3
-	result++
-	return result
-}
-
-func InjectBytePaddingBlock(s *Writer) {
+func injectBytePaddingBlock(s *Writer) {
 	var seal uint32 = uint32(s.last_bytes_)
 	var seal_bits uint = uint(s.last_bytes_bits_)
 	var destination []byte
@@ -1749,14 +1476,14 @@ func InjectBytePaddingBlock(s *Writer) {
 	s.available_out_ += (seal_bits + 7) >> 3
 }
 
-func CheckFlushComplete(s *Writer) {
-	if s.stream_state_ == BROTLI_STREAM_FLUSH_REQUESTED && s.available_out_ == 0 {
-		s.stream_state_ = BROTLI_STREAM_PROCESSING
+func checkFlushComplete(s *Writer) {
+	if s.stream_state_ == streamFlushRequested && s.available_out_ == 0 {
+		s.stream_state_ = streamProcessing
 		s.next_out_ = nil
 	}
 }
 
-func BrotliEncoderCompressStreamFast(s *Writer, op int, available_in *uint, next_in *[]byte) bool {
+func encoderCompressStreamFast(s *Writer, op int, available_in *uint, next_in *[]byte) bool {
 	var block_size_limit uint = uint(1) << s.params.lgwin
 	var buf_size uint = brotli_min_size_t(kCompressFragmentTwoPassBlockSize, brotli_min_size_t(*available_in, block_size_limit))
 	var tmp_command_buf []uint32 = nil
@@ -1785,18 +1512,18 @@ func BrotliEncoderCompressStreamFast(s *Writer, op int, available_in *uint, next
 	}
 
 	for {
-		if s.stream_state_ == BROTLI_STREAM_FLUSH_REQUESTED && s.last_bytes_bits_ != 0 {
-			InjectBytePaddingBlock(s)
+		if s.stream_state_ == streamFlushRequested && s.last_bytes_bits_ != 0 {
+			injectBytePaddingBlock(s)
 			continue
 		}
 
 		/* Compress block only when internal output buffer is empty, stream is not
 		   finished, there is no pending flush request, and there is either
 		   additional input or pending operation. */
-		if s.available_out_ == 0 && s.stream_state_ == BROTLI_STREAM_PROCESSING && (*available_in != 0 || op != int(BROTLI_OPERATION_PROCESS)) {
+		if s.available_out_ == 0 && s.stream_state_ == streamProcessing && (*available_in != 0 || op != int(operationProcess)) {
 			var block_size uint = brotli_min_size_t(block_size_limit, *available_in)
-			var is_last bool = (*available_in == block_size) && (op == int(BROTLI_OPERATION_FINISH))
-			var force_flush bool = (*available_in == block_size) && (op == int(BROTLI_OPERATION_FLUSH))
+			var is_last bool = (*available_in == block_size) && (op == int(operationFinish))
+			var force_flush bool = (*available_in == block_size) && (op == int(operationFlush))
 			var max_out_size uint = 2*block_size + 503
 			var storage []byte = nil
 			var storage_ix uint = uint(s.last_bytes_bits_)
@@ -1804,15 +1531,15 @@ func BrotliEncoderCompressStreamFast(s *Writer, op int, available_in *uint, next
 			var table []int
 
 			if force_flush && block_size == 0 {
-				s.stream_state_ = BROTLI_STREAM_FLUSH_REQUESTED
+				s.stream_state_ = streamFlushRequested
 				continue
 			}
 
-			storage = GetBrotliStorage(s, max_out_size)
+			storage = getBrotliStorage(s, max_out_size)
 
 			storage[0] = byte(s.last_bytes_)
 			storage[1] = byte(s.last_bytes_ >> 8)
-			table = GetHashTable(s, s.params.quality, block_size, &table_size)
+			table = getHashTable(s, s.params.quality, block_size, &table_size)
 
 			if s.params.quality == FAST_ONE_PASS_COMPRESSION_QUALITY {
 				compressFragmentFast(*next_in, block_size, is_last, table, table_size, s.cmd_depths_[:], s.cmd_bits_[:], &s.cmd_code_numbits_, s.cmd_code_[:], &storage_ix, storage)
@@ -1830,10 +1557,10 @@ func BrotliEncoderCompressStreamFast(s *Writer, op int, available_in *uint, next
 			s.last_bytes_bits_ = byte(storage_ix & 7)
 
 			if force_flush {
-				s.stream_state_ = BROTLI_STREAM_FLUSH_REQUESTED
+				s.stream_state_ = streamFlushRequested
 			}
 			if is_last {
-				s.stream_state_ = BROTLI_STREAM_FINISHED
+				s.stream_state_ = streamFinished
 			}
 			continue
 		}
@@ -1843,28 +1570,28 @@ func BrotliEncoderCompressStreamFast(s *Writer, op int, available_in *uint, next
 
 	tmp_command_buf = nil
 	tmp_literal_buf = nil
-	CheckFlushComplete(s)
+	checkFlushComplete(s)
 	return true
 }
 
-func ProcessMetadata(s *Writer, available_in *uint, next_in *[]byte) bool {
+func processMetadata(s *Writer, available_in *uint, next_in *[]byte) bool {
 	if *available_in > 1<<24 {
 		return false
 	}
 
 	/* Switch to metadata block workflow, if required. */
-	if s.stream_state_ == BROTLI_STREAM_PROCESSING {
+	if s.stream_state_ == streamProcessing {
 		s.remaining_metadata_bytes_ = uint32(*available_in)
-		s.stream_state_ = BROTLI_STREAM_METADATA_HEAD
+		s.stream_state_ = streamMetadataHead
 	}
 
-	if s.stream_state_ != BROTLI_STREAM_METADATA_HEAD && s.stream_state_ != BROTLI_STREAM_METADATA_BODY {
+	if s.stream_state_ != streamMetadataHead && s.stream_state_ != streamMetadataBody {
 		return false
 	}
 
 	for {
-		if s.stream_state_ == BROTLI_STREAM_FLUSH_REQUESTED && s.last_bytes_bits_ != 0 {
-			InjectBytePaddingBlock(s)
+		if s.stream_state_ == streamFlushRequested && s.last_bytes_bits_ != 0 {
+			injectBytePaddingBlock(s)
 			continue
 		}
 
@@ -1873,24 +1600,24 @@ func ProcessMetadata(s *Writer, available_in *uint, next_in *[]byte) bool {
 		}
 
 		if s.input_pos_ != s.last_flush_pos_ {
-			var result bool = EncodeData(s, false, true, &s.available_out_, &s.next_out_)
+			var result bool = encodeData(s, false, true, &s.available_out_, &s.next_out_)
 			if !result {
 				return false
 			}
 			continue
 		}
 
-		if s.stream_state_ == BROTLI_STREAM_METADATA_HEAD {
+		if s.stream_state_ == streamMetadataHead {
 			s.next_out_ = s.tiny_buf_.u8[:]
-			s.available_out_ = WriteMetadataHeader(s, uint(s.remaining_metadata_bytes_), s.next_out_)
-			s.stream_state_ = BROTLI_STREAM_METADATA_BODY
+			s.available_out_ = writeMetadataHeader(s, uint(s.remaining_metadata_bytes_), s.next_out_)
+			s.stream_state_ = streamMetadataBody
 			continue
 		} else {
 			/* Exit workflow only when there is no more input and no more output.
 			   Otherwise client may continue producing empty metadata blocks. */
 			if s.remaining_metadata_bytes_ == 0 {
 				s.remaining_metadata_bytes_ = BROTLI_UINT32_MAX
-				s.stream_state_ = BROTLI_STREAM_PROCESSING
+				s.stream_state_ = streamProcessing
 				break
 			}
 
@@ -1910,9 +1637,9 @@ func ProcessMetadata(s *Writer, available_in *uint, next_in *[]byte) bool {
 	return true
 }
 
-func UpdateSizeHint(s *Writer, available_in uint) {
+func updateSizeHint(s *Writer, available_in uint) {
 	if s.params.size_hint == 0 {
-		var delta uint64 = UnprocessedInputSize(s)
+		var delta uint64 = unprocessedInputSize(s)
 		var tail uint64 = uint64(available_in)
 		var limit uint32 = 1 << 30
 		var total uint32
@@ -1926,8 +1653,8 @@ func UpdateSizeHint(s *Writer, available_in uint) {
 	}
 }
 
-func BrotliEncoderCompressStream(s *Writer, op int, available_in *uint, next_in *[]byte) bool {
-	if !EnsureInitialized(s) {
+func encoderCompressStream(s *Writer, op int, available_in *uint, next_in *[]byte) bool {
+	if !ensureInitialized(s) {
 		return false
 	}
 
@@ -1936,61 +1663,61 @@ func BrotliEncoderCompressStream(s *Writer, op int, available_in *uint, next_in 
 		if uint32(*available_in) != s.remaining_metadata_bytes_ {
 			return false
 		}
-		if op != int(BROTLI_OPERATION_EMIT_METADATA) {
+		if op != int(operationEmitMetadata) {
 			return false
 		}
 	}
 
-	if op == int(BROTLI_OPERATION_EMIT_METADATA) {
-		UpdateSizeHint(s, 0) /* First data metablock might be emitted here. */
-		return ProcessMetadata(s, available_in, next_in)
+	if op == int(operationEmitMetadata) {
+		updateSizeHint(s, 0) /* First data metablock might be emitted here. */
+		return processMetadata(s, available_in, next_in)
 	}
 
-	if s.stream_state_ == BROTLI_STREAM_METADATA_HEAD || s.stream_state_ == BROTLI_STREAM_METADATA_BODY {
+	if s.stream_state_ == streamMetadataHead || s.stream_state_ == streamMetadataBody {
 		return false
 	}
 
-	if s.stream_state_ != BROTLI_STREAM_PROCESSING && *available_in != 0 {
+	if s.stream_state_ != streamProcessing && *available_in != 0 {
 		return false
 	}
 
 	if s.params.quality == FAST_ONE_PASS_COMPRESSION_QUALITY || s.params.quality == FAST_TWO_PASS_COMPRESSION_QUALITY {
-		return BrotliEncoderCompressStreamFast(s, op, available_in, next_in)
+		return encoderCompressStreamFast(s, op, available_in, next_in)
 	}
 
 	for {
-		var remaining_block_size uint = RemainingInputBlockSize(s)
+		var remaining_block_size uint = remainingInputBlockSize(s)
 
 		if remaining_block_size != 0 && *available_in != 0 {
 			var copy_input_size uint = brotli_min_size_t(remaining_block_size, *available_in)
-			CopyInputToRingBuffer(s, copy_input_size, *next_in)
+			copyInputToRingBuffer(s, copy_input_size, *next_in)
 			*next_in = (*next_in)[copy_input_size:]
 			*available_in -= copy_input_size
 			continue
 		}
 
-		if s.stream_state_ == BROTLI_STREAM_FLUSH_REQUESTED && s.last_bytes_bits_ != 0 {
-			InjectBytePaddingBlock(s)
+		if s.stream_state_ == streamFlushRequested && s.last_bytes_bits_ != 0 {
+			injectBytePaddingBlock(s)
 			continue
 		}
 
 		/* Compress data only when internal output buffer is empty, stream is not
 		   finished and there is no pending flush request. */
-		if s.available_out_ == 0 && s.stream_state_ == BROTLI_STREAM_PROCESSING {
-			if remaining_block_size == 0 || op != int(BROTLI_OPERATION_PROCESS) {
-				var is_last bool = ((*available_in == 0) && op == int(BROTLI_OPERATION_FINISH))
-				var force_flush bool = ((*available_in == 0) && op == int(BROTLI_OPERATION_FLUSH))
+		if s.available_out_ == 0 && s.stream_state_ == streamProcessing {
+			if remaining_block_size == 0 || op != int(operationProcess) {
+				var is_last bool = ((*available_in == 0) && op == int(operationFinish))
+				var force_flush bool = ((*available_in == 0) && op == int(operationFlush))
 				var result bool
-				UpdateSizeHint(s, *available_in)
-				result = EncodeData(s, is_last, force_flush, &s.available_out_, &s.next_out_)
+				updateSizeHint(s, *available_in)
+				result = encodeData(s, is_last, force_flush, &s.available_out_, &s.next_out_)
 				if !result {
 					return false
 				}
 				if force_flush {
-					s.stream_state_ = BROTLI_STREAM_FLUSH_REQUESTED
+					s.stream_state_ = streamFlushRequested
 				}
 				if is_last {
-					s.stream_state_ = BROTLI_STREAM_FINISHED
+					s.stream_state_ = streamFinished
 				}
 				continue
 			}
@@ -1999,30 +1726,22 @@ func BrotliEncoderCompressStream(s *Writer, op int, available_in *uint, next_in 
 		break
 	}
 
-	CheckFlushComplete(s)
+	checkFlushComplete(s)
 	return true
 }
 
-func BrotliEncoderIsFinished(s *Writer) bool {
-	return s.stream_state_ == BROTLI_STREAM_FINISHED && !BrotliEncoderHasMoreOutput(s)
-}
-
-func BrotliEncoderHasMoreOutput(s *Writer) bool {
+func encoderHasMoreOutput(s *Writer) bool {
 	return s.available_out_ != 0
 }
 
-func BrotliEncoderTakeOutput(s *Writer) []byte {
+func encoderTakeOutput(s *Writer) []byte {
 	if s.available_out_ == 0 {
 		return nil
 	}
 	result := s.next_out_[:s.available_out_]
 	s.total_out_ += s.available_out_
 	s.available_out_ = 0
-	CheckFlushComplete(s)
+	checkFlushComplete(s)
 
 	return result
-}
-
-func BrotliEncoderVersion() uint32 {
-	return BROTLI_VERSION
 }

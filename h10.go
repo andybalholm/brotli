@@ -15,15 +15,15 @@ import "encoding/binary"
    position in the input data. The binary tree is sorted by the lexicographic
    order of the sequences, and it is also a max-heap with respect to the
    starting positions. */
-func (*H10) HashTypeLength() uint {
+func (*h10) HashTypeLength() uint {
 	return 4
 }
 
-func (*H10) StoreLookahead() uint {
+func (*h10) StoreLookahead() uint {
 	return 128
 }
 
-func HashBytesH10(data []byte) uint32 {
+func hashBytesH10(data []byte) uint32 {
 	var h uint32 = binary.LittleEndian.Uint32(data) * kHashMul32
 
 	/* The higher bits contain more mixture from the multiplication,
@@ -31,30 +31,22 @@ func HashBytesH10(data []byte) uint32 {
 	return h >> (32 - 17)
 }
 
-type H10 struct {
-	HasherCommon
+type h10 struct {
+	hasherCommon
 	window_mask_ uint
 	buckets_     [1 << 17]uint32
 	invalid_pos_ uint32
 	forest       []uint32
 }
 
-func SelfH10(handle HasherHandle) *H10 {
-	return handle.(*H10)
-}
-
-func ForestH10(self *H10) []uint32 {
-	return []uint32(self.forest)
-}
-
-func (h *H10) Initialize(params *BrotliEncoderParams) {
+func (h *h10) Initialize(params *encoderParams) {
 	h.window_mask_ = (1 << params.lgwin) - 1
 	h.invalid_pos_ = uint32(0 - h.window_mask_)
 	var num_nodes uint = uint(1) << params.lgwin
 	h.forest = make([]uint32, 2*num_nodes)
 }
 
-func (h *H10) Prepare(one_shot bool, input_size uint, data []byte) {
+func (h *h10) Prepare(one_shot bool, input_size uint, data []byte) {
 	var invalid_pos uint32 = h.invalid_pos_
 	var i uint32
 	for i = 0; i < 1<<17; i++ {
@@ -62,11 +54,11 @@ func (h *H10) Prepare(one_shot bool, input_size uint, data []byte) {
 	}
 }
 
-func LeftChildIndexH10(self *H10, pos uint) uint {
+func leftChildIndexH10(self *h10, pos uint) uint {
 	return 2 * (pos & self.window_mask_)
 }
 
-func RightChildIndexH10(self *H10, pos uint) uint {
+func rightChildIndexH10(self *h10, pos uint) uint {
 	return 2*(pos&self.window_mask_) + 1
 }
 
@@ -80,15 +72,15 @@ func RightChildIndexH10(self *H10, pos uint) uint {
    current (incomplete) sequence.
 
    This function must be called with increasing cur_ix positions. */
-func StoreAndFindMatchesH10(self *H10, data []byte, cur_ix uint, ring_buffer_mask uint, max_length uint, max_backward uint, best_len *uint, matches []BackwardMatch) []BackwardMatch {
+func storeAndFindMatchesH10(self *h10, data []byte, cur_ix uint, ring_buffer_mask uint, max_length uint, max_backward uint, best_len *uint, matches []backwardMatch) []backwardMatch {
 	var cur_ix_masked uint = cur_ix & ring_buffer_mask
 	var max_comp_len uint = brotli_min_size_t(max_length, 128)
 	var should_reroot_tree bool = (max_length >= 128)
-	var key uint32 = HashBytesH10(data[cur_ix_masked:])
-	var forest []uint32 = ForestH10(self)
+	var key uint32 = hashBytesH10(data[cur_ix_masked:])
+	var forest []uint32 = self.forest
 	var prev_ix uint = uint(self.buckets_[key])
-	var node_left uint = LeftChildIndexH10(self, cur_ix)
-	var node_right uint = RightChildIndexH10(self, cur_ix)
+	var node_left uint = leftChildIndexH10(self, cur_ix)
+	var node_right uint = rightChildIndexH10(self, cur_ix)
 	var best_len_left uint = 0
 	var best_len_right uint = 0
 	var depth_remaining uint
@@ -122,17 +114,17 @@ func StoreAndFindMatchesH10(self *H10, data []byte, cur_ix uint, ring_buffer_mas
 			var cur_len uint = brotli_min_size_t(best_len_left, best_len_right)
 			var len uint
 			assert(cur_len <= 128)
-			len = cur_len + FindMatchLengthWithLimit(data[cur_ix_masked+cur_len:], data[prev_ix_masked+cur_len:], max_length-cur_len)
+			len = cur_len + findMatchLengthWithLimit(data[cur_ix_masked+cur_len:], data[prev_ix_masked+cur_len:], max_length-cur_len)
 			if matches != nil && len > *best_len {
 				*best_len = uint(len)
-				InitBackwardMatch(&matches[0], backward, uint(len))
+				initBackwardMatch(&matches[0], backward, uint(len))
 				matches = matches[1:]
 			}
 
 			if len >= max_comp_len {
 				if should_reroot_tree {
-					forest[node_left] = forest[LeftChildIndexH10(self, prev_ix)]
-					forest[node_right] = forest[RightChildIndexH10(self, prev_ix)]
+					forest[node_left] = forest[leftChildIndexH10(self, prev_ix)]
+					forest[node_right] = forest[rightChildIndexH10(self, prev_ix)]
 				}
 
 				break
@@ -144,7 +136,7 @@ func StoreAndFindMatchesH10(self *H10, data []byte, cur_ix uint, ring_buffer_mas
 					forest[node_left] = uint32(prev_ix)
 				}
 
-				node_left = RightChildIndexH10(self, prev_ix)
+				node_left = rightChildIndexH10(self, prev_ix)
 				prev_ix = uint(forest[node_left])
 			} else {
 				best_len_right = uint(len)
@@ -152,7 +144,7 @@ func StoreAndFindMatchesH10(self *H10, data []byte, cur_ix uint, ring_buffer_mas
 					forest[node_right] = uint32(prev_ix)
 				}
 
-				node_right = LeftChildIndexH10(self, prev_ix)
+				node_right = leftChildIndexH10(self, prev_ix)
 				prev_ix = uint(forest[node_right])
 			}
 		}
@@ -168,8 +160,8 @@ func StoreAndFindMatchesH10(self *H10, data []byte, cur_ix uint, ring_buffer_mas
    matches in matches[0] to matches[*num_matches - 1]. The matches will be
    sorted by strictly increasing length and (non-strictly) increasing
    distance. */
-func FindAllMatchesH10(handle HasherHandle, dictionary *BrotliEncoderDictionary, data []byte, ring_buffer_mask uint, cur_ix uint, max_length uint, max_backward uint, gap uint, params *BrotliEncoderParams, matches []BackwardMatch) uint {
-	var orig_matches []BackwardMatch = matches
+func findAllMatchesH10(handle *h10, dictionary *encoderDictionary, data []byte, ring_buffer_mask uint, cur_ix uint, max_length uint, max_backward uint, gap uint, params *encoderParams, matches []backwardMatch) uint {
+	var orig_matches []backwardMatch = matches
 	var cur_ix_masked uint = cur_ix & ring_buffer_mask
 	var best_len uint = 1
 	var short_match_max_backward uint
@@ -196,17 +188,17 @@ func FindAllMatchesH10(handle HasherHandle, dictionary *BrotliEncoderDictionary,
 			continue
 		}
 		{
-			var len uint = FindMatchLengthWithLimit(data[prev_ix:], data[cur_ix_masked:], max_length)
+			var len uint = findMatchLengthWithLimit(data[prev_ix:], data[cur_ix_masked:], max_length)
 			if len > best_len {
 				best_len = uint(len)
-				InitBackwardMatch(&matches[0], backward, uint(len))
+				initBackwardMatch(&matches[0], backward, uint(len))
 				matches = matches[1:]
 			}
 		}
 	}
 
 	if best_len < max_length {
-		matches = StoreAndFindMatchesH10(SelfH10(handle), data, cur_ix, ring_buffer_mask, max_length, max_backward, &best_len, matches)
+		matches = storeAndFindMatchesH10(handle, data, cur_ix, ring_buffer_mask, max_length, max_backward, &best_len, matches)
 	}
 
 	for i = 0; i <= BROTLI_MAX_STATIC_DICTIONARY_MATCH_LEN; i++ {
@@ -222,7 +214,7 @@ func FindAllMatchesH10(handle HasherHandle, dictionary *BrotliEncoderDictionary,
 				if dict_id < kInvalidMatch {
 					var distance uint = max_backward + gap + uint(dict_id>>5) + 1
 					if distance <= params.dist.max_distance {
-						InitDictionaryBackwardMatch(&matches[0], distance, l, uint(dict_id&31))
+						initDictionaryBackwardMatch(&matches[0], distance, l, uint(dict_id&31))
 						matches = matches[1:]
 					}
 				}
@@ -236,13 +228,13 @@ func FindAllMatchesH10(handle HasherHandle, dictionary *BrotliEncoderDictionary,
 /* Stores the hash of the next 4 bytes and re-roots the binary tree at the
    current sequence, without returning any matches.
    REQUIRES: ix + 128 <= end-of-current-block */
-func (h *H10) Store(data []byte, mask uint, ix uint) {
-	var max_backward uint = h.window_mask_ - BROTLI_WINDOW_GAP + 1
+func (h *h10) Store(data []byte, mask uint, ix uint) {
+	var max_backward uint = h.window_mask_ - windowGap + 1
 	/* Maximum distance is window size - 16, see section 9.1. of the spec. */
-	StoreAndFindMatchesH10(h, data, ix, mask, 128, max_backward, nil, nil)
+	storeAndFindMatchesH10(h, data, ix, mask, 128, max_backward, nil, nil)
 }
 
-func (h *H10) StoreRange(data []byte, mask uint, ix_start uint, ix_end uint) {
+func (h *h10) StoreRange(data []byte, mask uint, ix_start uint, ix_end uint) {
 	var i uint = ix_start
 	var j uint = ix_start
 	if ix_start+63 <= ix_end {
@@ -260,7 +252,7 @@ func (h *H10) StoreRange(data []byte, mask uint, ix_start uint, ix_end uint) {
 	}
 }
 
-func (h *H10) StitchToPreviousBlock(num_bytes uint, position uint, ringbuffer []byte, ringbuffer_mask uint) {
+func (h *h10) StitchToPreviousBlock(num_bytes uint, position uint, ringbuffer []byte, ringbuffer_mask uint) {
 	if num_bytes >= h.HashTypeLength()-1 && position >= 128 {
 		var i_start uint = position - 128 + 1
 		var i_end uint = brotli_min_size_t(position, i_start+num_bytes)
@@ -274,23 +266,23 @@ func (h *H10) StitchToPreviousBlock(num_bytes uint, position uint, ringbuffer []
 			   Furthermore, we have to make sure that we don't look further back
 			   from the start of the next block than the window size, otherwise we
 			   could access already overwritten areas of the ring-buffer. */
-			var max_backward uint = h.window_mask_ - brotli_max_size_t(BROTLI_WINDOW_GAP-1, position-i)
+			var max_backward uint = h.window_mask_ - brotli_max_size_t(windowGap-1, position-i)
 
 			/* We know that i + 128 <= position + num_bytes, i.e. the
 			   end of the current block and that we have at least
 			   128 tail in the ring-buffer. */
-			StoreAndFindMatchesH10(h, ringbuffer, i, ringbuffer_mask, 128, max_backward, nil, nil)
+			storeAndFindMatchesH10(h, ringbuffer, i, ringbuffer_mask, 128, max_backward, nil, nil)
 		}
 	}
 }
 
 /* MAX_NUM_MATCHES == 64 + MAX_TREE_SEARCH_DEPTH */
-const MAX_NUM_MATCHES_H10 = 128
+const maxNumMatchesH10 = 128
 
-func (*H10) FindLongestMatch(dictionary *BrotliEncoderDictionary, data []byte, ring_buffer_mask uint, distance_cache []int, cur_ix uint, max_length uint, max_backward uint, gap uint, max_distance uint, out *HasherSearchResult) {
+func (*h10) FindLongestMatch(dictionary *encoderDictionary, data []byte, ring_buffer_mask uint, distance_cache []int, cur_ix uint, max_length uint, max_backward uint, gap uint, max_distance uint, out *hasherSearchResult) {
 	panic("unimplemented")
 }
 
-func (*H10) PrepareDistanceCache(distance_cache []int) {
+func (*h10) PrepareDistanceCache(distance_cache []int) {
 	panic("unimplemented")
 }

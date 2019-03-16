@@ -45,7 +45,7 @@ const MAX_ZOPFLI_LEN_QUALITY_11 = 325
 /* Do not thoroughly search when a long copy is found. */
 const BROTLI_LONG_COPY_QUICK_STEP = 16384
 
-func MaxZopfliLen(params *BrotliEncoderParams) uint {
+func MaxZopfliLen(params *encoderParams) uint {
 	if params.quality <= 10 {
 		return MAX_ZOPFLI_LEN_QUALITY_10
 	} else {
@@ -54,7 +54,7 @@ func MaxZopfliLen(params *BrotliEncoderParams) uint {
 }
 
 /* Number of best candidates to evaluate to expand Zopfli chain. */
-func MaxZopfliCandidates(params *BrotliEncoderParams) uint {
+func MaxZopfliCandidates(params *encoderParams) uint {
 	if params.quality <= 10 {
 		return 1
 	} else {
@@ -62,20 +62,20 @@ func MaxZopfliCandidates(params *BrotliEncoderParams) uint {
 	}
 }
 
-func SanitizeParams(params *BrotliEncoderParams) {
-	params.quality = brotli_min_int(BROTLI_MAX_QUALITY, brotli_max_int(BROTLI_MIN_QUALITY, params.quality))
+func SanitizeParams(params *encoderParams) {
+	params.quality = brotli_min_int(maxQuality, brotli_max_int(minQuality, params.quality))
 	if params.quality <= MAX_QUALITY_FOR_STATIC_ENTROPY_CODES {
 		params.large_window = false
 	}
 
-	if params.lgwin < BROTLI_MIN_WINDOW_BITS {
-		params.lgwin = BROTLI_MIN_WINDOW_BITS
+	if params.lgwin < minWindowBits {
+		params.lgwin = minWindowBits
 	} else {
 		var max_lgwin int
 		if params.large_window {
-			max_lgwin = BROTLI_LARGE_MAX_WINDOW_BITS
+			max_lgwin = largeMaxWindowBits
 		} else {
-			max_lgwin = BROTLI_MAX_WINDOW_BITS
+			max_lgwin = maxWindowBits
 		}
 		if params.lgwin > uint(max_lgwin) {
 			params.lgwin = uint(max_lgwin)
@@ -84,7 +84,7 @@ func SanitizeParams(params *BrotliEncoderParams) {
 }
 
 /* Returns optimized lg_block value. */
-func ComputeLgBlock(params *BrotliEncoderParams) int {
+func ComputeLgBlock(params *encoderParams) int {
 	var lgblock int = params.lgblock
 	if params.quality == FAST_ONE_PASS_COMPRESSION_QUALITY || params.quality == FAST_TWO_PASS_COMPRESSION_QUALITY {
 		lgblock = int(params.lgwin)
@@ -96,7 +96,7 @@ func ComputeLgBlock(params *BrotliEncoderParams) int {
 			lgblock = brotli_min_int(18, int(params.lgwin))
 		}
 	} else {
-		lgblock = brotli_min_int(BROTLI_MAX_INPUT_BLOCK_BITS, brotli_max_int(BROTLI_MIN_INPUT_BLOCK_BITS, lgblock))
+		lgblock = brotli_min_int(maxInputBlockBits, brotli_max_int(minInputBlockBits, lgblock))
 	}
 
 	return lgblock
@@ -107,12 +107,12 @@ func ComputeLgBlock(params *BrotliEncoderParams) int {
    added block fits there completely and we still get lgwin bits and at least
    read_block_size_bits + 1 bits because the copy tail length needs to be
    smaller than ring-buffer size. */
-func ComputeRbBits(params *BrotliEncoderParams) int {
+func ComputeRbBits(params *encoderParams) int {
 	return 1 + brotli_max_int(int(params.lgwin), params.lgblock)
 }
 
-func MaxMetablockSize(params *BrotliEncoderParams) uint {
-	var bits int = brotli_min_int(ComputeRbBits(params), BROTLI_MAX_INPUT_BLOCK_BITS)
+func MaxMetablockSize(params *encoderParams) uint {
+	var bits int = brotli_min_int(ComputeRbBits(params), maxInputBlockBits)
 	return uint(1) << uint(bits)
 }
 
@@ -122,7 +122,7 @@ func MaxMetablockSize(params *BrotliEncoderParams) uint {
    At first 8 byte strides are taken and every second byte is put to hasher.
    After 4x more literals stride by 16 bytes, every put 4-th byte to hasher.
    Applied only to qualities 2 to 9. */
-func LiteralSpreeLengthForSparseSearch(params *BrotliEncoderParams) uint {
+func LiteralSpreeLengthForSparseSearch(params *encoderParams) uint {
 	if params.quality < 9 {
 		return 64
 	} else {
@@ -130,7 +130,7 @@ func LiteralSpreeLengthForSparseSearch(params *BrotliEncoderParams) uint {
 	}
 }
 
-func ChooseHasher(params *BrotliEncoderParams, hparams *BrotliHasherParams) {
+func ChooseHasher(params *encoderParams, hparams *hasherParams) {
 	if params.quality > 9 {
 		hparams.type_ = 10
 	} else if params.quality == 4 && params.size_hint >= 1<<20 {

@@ -23,11 +23,11 @@ func shannonEntropy(population []uint32, size uint, total *uint) float64 {
 		p = uint(population[0])
 		population = population[1:]
 		sum += p
-		retval -= float64(p) * FastLog2(p)
+		retval -= float64(p) * fastLog2(p)
 	}
 
 	if sum != 0 {
-		retval += float64(sum) * FastLog2(sum)
+		retval += float64(sum) * fastLog2(sum)
 	}
 	*total = sum
 	return retval
@@ -49,8 +49,8 @@ const kTwoSymbolHistogramCost float64 = 20
 const kThreeSymbolHistogramCost float64 = 28
 const kFourSymbolHistogramCost float64 = 37
 
-func populationCostLiteral(histogram *HistogramLiteral) float64 {
-	var data_size uint = HistogramDataSizeLiteral()
+func populationCostLiteral(histogram *histogramLiteral) float64 {
+	var data_size uint = histogramDataSizeLiteral()
 	var count int = 0
 	var s [5]uint
 	var bits float64 = 0.0
@@ -116,10 +116,10 @@ func populationCostLiteral(histogram *HistogramLiteral) float64 {
 		   build a simplified histogram of the code length codes where we use the
 		   zero repeat code 17, but we don't use the non-zero repeat code 16. */
 
-		var log2total float64 = FastLog2(histogram.total_count_)
+		var log2total float64 = fastLog2(histogram.total_count_)
 		for i = 0; i < data_size; {
 			if histogram.data_[i] > 0 {
-				var log2p float64 = log2total - FastLog2(uint(histogram.data_[i]))
+				var log2p float64 = log2total - fastLog2(uint(histogram.data_[i]))
 				/* Compute -log2(P(symbol)) = -log2(count(symbol)/total_count) =
 				   = log2(total_count) - log2(count(symbol)) */
 
@@ -180,8 +180,8 @@ func populationCostLiteral(histogram *HistogramLiteral) float64 {
 	return bits
 }
 
-func populationCostCommand(histogram *HistogramCommand) float64 {
-	var data_size uint = HistogramDataSizeCommand()
+func populationCostCommand(histogram *histogramCommand) float64 {
+	var data_size uint = histogramDataSizeCommand()
 	var count int = 0
 	var s [5]uint
 	var bits float64 = 0.0
@@ -247,10 +247,10 @@ func populationCostCommand(histogram *HistogramCommand) float64 {
 		   build a simplified histogram of the code length codes where we use the
 		   zero repeat code 17, but we don't use the non-zero repeat code 16. */
 
-		var log2total float64 = FastLog2(histogram.total_count_)
+		var log2total float64 = fastLog2(histogram.total_count_)
 		for i = 0; i < data_size; {
 			if histogram.data_[i] > 0 {
-				var log2p float64 = log2total - FastLog2(uint(histogram.data_[i]))
+				var log2p float64 = log2total - fastLog2(uint(histogram.data_[i]))
 				/* Compute -log2(P(symbol)) = -log2(count(symbol)/total_count) =
 				   = log2(total_count) - log2(count(symbol)) */
 
@@ -311,8 +311,8 @@ func populationCostCommand(histogram *HistogramCommand) float64 {
 	return bits
 }
 
-func populationCostDistance(histogram *HistogramDistance) float64 {
-	var data_size uint = HistogramDataSizeDistance()
+func populationCostDistance(histogram *histogramDistance) float64 {
+	var data_size uint = histogramDataSizeDistance()
 	var count int = 0
 	var s [5]uint
 	var bits float64 = 0.0
@@ -378,10 +378,10 @@ func populationCostDistance(histogram *HistogramDistance) float64 {
 		   build a simplified histogram of the code length codes where we use the
 		   zero repeat code 17, but we don't use the non-zero repeat code 16. */
 
-		var log2total float64 = FastLog2(histogram.total_count_)
+		var log2total float64 = fastLog2(histogram.total_count_)
 		for i = 0; i < data_size; {
 			if histogram.data_[i] > 0 {
-				var log2p float64 = log2total - FastLog2(uint(histogram.data_[i]))
+				var log2p float64 = log2total - fastLog2(uint(histogram.data_[i]))
 				/* Compute -log2(P(symbol)) = -log2(count(symbol)/total_count) =
 				   = log2(total_count) - log2(count(symbol)) */
 

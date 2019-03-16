@@ -56,22 +56,22 @@ func distanceAlphabetSize(NPOSTFIX uint, NDIRECT uint, MAXNBITS uint) uint {
 /* numDistanceSymbols == 1128 */
 const numDistanceSymbols = 1128
 
-const BROTLI_MAX_DISTANCE = 0x3FFFFFC
+const maxDistance = 0x3FFFFFC
 
-const BROTLI_MAX_ALLOWED_DISTANCE = 0x7FFFFFFC
+const maxAllowedDistance = 0x7FFFFFFC
 
 /* 7.1. Context modes and context ID lookup for literals */
 /* "context IDs for literals are in the range of 0..63" */
-const BROTLI_LITERAL_CONTEXT_BITS = 6
+const literalContextBits = 6
 
 /* 7.2. Context ID for distances */
-const BROTLI_DISTANCE_CONTEXT_BITS = 2
+const distanceContextBits = 2
 
 /* 9.1. Format of the Stream Header */
 /* Number of slack bytes for window size. Don't confuse
    with BROTLI_NUM_DISTANCE_SHORT_CODES. */
-const BROTLI_WINDOW_GAP = 16
+const windowGap = 16
 
-func BROTLI_MAX_BACKWARD_LIMIT(W uint) uint {
-	return (uint(1) << W) - BROTLI_WINDOW_GAP
+func maxBackwardLimit(W uint) uint {
+	return (uint(1) << W) - windowGap
 }

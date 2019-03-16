@@ -112,10 +112,10 @@ func getInsertLengthCode(insertlen uint) uint16 {
 	if insertlen < 6 {
 		return uint16(insertlen)
 	} else if insertlen < 130 {
-		var nbits uint32 = Log2FloorNonZero(insertlen-2) - 1
+		var nbits uint32 = log2FloorNonZero(insertlen-2) - 1
 		return uint16((nbits << 1) + uint32((insertlen-2)>>nbits) + 2)
 	} else if insertlen < 2114 {
-		return uint16(Log2FloorNonZero(insertlen-66) + 10)
+		return uint16(log2FloorNonZero(insertlen-66) + 10)
 	} else if insertlen < 6210 {
 		return 21
 	} else if insertlen < 22594 {
@@ -129,10 +129,10 @@ func getCopyLengthCode(copylen uint) uint16 {
 	if copylen < 10 {
 		return uint16(copylen - 2)
 	} else if copylen < 134 {
-		var nbits uint32 = Log2FloorNonZero(copylen-6) - 1
+		var nbits uint32 = log2FloorNonZero(copylen-6) - 1
 		return uint16((nbits << 1) + uint32((copylen-6)>>nbits) + 4)
 	} else if copylen < 2118 {
-		return uint16(Log2FloorNonZero(copylen-70) + 12)
+		return uint16(log2FloorNonZero(copylen-70) + 12)
 	} else {
 		return 23
 	}
@@ -194,7 +194,7 @@ type command struct {
 }
 
 /* distance_code is e.g. 0 for same-as-last short code, or 16 for offset 1. */
-func initCommand(self *command, dist *BrotliDistanceParams, insertlen uint, copylen uint, copylen_code_delta int, distance_code uint) {
+func initCommand(self *command, dist *distanceParams, insertlen uint, copylen uint, copylen_code_delta int, distance_code uint) {
 	/* Don't rely on signed int representation, use honest casts. */
 	var delta uint32 = uint32(byte(int8(copylen_code_delta)))
 	self.insert_len_ = uint32(insertlen)
@@ -216,7 +216,7 @@ func initInsertCommand(self *command, insertlen uint) {
 	getLengthCode(insertlen, 4, false, &self.cmd_prefix_)
 }
 
-func commandRestoreDistanceCode(self *command, dist *BrotliDistanceParams) uint32 {
+func commandRestoreDistanceCode(self *command, dist *distanceParams) uint32 {
 	if uint32(self.dist_prefix_&0x3FF) < numDistanceShortCodes+dist.num_direct_distance_codes {
 		return uint32(self.dist_prefix_) & 0x3FF
 	} else {

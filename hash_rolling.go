@@ -41,7 +41,7 @@ func (h *hashRolling) HashRollingFunction(state uint32, add byte, rem byte, fact
 }
 
 type hashRolling struct {
-	HasherCommon
+	hasherCommon
 
 	jump int
 
@@ -53,7 +53,7 @@ type hashRolling struct {
 	factor_remove uint32
 }
 
-func (h *hashRolling) Initialize(params *BrotliEncoderParams) {
+func (h *hashRolling) Initialize(params *encoderParams) {
 	h.state = 0
 	h.next_ix = 0
 
@@ -120,7 +120,7 @@ func (h *hashRolling) StitchToPreviousBlock(num_bytes uint, position uint, ringb
 func (*hashRolling) PrepareDistanceCache(distance_cache []int) {
 }
 
-func (h *hashRolling) FindLongestMatch(dictionary *BrotliEncoderDictionary, data []byte, ring_buffer_mask uint, distance_cache []int, cur_ix uint, max_length uint, max_backward uint, gap uint, max_distance uint, out *HasherSearchResult) {
+func (h *hashRolling) FindLongestMatch(dictionary *encoderDictionary, data []byte, ring_buffer_mask uint, distance_cache []int, cur_ix uint, max_length uint, max_backward uint, gap uint, max_distance uint, out *hasherSearchResult) {
 	var cur_ix_masked uint = cur_ix & ring_buffer_mask
 	var pos uint = h.next_ix
 
@@ -150,9 +150,9 @@ func (h *hashRolling) FindLongestMatch(dictionary *BrotliEncoderDictionary, data
 				var backward uint = uint(uint32(cur_ix - found_ix))
 				if backward <= max_backward {
 					var found_ix_masked uint = found_ix & ring_buffer_mask
-					var len uint = FindMatchLengthWithLimit(data[found_ix_masked:], data[cur_ix_masked:], max_length)
+					var len uint = findMatchLengthWithLimit(data[found_ix_masked:], data[cur_ix_masked:], max_length)
 					if len >= 4 && len > out.len {
-						var score uint = BackwardReferenceScore(uint(len), backward)
+						var score uint = backwardReferenceScore(uint(len), backward)
 						if score > out.score {
 							out.len = uint(len)
 							out.distance = backward

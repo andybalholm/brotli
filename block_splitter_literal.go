@@ -6,11 +6,11 @@ package brotli
    Distributed under MIT license.
    See file LICENSE for detail or copy at https://opensource.org/licenses/MIT
 */
-func initialEntropyCodesLiteral(data []byte, length uint, stride uint, num_histograms uint, histograms []HistogramLiteral) {
+func initialEntropyCodesLiteral(data []byte, length uint, stride uint, num_histograms uint, histograms []histogramLiteral) {
 	var seed uint32 = 7
 	var block_length uint = length / num_histograms
 	var i uint
-	ClearHistogramsLiteral(histograms, num_histograms)
+	clearHistogramsLiteral(histograms, num_histograms)
 	for i = 0; i < num_histograms; i++ {
 		var pos uint = length * i / num_histograms
 		if i != 0 {
@@ -21,11 +21,11 @@ func initialEntropyCodesLiteral(data []byte, length uint, stride uint, num_histo
 			pos = length - stride - 1
 		}
 
-		HistogramAddVectorLiteral(&histograms[i], data[pos:], stride)
+		histogramAddVectorLiteral(&histograms[i], data[pos:], stride)
 	}
 }
 
-func randomSampleLiteral(seed *uint32, data []byte, length uint, stride uint, sample *HistogramLiteral) {
+func randomSampleLiteral(seed *uint32, data []byte, length uint, stride uint, sample *histogramLiteral) {
 	var pos uint = 0
 	if stride >= length {
 		stride = length
@@ -33,27 +33,27 @@ func randomSampleLiteral(seed *uint32, data []byte, length uint, stride uint, sa
 		pos = uint(myRand(seed) % uint32(length-stride+1))
 	}
 
-	HistogramAddVectorLiteral(sample, data[pos:], stride)
+	histogramAddVectorLiteral(sample, data[pos:], stride)
 }
 
-func refineEntropyCodesLiteral(data []byte, length uint, stride uint, num_histograms uint, histograms []HistogramLiteral) {
+func refineEntropyCodesLiteral(data []byte, length uint, stride uint, num_histograms uint, histograms []histogramLiteral) {
 	var iters uint = kIterMulForRefining*length/stride + kMinItersForRefining
 	var seed uint32 = 7
 	var iter uint
 	iters = ((iters + num_histograms - 1) / num_histograms) * num_histograms
 	for iter = 0; iter < iters; iter++ {
-		var sample HistogramLiteral
-		HistogramClearLiteral(&sample)
+		var sample histogramLiteral
+		histogramClearLiteral(&sample)
 		randomSampleLiteral(&seed, data, length, stride, &sample)
-		HistogramAddHistogramLiteral(&histograms[iter%num_histograms], &sample)
+		histogramAddHistogramLiteral(&histograms[iter%num_histograms], &sample)
 	}
 }
 
 /* Assigns a block id from the range [0, num_histograms) to each data element
    in data[0..length) and fills in block_id[0..length) with the assigned values.
    Returns the number of blocks, i.e. one plus the number of block switches. */
-func findBlocksLiteral(data []byte, length uint, block_switch_bitcost float64, num_histograms uint, histograms []HistogramLiteral, insert_cost []float64, cost []float64, switch_signal []byte, block_id []byte) uint {
-	var data_size uint = HistogramDataSizeLiteral()
+func findBlocksLiteral(data []byte, length uint, block_switch_bitcost float64, num_histograms uint, histograms []histogramLiteral, insert_cost []float64, cost []float64, switch_signal []byte, block_id []byte) uint {
+	var data_size uint = histogramDataSizeLiteral()
 	var bitmaplen uint = (num_histograms + 7) >> 3
 	var num_blocks uint = 1
 	var i uint
@@ -71,7 +71,7 @@ func findBlocksLiteral(data []byte, length uint, block_switch_bitcost float64, n
 		insert_cost[i] = 0
 	}
 	for i = 0; i < num_histograms; i++ {
-		insert_cost[i] = FastLog2(uint(uint32(histograms[i].total_count_)))
+		insert_cost[i] = fastLog2(uint(uint32(histograms[i].total_count_)))
 	}
 
 	for i = data_size; i != 0; {
@@ -176,11 +176,11 @@ func remapBlockIdsLiteral(block_ids []byte, length uint, new_id []uint16, num_hi
 	return uint(next_id)
 }
 
-func buildBlockHistogramsLiteral(data []byte, length uint, block_ids []byte, num_histograms uint, histograms []HistogramLiteral) {
+func buildBlockHistogramsLiteral(data []byte, length uint, block_ids []byte, num_histograms uint, histograms []histogramLiteral) {
 	var i uint
-	ClearHistogramsLiteral(histograms, num_histograms)
+	clearHistogramsLiteral(histograms, num_histograms)
 	for i = 0; i < length; i++ {
-		HistogramAddLiteral(&histograms[block_ids[i]], uint(data[i]))
+		histogramAddLiteral(&histograms[block_ids[i]], uint(data[i]))
 	}
 }
 
@@ -192,12 +192,12 @@ func clusterBlocksLiteral(data []byte, length uint, num_blocks uint, block_ids [
 	var expected_num_clusters uint = clustersPerBatch * (num_blocks + histogramsPerBatch - 1) / histogramsPerBatch
 	var all_histograms_size uint = 0
 	var all_histograms_capacity uint = expected_num_clusters
-	var all_histograms []HistogramLiteral = make([]HistogramLiteral, all_histograms_capacity)
+	var all_histograms []histogramLiteral = make([]histogramLiteral, all_histograms_capacity)
 	var cluster_size_size uint = 0
 	var cluster_size_capacity uint = expected_num_clusters
 	var cluster_size []uint32 = make([]uint32, cluster_size_capacity)
 	var num_clusters uint = 0
-	var histograms []HistogramLiteral = make([]HistogramLiteral, brotli_min_size_t(num_blocks, histogramsPerBatch))
+	var histograms []histogramLiteral = make([]histogramLiteral, brotli_min_size_t(num_blocks, histogramsPerBatch))
 	var max_num_pairs uint = histogramsPerBatch * histogramsPerBatch / 2
 	var pairs_capacity uint = max_num_pairs + 1
 	var pairs []histogramPair = make([]histogramPair, pairs_capacity)
@@ -233,9 +233,9 @@ func clusterBlocksLiteral(data []byte, length uint, num_blocks uint, block_ids [
 		var j uint
 		for j = 0; j < num_to_combine; j++ {
 			var k uint
-			HistogramClearLiteral(&histograms[j])
+			histogramClearLiteral(&histograms[j])
 			for k = 0; uint32(k) < block_lengths[i+j]; k++ {
-				HistogramAddLiteral(&histograms[j], uint(data[pos]))
+				histogramAddLiteral(&histograms[j], uint(data[pos]))
 				pos++
 			}
 
@@ -253,11 +253,11 @@ func clusterBlocksLiteral(data []byte, length uint, num_blocks uint, block_ids [
 			} else {
 				_new_size = all_histograms_capacity
 			}
-			var new_array []HistogramLiteral
+			var new_array []histogramLiteral
 			for _new_size < (all_histograms_size + num_new_clusters) {
 				_new_size *= 2
 			}
-			new_array = make([]HistogramLiteral, _new_size)
+			new_array = make([]histogramLiteral, _new_size)
 			if all_histograms_capacity != 0 {
 				copy(new_array, all_histograms[:all_histograms_capacity])
 			}
@@ -309,13 +309,13 @@ func clusterBlocksLiteral(data []byte, length uint, num_blocks uint, block_ids [
 	{
 		var next_index uint32 = 0
 		for i = 0; i < num_blocks; i++ {
-			var histo HistogramLiteral
+			var histo histogramLiteral
 			var j uint
 			var best_out uint32
 			var best_bits float64
-			HistogramClearLiteral(&histo)
+			histogramClearLiteral(&histo)
 			for j = 0; uint32(j) < block_lengths[i]; j++ {
-				HistogramAddLiteral(&histo, uint(data[pos]))
+				histogramAddLiteral(&histo, uint(data[pos]))
 				pos++
 			}
 
@@ -370,10 +370,10 @@ func clusterBlocksLiteral(data []byte, length uint, num_blocks uint, block_ids [
 	histogram_symbols = nil
 }
 
-func splitByteVectorLiteral(data []byte, length uint, literals_per_histogram uint, max_histograms uint, sampling_stride_length uint, block_switch_cost float64, params *BrotliEncoderParams, split *blockSplit) {
-	var data_size uint = HistogramDataSizeLiteral()
+func splitByteVectorLiteral(data []byte, length uint, literals_per_histogram uint, max_histograms uint, sampling_stride_length uint, block_switch_cost float64, params *encoderParams, split *blockSplit) {
+	var data_size uint = histogramDataSizeLiteral()
 	var num_histograms uint = length/literals_per_histogram + 1
-	var histograms []HistogramLiteral
+	var histograms []histogramLiteral
 	if num_histograms > max_histograms {
 		num_histograms = max_histograms
 	}
@@ -391,7 +391,7 @@ func splitByteVectorLiteral(data []byte, length uint, literals_per_histogram uin
 		return
 	}
 
-	histograms = make([]HistogramLiteral, num_histograms)
+	histograms = make([]histogramLiteral, num_histograms)
 
 	/* Find good entropy codes. */
 	initialEntropyCodesLiteral(data, length, sampling_stride_length, num_histograms, histograms)

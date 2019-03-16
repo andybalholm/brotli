@@ -9,7 +9,7 @@ package brotli
 
 /* Computes the bit cost reduction by combining out[idx1] and out[idx2] and if
    it is below a threshold, stores the pair (idx1, idx2) in the *pairs queue. */
-func compareAndPushToQueueLiteral(out []HistogramLiteral, cluster_size []uint32, idx1 uint32, idx2 uint32, max_num_pairs uint, pairs []histogramPair, num_pairs *uint) {
+func compareAndPushToQueueLiteral(out []histogramLiteral, cluster_size []uint32, idx1 uint32, idx2 uint32, max_num_pairs uint, pairs []histogramPair, num_pairs *uint) {
 	var is_good_pair bool = false
 	var p histogramPair
 	p.idx2 = 0
@@ -45,9 +45,9 @@ func compareAndPushToQueueLiteral(out []HistogramLiteral, cluster_size []uint32,
 		} else {
 			threshold = brotli_max_double(0.0, pairs[0].cost_diff)
 		}
-		var combo HistogramLiteral = out[idx1]
+		var combo histogramLiteral = out[idx1]
 		var cost_combo float64
-		HistogramAddHistogramLiteral(&combo, &out[idx2])
+		histogramAddHistogramLiteral(&combo, &out[idx2])
 		cost_combo = populationCostLiteral(&combo)
 		if cost_combo < threshold-p.cost_diff {
 			p.cost_combo = cost_combo
@@ -72,7 +72,7 @@ func compareAndPushToQueueLiteral(out []HistogramLiteral, cluster_size []uint32,
 	}
 }
 
-func histogramCombineLiteral(out []HistogramLiteral, cluster_size []uint32, symbols []uint32, clusters []uint32, pairs []histogramPair, num_clusters uint, symbols_size uint, max_clusters uint, max_num_pairs uint) uint {
+func histogramCombineLiteral(out []histogramLiteral, cluster_size []uint32, symbols []uint32, clusters []uint32, pairs []histogramPair, num_clusters uint, symbols_size uint, max_clusters uint, max_num_pairs uint) uint {
 	var cost_diff_threshold float64 = 0.0
 	var min_cluster_size uint = 1
 	var num_pairs uint = 0
@@ -102,7 +102,7 @@ func histogramCombineLiteral(out []HistogramLiteral, cluster_size []uint32, symb
 		best_idx1 = pairs[0].idx1
 
 		best_idx2 = pairs[0].idx2
-		HistogramAddHistogramLiteral(&out[best_idx1], &out[best_idx2])
+		histogramAddHistogramLiteral(&out[best_idx1], &out[best_idx2])
 		out[best_idx1].bit_cost_ = pairs[0].cost_combo
 		cluster_size[best_idx1] += cluster_size[best_idx2]
 		for i = 0; i < symbols_size; i++ {
@@ -154,12 +154,12 @@ func histogramCombineLiteral(out []HistogramLiteral, cluster_size []uint32, symb
 }
 
 /* What is the bit cost of moving histogram from cur_symbol to candidate. */
-func histogramBitCostDistanceLiteral(histogram *HistogramLiteral, candidate *HistogramLiteral) float64 {
+func histogramBitCostDistanceLiteral(histogram *histogramLiteral, candidate *histogramLiteral) float64 {
 	if histogram.total_count_ == 0 {
 		return 0.0
 	} else {
-		var tmp HistogramLiteral = *histogram
-		HistogramAddHistogramLiteral(&tmp, candidate)
+		var tmp histogramLiteral = *histogram
+		histogramAddHistogramLiteral(&tmp, candidate)
 		return populationCostLiteral(&tmp) - candidate.bit_cost_
 	}
 }
@@ -168,7 +168,7 @@ func histogramBitCostDistanceLiteral(histogram *HistogramLiteral, candidate *His
    When called, clusters[0..num_clusters) contains the unique values from
    symbols[0..in_size), but this property is not preserved in this function.
    Note: we assume that out[]->bit_cost_ is already up-to-date. */
-func histogramRemapLiteral(in []HistogramLiteral, in_size uint, clusters []uint32, num_clusters uint, out []HistogramLiteral, symbols []uint32) {
+func histogramRemapLiteral(in []histogramLiteral, in_size uint, clusters []uint32, num_clusters uint, out []histogramLiteral, symbols []uint32) {
 	var i uint
 	for i = 0; i < in_size; i++ {
 		var best_out uint32
@@ -192,11 +192,11 @@ func histogramRemapLiteral(in []HistogramLiteral, in_size uint, clusters []uint3
 
 	/* Recompute each out based on raw and symbols. */
 	for i = 0; i < num_clusters; i++ {
-		HistogramClearLiteral(&out[clusters[i]])
+		histogramClearLiteral(&out[clusters[i]])
 	}
 
 	for i = 0; i < in_size; i++ {
-		HistogramAddHistogramLiteral(&out[symbols[i]], &in[i])
+		histogramAddHistogramLiteral(&out[symbols[i]], &in[i])
 	}
 }
 
@@ -213,10 +213,10 @@ func histogramRemapLiteral(in []HistogramLiteral, in_size uint, clusters []uint3
 
 var histogramReindexLiteral_kInvalidIndex uint32 = BROTLI_UINT32_MAX
 
-func histogramReindexLiteral(out []HistogramLiteral, symbols []uint32, length uint) uint {
+func histogramReindexLiteral(out []histogramLiteral, symbols []uint32, length uint) uint {
 	var new_index []uint32 = make([]uint32, length)
 	var next_index uint32
-	var tmp []HistogramLiteral
+	var tmp []histogramLiteral
 	var i uint
 	for i = 0; i < length; i++ {
 		new_index[i] = histogramReindexLiteral_kInvalidIndex
@@ -232,7 +232,7 @@ func histogramReindexLiteral(out []HistogramLiteral, symbols []uint32, length ui
 
 	/* TODO: by using idea of "cycle-sort" we can avoid allocation of
 	   tmp and reduce the number of copying by the factor of 2. */
-	tmp = make([]HistogramLiteral, next_index)
+	tmp = make([]histogramLiteral, next_index)
 
 	next_index = 0
 	for i = 0; i < length; i++ {
@@ -253,7 +253,7 @@ func histogramReindexLiteral(out []HistogramLiteral, symbols []uint32, length ui
 	return uint(next_index)
 }
 
-func clusterHistogramsLiteral(in []HistogramLiteral, in_size uint, max_histograms uint, out []HistogramLiteral, out_size *uint, histogram_symbols []uint32) {
+func clusterHistogramsLiteral(in []histogramLiteral, in_size uint, max_histograms uint, out []histogramLiteral, out_size *uint, histogram_symbols []uint32) {
 	var cluster_size []uint32 = make([]uint32, in_size)
 	var clusters []uint32 = make([]uint32, in_size)
 	var num_clusters uint = 0

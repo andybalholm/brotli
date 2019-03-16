@@ -42,8 +42,8 @@ func computeDistanceCode(distance uint, max_distance uint, dist_cache []int) uin
 	return distance + numDistanceShortCodes - 1
 }
 
-func createBackwardReferences(num_bytes uint, position uint, ringbuffer []byte, ringbuffer_mask uint, params *BrotliEncoderParams, hasher HasherHandle, dist_cache []int, last_insert_len *uint, commands []command, num_commands *uint, num_literals *uint) {
-	var max_backward_limit uint = BROTLI_MAX_BACKWARD_LIMIT(params.lgwin)
+func createBackwardReferences(num_bytes uint, position uint, ringbuffer []byte, ringbuffer_mask uint, params *encoderParams, hasher hasherHandle, dist_cache []int, last_insert_len *uint, commands []command, num_commands *uint, num_literals *uint) {
+	var max_backward_limit uint = maxBackwardLimit(params.lgwin)
 	var orig_commands []command = commands
 	var insert_length uint = *last_insert_len
 	var pos_end uint = position + num_bytes
@@ -58,7 +58,7 @@ func createBackwardReferences(num_bytes uint, position uint, ringbuffer []byte, 
 	var gap uint = 0
 	/* Set maximum distance, see section 9.1. of the spec. */
 
-	var kMinScore uint = BROTLI_SCORE_BASE + 100
+	var kMinScore uint = scoreBase + 100
 
 	/* For speed up heuristics for random data. */
 
@@ -68,7 +68,7 @@ func createBackwardReferences(num_bytes uint, position uint, ringbuffer []byte, 
 	for position+hasher.HashTypeLength() < pos_end {
 		var max_length uint = pos_end - position
 		var max_distance uint = brotli_min_size_t(position, max_backward_limit)
-		var sr HasherSearchResult
+		var sr hasherSearchResult
 		sr.len = 0
 		sr.len_code_delta = 0
 		sr.distance = 0
@@ -80,7 +80,7 @@ func createBackwardReferences(num_bytes uint, position uint, ringbuffer []byte, 
 			max_length--
 			for ; ; max_length-- {
 				var cost_diff_lazy uint = 175
-				var sr2 HasherSearchResult
+				var sr2 hasherSearchResult
 				if params.quality < MIN_QUALITY_FOR_EXTENSIVE_REFERENCE_SEARCH {
 					sr2.len = brotli_min_size_t(sr.len-1, max_length)
 				} else {

@@ -53,13 +53,13 @@ func isMatch1(p1 []byte, p2 []byte, length uint) bool {
 /* Builds a command and distance prefix code (each 64 symbols) into "depth" and
    "bits" based on "histogram" and stores it into the bit stream. */
 func buildAndStoreCommandPrefixCode(histogram []uint32, depth []byte, bits []uint16, storage_ix *uint, storage []byte) {
-	var tree [129]HuffmanTree
+	var tree [129]huffmanTree
 	var cmd_depth = [numCommandSymbols]byte{0}
 	/* Tree size for building a tree over 64 symbols is 2 * 64 + 1. */
 
 	var cmd_bits [64]uint16
-	BrotliCreateHuffmanTree(histogram, 64, 15, tree[:], depth)
-	BrotliCreateHuffmanTree(histogram[64:], 64, 14, tree[:], depth[64:])
+	createHuffmanTree(histogram, 64, 15, tree[:], depth)
+	createHuffmanTree(histogram[64:], 64, 14, tree[:], depth[64:])
 
 	/* We have to jump through a few hoops here in order to compute
 	   the command bits because the symbols are in a different order than in
@@ -73,14 +73,14 @@ func buildAndStoreCommandPrefixCode(histogram []uint32, depth []byte, bits []uin
 	copy(cmd_depth[40:][:], depth[8:][:8])
 	copy(cmd_depth[48:][:], depth[56:][:8])
 	copy(cmd_depth[56:][:], depth[16:][:8])
-	BrotliConvertBitDepthsToSymbols(cmd_depth[:], 64, cmd_bits[:])
+	convertBitDepthsToSymbols(cmd_depth[:], 64, cmd_bits[:])
 	copy(bits, cmd_bits[24:][:8])
 	copy(bits[8:], cmd_bits[40:][:8])
 	copy(bits[16:], cmd_bits[56:][:8])
 	copy(bits[24:], cmd_bits[:24])
 	copy(bits[48:], cmd_bits[32:][:8])
 	copy(bits[56:], cmd_bits[48:][:8])
-	BrotliConvertBitDepthsToSymbols(depth[64:], 64, bits[64:])
+	convertBitDepthsToSymbols(depth[64:], 64, bits[64:])
 	{
 		/* Create the bit length array for the full command alphabet. */
 		var i uint
@@ -109,14 +109,14 @@ func emitInsertLen(insertlen uint32, commands *[]uint32) {
 		(*commands)[0] = insertlen
 	} else if insertlen < 130 {
 		var tail uint32 = insertlen - 2
-		var nbits uint32 = Log2FloorNonZero(uint(tail)) - 1
+		var nbits uint32 = log2FloorNonZero(uint(tail)) - 1
 		var prefix uint32 = tail >> nbits
 		var inscode uint32 = (nbits << 1) + prefix + 2
 		var extra uint32 = tail - (prefix << nbits)
 		(*commands)[0] = inscode | extra<<8
 	} else if insertlen < 2114 {
 		var tail uint32 = insertlen - 66
-		var nbits uint32 = Log2FloorNonZero(uint(tail))
+		var nbits uint32 = log2FloorNonZero(uint(tail))
 		var code uint32 = nbits + 10
 		var extra uint32 = tail - (1 << nbits)
 		(*commands)[0] = code | extra<<8
@@ -139,14 +139,14 @@ func emitCopyLen(copylen uint, commands *[]uint32) {
 		(*commands)[0] = uint32(copylen + 38)
 	} else if copylen < 134 {
 		var tail uint = copylen - 6
-		var nbits uint = uint(Log2FloorNonZero(tail) - 1)
+		var nbits uint = uint(log2FloorNonZero(tail) - 1)
 		var prefix uint = tail >> nbits
 		var code uint = (nbits << 1) + prefix + 44
 		var extra uint = tail - (prefix << nbits)
 		(*commands)[0] = uint32(code | extra<<8)
 	} else if copylen < 2118 {
 		var tail uint = copylen - 70
-		var nbits uint = uint(Log2FloorNonZero(tail))
+		var nbits uint = uint(log2FloorNonZero(tail))
 		var code uint = nbits + 52
 		var extra uint = tail - (uint(1) << nbits)
 		(*commands)[0] = uint32(code | extra<<8)
@@ -164,7 +164,7 @@ func emitCopyLenLastDistance(copylen uint, commands *[]uint32) {
 		*commands = (*commands)[1:]
 	} else if copylen < 72 {
 		var tail uint = copylen - 8
-		var nbits uint = uint(Log2FloorNonZero(tail) - 1)
+		var nbits uint = uint(log2FloorNonZero(tail) - 1)
 		var prefix uint = tail >> nbits
 		var code uint = (nbits << 1) + prefix + 28
 		var extra uint = tail - (prefix << nbits)
@@ -180,7 +180,7 @@ func emitCopyLenLastDistance(copylen uint, commands *[]uint32) {
 		*commands = (*commands)[1:]
 	} else if copylen < 2120 {
 		var tail uint = copylen - 72
-		var nbits uint = uint(Log2FloorNonZero(tail))
+		var nbits uint = uint(log2FloorNonZero(tail))
 		var code uint = nbits + 52
 		var extra uint = tail - (uint(1) << nbits)
 		(*commands)[0] = uint32(code | extra<<8)
@@ -198,7 +198,7 @@ func emitCopyLenLastDistance(copylen uint, commands *[]uint32) {
 
 func emitDistance(distance uint32, commands *[]uint32) {
 	var d uint32 = distance + 3
-	var nbits uint32 = Log2FloorNonZero(uint(d)) - 1
+	var nbits uint32 = log2FloorNonZero(uint(d)) - 1
 	var prefix uint32 = (d >> nbits) & 1
 	var offset uint32 = (2 + prefix) << nbits
 	var distcode uint32 = 2*(nbits-1) + prefix + 80
@@ -236,7 +236,7 @@ func createCommands(input []byte, block_size uint, input_size uint, base_ip_ptr 
 	var last_distance int = -1
 	/* "ip" is the input pointer. */
 
-	var kInputMarginBytes uint = BROTLI_WINDOW_GAP
+	var kInputMarginBytes uint = windowGap
 
 	/* "next_emit" is a pointer to the first byte that is not covered by a
 	   previous copy. Bytes between "next_emit" and the start of the next copy or
@@ -307,7 +307,7 @@ func createCommands(input []byte, block_size uint, input_size uint, base_ip_ptr 
 
 			/* Check copy distance. If candidate is not feasible, continue search.
 			   Checking is done outside of hot loop to reduce overhead. */
-			if ip-candidate > maxDistance {
+			if ip-candidate > maxDistance_compress_fragment {
 				goto trawl
 			}
 
@@ -318,7 +318,7 @@ func createCommands(input []byte, block_size uint, input_size uint, base_ip_ptr 
 			{
 				var base int = ip
 				/* > 0 */
-				var matched uint = min_match + FindMatchLengthWithLimit(input[uint(candidate)+min_match:], input[uint(ip)+min_match:], uint(ip_end-ip)-min_match)
+				var matched uint = min_match + findMatchLengthWithLimit(input[uint(candidate)+min_match:], input[uint(ip)+min_match:], uint(ip_end-ip)-min_match)
 				var distance int = int(base - candidate)
 				/* We have a 6-byte match at ip, and we need to emit bytes in
 				   [next_emit, ip). */
@@ -380,12 +380,12 @@ func createCommands(input []byte, block_size uint, input_size uint, base_ip_ptr 
 				}
 			}
 
-			for ip-candidate <= maxDistance && isMatch1(input[ip:], input[candidate:], min_match) {
+			for ip-candidate <= maxDistance_compress_fragment && isMatch1(input[ip:], input[candidate:], min_match) {
 				var base int = ip
 				/* We have a 6-byte match at ip, and no need to emit any
 				   literal bytes prior to ip. */
 
-				var matched uint = min_match + FindMatchLengthWithLimit(input[uint(candidate)+min_match:], input[uint(ip)+min_match:], uint(ip_end-ip)-min_match)
+				var matched uint = min_match + findMatchLengthWithLimit(input[uint(candidate)+min_match:], input[uint(ip)+min_match:], uint(ip_end-ip)-min_match)
 				ip += int(matched)
 				last_distance = int(base - candidate) /* > 0 */
 				emitCopyLen(matched, commands)
@@ -723,7 +723,7 @@ func compressFragmentTwoPassImpl(input []byte, input_size uint, is_last bool, co
 
 func compressFragmentTwoPass(input []byte, input_size uint, is_last bool, command_buf []uint32, literal_buf []byte, table []int, table_size uint, storage_ix *uint, storage []byte) {
 	var initial_storage_ix uint = *storage_ix
-	var table_bits uint = uint(Log2FloorNonZero(table_size))
+	var table_bits uint = uint(log2FloorNonZero(table_size))
 	var min_match uint
 	if table_bits <= 15 {
 		min_match = 4

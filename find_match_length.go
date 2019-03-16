@@ -15,7 +15,7 @@ package brotli
 */
 
 /* Function to find maximal matching prefixes of strings. */
-func FindMatchLengthWithLimit(s1 []byte, s2 []byte, limit uint) uint {
+func findMatchLengthWithLimit(s1 []byte, s2 []byte, limit uint) uint {
 	var matched uint = 0
 	for matched < limit && s1[matched] == s2[matched] {
 		matched++

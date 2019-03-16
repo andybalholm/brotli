@@ -7,7 +7,7 @@ package brotli
 */
 
 /* Utilities for building Huffman decoding tables. */
-const BROTLI_HUFFMAN_MAX_CODE_LENGTH = 15
+const huffmanMaxCodeLength = 15
 
 /* Maximum possible Huffman table size for an alphabet size of (index * 32),
    max code length 15 and root table bits 8. */
@@ -52,25 +52,25 @@ var kMaxHuffmanTableSize = []uint16{
 }
 
 /* BROTLI_NUM_BLOCK_LEN_SYMBOLS == 26 */
-const BROTLI_HUFFMAN_MAX_SIZE_26 = 396
+const huffmanMaxSize26 = 396
 
 /* BROTLI_MAX_BLOCK_TYPE_SYMBOLS == 258 */
-const BROTLI_HUFFMAN_MAX_SIZE_258 = 632
+const huffmanMaxSize258 = 632
 
 /* BROTLI_MAX_CONTEXT_MAP_SYMBOLS == 272 */
-const BROTLI_HUFFMAN_MAX_SIZE_272 = 646
+const huffmanMaxSize272 = 646
 
-const BROTLI_HUFFMAN_MAX_CODE_LENGTH_CODE_LENGTH = 5
+const huffmanMaxCodeLengthCodeLength = 5
 
 /* Do not create this struct directly - use the ConstructHuffmanCode
  * constructor below! */
-type HuffmanCode struct {
+type huffmanCode struct {
 	bits  byte
 	value uint16
 }
 
-func ConstructHuffmanCode(bits byte, value uint16) HuffmanCode {
-	var h HuffmanCode
+func constructHuffmanCode(bits byte, value uint16) huffmanCode {
+	var h huffmanCode
 	h.bits = bits
 	h.value = value
 	return h
@@ -89,19 +89,19 @@ func ConstructHuffmanCode(bits byte, value uint16) HuffmanCode {
 /* Contains a collection of Huffman trees with the same alphabet size. */
 /* max_symbol is needed due to simple codes since log2(alphabet_size) could be
    greater than log2(max_symbol). */
-type HuffmanTreeGroup struct {
-	htrees        [][]HuffmanCode
-	codes         []HuffmanCode
+type huffmanTreeGroup struct {
+	htrees        [][]huffmanCode
+	codes         []huffmanCode
 	alphabet_size uint16
 	max_symbol    uint16
 	num_htrees    uint16
 }
 
-const BROTLI_REVERSE_BITS_MAX = 8
+const reverseBitsMax = 8
 
-const BROTLI_REVERSE_BITS_BASE = 0
+const reverseBitsBase = 0
 
-var kReverseBits = [1 << BROTLI_REVERSE_BITS_MAX]byte{
+var kReverseBits = [1 << reverseBitsMax]byte{
 	0x00,
 	0x80,
 	0x40,
@@ -360,18 +360,18 @@ var kReverseBits = [1 << BROTLI_REVERSE_BITS_MAX]byte{
 	0xFF,
 }
 
-const BROTLI_REVERSE_BITS_LOWEST = (uint64(1) << (BROTLI_REVERSE_BITS_MAX - 1 + BROTLI_REVERSE_BITS_BASE))
+const reverseBitsLowest = (uint64(1) << (reverseBitsMax - 1 + reverseBitsBase))
 
 /* Returns reverse(num >> BROTLI_REVERSE_BITS_BASE, BROTLI_REVERSE_BITS_MAX),
    where reverse(value, len) is the bit-wise reversal of the len least
    significant bits of value. */
-func BrotliReverseBits8(num uint64) uint64 {
+func reverseBits8(num uint64) uint64 {
 	return uint64(kReverseBits[num])
 }
 
 /* Stores code in table[0], table[step], table[2*step], ..., table[end] */
 /* Assumes that end is an integer multiple of step */
-func ReplicateValue(table []HuffmanCode, step int, end int, code HuffmanCode) {
+func replicateValue(table []huffmanCode, step int, end int, code huffmanCode) {
 	for {
 		end -= step
 		table[end] = code
@@ -384,9 +384,9 @@ func ReplicateValue(table []HuffmanCode, step int, end int, code HuffmanCode) {
 /* Returns the table width of the next 2nd level table. |count| is the histogram
    of bit lengths for the remaining symbols, |len| is the code length of the
    next processed symbol. */
-func NextTableBitSize(count []uint16, len int, root_bits int) int {
+func nextTableBitSize(count []uint16, len int, root_bits int) int {
 	var left int = 1 << uint(len-root_bits)
-	for len < BROTLI_HUFFMAN_MAX_CODE_LENGTH {
+	for len < huffmanMaxCodeLength {
 		left -= int(count[len])
 		if left <= 0 {
 			break
@@ -398,26 +398,26 @@ func NextTableBitSize(count []uint16, len int, root_bits int) int {
 	return len - root_bits
 }
 
-func BrotliBuildCodeLengthsHuffmanTable(table []HuffmanCode, code_lengths []byte, count []uint16) {
-	var code HuffmanCode /* current table entry */ /* symbol index in original or sorted table */ /* prefix code */ /* prefix code addend */ /* step size to replicate values in current table */ /* size of current table */ /* symbols sorted by code length */
+func buildCodeLengthsHuffmanTable(table []huffmanCode, code_lengths []byte, count []uint16) {
+	var code huffmanCode /* current table entry */ /* symbol index in original or sorted table */ /* prefix code */ /* prefix code addend */ /* step size to replicate values in current table */ /* size of current table */ /* symbols sorted by code length */
 	var symbol int
 	var key uint64
 	var key_step uint64
 	var step int
 	var table_size int
 	var sorted [codeLengthCodes]int
-	var offset [BROTLI_HUFFMAN_MAX_CODE_LENGTH_CODE_LENGTH + 1]int
+	var offset [huffmanMaxCodeLengthCodeLength + 1]int
 	var bits int
 	var bits_count int
 	/* offsets in sorted table for each length */
-	assert(BROTLI_HUFFMAN_MAX_CODE_LENGTH_CODE_LENGTH <= BROTLI_REVERSE_BITS_MAX)
+	assert(huffmanMaxCodeLengthCodeLength <= reverseBitsMax)
 
 	/* Generate offsets into sorted symbol table by code length. */
 	symbol = -1
 
 	bits = 1
 	var i int
-	for i = 0; i < BROTLI_HUFFMAN_MAX_CODE_LENGTH_CODE_LENGTH; i++ {
+	for i = 0; i < huffmanMaxCodeLengthCodeLength; i++ {
 		symbol += int(count[bits])
 		offset[bits] = symbol
 		bits++
@@ -441,11 +441,11 @@ func BrotliBuildCodeLengthsHuffmanTable(table []HuffmanCode, code_lengths []byte
 		}
 	}
 
-	table_size = 1 << BROTLI_HUFFMAN_MAX_CODE_LENGTH_CODE_LENGTH
+	table_size = 1 << huffmanMaxCodeLengthCodeLength
 
 	/* Special case: all symbols but one have 0 code length. */
 	if offset[0] == 0 {
-		code = ConstructHuffmanCode(0, uint16(sorted[0]))
+		code = constructHuffmanCode(0, uint16(sorted[0]))
 		for key = 0; key < uint64(table_size); key++ {
 			table[key] = code
 		}
@@ -456,30 +456,30 @@ func BrotliBuildCodeLengthsHuffmanTable(table []HuffmanCode, code_lengths []byte
 	/* Fill in table. */
 	key = 0
 
-	key_step = BROTLI_REVERSE_BITS_LOWEST
+	key_step = reverseBitsLowest
 	symbol = 0
 	bits = 1
 	step = 2
 	for {
 		for bits_count = int(count[bits]); bits_count != 0; bits_count-- {
-			code = ConstructHuffmanCode(byte(bits), uint16(sorted[symbol]))
+			code = constructHuffmanCode(byte(bits), uint16(sorted[symbol]))
 			symbol++
-			ReplicateValue(table[BrotliReverseBits8(key):], step, table_size, code)
+			replicateValue(table[reverseBits8(key):], step, table_size, code)
 			key += key_step
 		}
 
 		step <<= 1
 		key_step >>= 1
 		bits++
-		if bits > BROTLI_HUFFMAN_MAX_CODE_LENGTH_CODE_LENGTH {
+		if bits > huffmanMaxCodeLengthCodeLength {
 			break
 		}
 	}
 }
 
-func BrotliBuildHuffmanTable(root_table []HuffmanCode, root_bits int, symbol_lists SymbolList, count []uint16) uint32 {
-	var code HuffmanCode /* current table entry */ /* next available space in table */ /* current code length */ /* symbol index in original or sorted table */ /* prefix code */ /* prefix code addend */ /* 2nd level table prefix code */ /* 2nd level table prefix code addend */ /* step size to replicate values in current table */ /* key length of current table */ /* size of current table */ /* sum of root table size and 2nd level table sizes */
-	var table []HuffmanCode
+func buildHuffmanTable(root_table []huffmanCode, root_bits int, symbol_lists SymbolList, count []uint16) uint32 {
+	var code huffmanCode /* current table entry */ /* next available space in table */ /* current code length */ /* symbol index in original or sorted table */ /* prefix code */ /* prefix code addend */ /* 2nd level table prefix code */ /* 2nd level table prefix code addend */ /* step size to replicate values in current table */ /* key length of current table */ /* size of current table */ /* sum of root table size and 2nd level table sizes */
+	var table []huffmanCode
 	var len int
 	var symbol int
 	var key uint64
@@ -494,13 +494,13 @@ func BrotliBuildHuffmanTable(root_table []HuffmanCode, root_bits int, symbol_lis
 	var bits int
 	var bits_count int
 
-	assert(root_bits <= BROTLI_REVERSE_BITS_MAX)
-	assert(BROTLI_HUFFMAN_MAX_CODE_LENGTH-root_bits <= BROTLI_REVERSE_BITS_MAX)
+	assert(root_bits <= reverseBitsMax)
+	assert(huffmanMaxCodeLength-root_bits <= reverseBitsMax)
 
 	for SymbolListGet(symbol_lists, max_length) == 0xFFFF {
 		max_length--
 	}
-	max_length += BROTLI_HUFFMAN_MAX_CODE_LENGTH + 1
+	max_length += huffmanMaxCodeLength + 1
 
 	table = root_table
 	table_bits = root_bits
@@ -515,15 +515,15 @@ func BrotliBuildHuffmanTable(root_table []HuffmanCode, root_bits int, symbol_lis
 	}
 
 	key = 0
-	key_step = BROTLI_REVERSE_BITS_LOWEST
+	key_step = reverseBitsLowest
 	bits = 1
 	step = 2
 	for {
-		symbol = bits - (BROTLI_HUFFMAN_MAX_CODE_LENGTH + 1)
+		symbol = bits - (huffmanMaxCodeLength + 1)
 		for bits_count = int(count[bits]); bits_count != 0; bits_count-- {
 			symbol = int(SymbolListGet(symbol_lists, symbol))
-			code = ConstructHuffmanCode(byte(bits), uint16(symbol))
-			ReplicateValue(table[BrotliReverseBits8(key):], step, table_size, code)
+			code = constructHuffmanCode(byte(bits), uint16(symbol))
+			replicateValue(table[reverseBits8(key):], step, table_size, code)
 			key += key_step
 		}
 
@@ -542,29 +542,29 @@ func BrotliBuildHuffmanTable(root_table []HuffmanCode, root_bits int, symbol_lis
 	}
 
 	/* Fill in 2nd level tables and add pointers to root table. */
-	key_step = BROTLI_REVERSE_BITS_LOWEST >> uint(root_bits-1)
+	key_step = reverseBitsLowest >> uint(root_bits-1)
 
-	sub_key = BROTLI_REVERSE_BITS_LOWEST << 1
-	sub_key_step = BROTLI_REVERSE_BITS_LOWEST
+	sub_key = reverseBitsLowest << 1
+	sub_key_step = reverseBitsLowest
 	len = root_bits + 1
 	step = 2
 	for ; len <= max_length; len++ {
-		symbol = len - (BROTLI_HUFFMAN_MAX_CODE_LENGTH + 1)
+		symbol = len - (huffmanMaxCodeLength + 1)
 		for ; count[len] != 0; count[len]-- {
-			if sub_key == BROTLI_REVERSE_BITS_LOWEST<<1 {
+			if sub_key == reverseBitsLowest<<1 {
 				table = table[table_size:]
-				table_bits = NextTableBitSize(count, int(len), root_bits)
+				table_bits = nextTableBitSize(count, int(len), root_bits)
 				table_size = 1 << uint(table_bits)
 				total_size += table_size
-				sub_key = BrotliReverseBits8(key)
+				sub_key = reverseBits8(key)
 				key += key_step
-				root_table[sub_key] = ConstructHuffmanCode(byte(table_bits+root_bits), uint16(uint64(uint(-cap(table)+cap(root_table)))-sub_key))
+				root_table[sub_key] = constructHuffmanCode(byte(table_bits+root_bits), uint16(uint64(uint(-cap(table)+cap(root_table)))-sub_key))
 				sub_key = 0
 			}
 
 			symbol = int(SymbolListGet(symbol_lists, symbol))
-			code = ConstructHuffmanCode(byte(len-root_bits), uint16(symbol))
-			ReplicateValue(table[BrotliReverseBits8(sub_key):], step, table_size, code)
+			code = constructHuffmanCode(byte(len-root_bits), uint16(symbol))
+			replicateValue(table[reverseBits8(sub_key):], step, table_size, code)
 			sub_key += sub_key_step
 		}
 
@@ -575,33 +575,33 @@ func BrotliBuildHuffmanTable(root_table []HuffmanCode, root_bits int, symbol_lis
 	return uint32(total_size)
 }
 
-func BrotliBuildSimpleHuffmanTable(table []HuffmanCode, root_bits int, val []uint16, num_symbols uint32) uint32 {
+func buildSimpleHuffmanTable(table []huffmanCode, root_bits int, val []uint16, num_symbols uint32) uint32 {
 	var table_size uint32 = 1
 	var goal_size uint32 = 1 << uint(root_bits)
 	switch num_symbols {
 	case 0:
-		table[0] = ConstructHuffmanCode(0, val[0])
+		table[0] = constructHuffmanCode(0, val[0])
 
 	case 1:
 		if val[1] > val[0] {
-			table[0] = ConstructHuffmanCode(1, val[0])
-			table[1] = ConstructHuffmanCode(1, val[1])
+			table[0] = constructHuffmanCode(1, val[0])
+			table[1] = constructHuffmanCode(1, val[1])
 		} else {
-			table[0] = ConstructHuffmanCode(1, val[1])
-			table[1] = ConstructHuffmanCode(1, val[0])
+			table[0] = constructHuffmanCode(1, val[1])
+			table[1] = constructHuffmanCode(1, val[0])
 		}
 
 		table_size = 2
 
 	case 2:
-		table[0] = ConstructHuffmanCode(1, val[0])
-		table[2] = ConstructHuffmanCode(1, val[0])
+		table[0] = constructHuffmanCode(1, val[0])
+		table[2] = constructHuffmanCode(1, val[0])
 		if val[2] > val[1] {
-			table[1] = ConstructHuffmanCode(2, val[1])
-			table[3] = ConstructHuffmanCode(2, val[2])
+			table[1] = constructHuffmanCode(2, val[1])
+			table[3] = constructHuffmanCode(2, val[2])
 		} else {
-			table[1] = ConstructHuffmanCode(2, val[2])
-			table[3] = ConstructHuffmanCode(2, val[1])
+			table[1] = constructHuffmanCode(2, val[2])
+			table[3] = constructHuffmanCode(2, val[1])
 		}
 
 		table_size = 4
@@ -619,10 +619,10 @@ func BrotliBuildSimpleHuffmanTable(table []HuffmanCode, root_bits int, val []uin
 				}
 			}
 
-			table[0] = ConstructHuffmanCode(2, val[0])
-			table[2] = ConstructHuffmanCode(2, val[1])
-			table[1] = ConstructHuffmanCode(2, val[2])
-			table[3] = ConstructHuffmanCode(2, val[3])
+			table[0] = constructHuffmanCode(2, val[0])
+			table[2] = constructHuffmanCode(2, val[1])
+			table[1] = constructHuffmanCode(2, val[2])
+			table[3] = constructHuffmanCode(2, val[3])
 			table_size = 4
 			break
 		}
@@ -635,14 +635,14 @@ func BrotliBuildSimpleHuffmanTable(table []HuffmanCode, root_bits int, val []uin
 				val[2] = t
 			}
 
-			table[0] = ConstructHuffmanCode(1, val[0])
-			table[1] = ConstructHuffmanCode(2, val[1])
-			table[2] = ConstructHuffmanCode(1, val[0])
-			table[3] = ConstructHuffmanCode(3, val[2])
-			table[4] = ConstructHuffmanCode(1, val[0])
-			table[5] = ConstructHuffmanCode(2, val[1])
-			table[6] = ConstructHuffmanCode(1, val[0])
-			table[7] = ConstructHuffmanCode(3, val[3])
+			table[0] = constructHuffmanCode(1, val[0])
+			table[1] = constructHuffmanCode(2, val[1])
+			table[2] = constructHuffmanCode(1, val[0])
+			table[3] = constructHuffmanCode(3, val[2])
+			table[4] = constructHuffmanCode(1, val[0])
+			table[5] = constructHuffmanCode(2, val[1])
+			table[6] = constructHuffmanCode(1, val[0])
+			table[7] = constructHuffmanCode(3, val[3])
 			table_size = 8
 			break
 		}

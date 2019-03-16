@@ -102,7 +102,7 @@ func bitCost(count uint) float64 {
 	if count == 0 {
 		return -2.0
 	} else {
-		return FastLog2(count)
+		return fastLog2(count)
 	}
 }
 
@@ -124,7 +124,7 @@ func destroyBlockSplit(self *blockSplit) {
 	self.lengths = nil
 }
 
-func splitBlock(cmds []command, num_commands uint, data []byte, pos uint, mask uint, params *BrotliEncoderParams, literal_split *blockSplit, insert_and_copy_split *blockSplit, dist_split *blockSplit) {
+func splitBlock(cmds []command, num_commands uint, data []byte, pos uint, mask uint, params *encoderParams, literal_split *blockSplit, insert_and_copy_split *blockSplit, dist_split *blockSplit) {
 	{
 		var literals_count uint = countLiterals(cmds, num_commands)
 		var literals []byte = make([]byte, literals_count)

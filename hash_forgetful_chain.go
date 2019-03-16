@@ -38,7 +38,7 @@ type slot struct {
 }
 
 type hashForgetfulChain struct {
-	HasherCommon
+	hasherCommon
 
 	bucketBits              uint
 	numBanks                uint
@@ -53,7 +53,7 @@ type hashForgetfulChain struct {
 	max_hops      uint
 }
 
-func (h *hashForgetfulChain) Initialize(params *BrotliEncoderParams) {
+func (h *hashForgetfulChain) Initialize(params *encoderParams) {
 	var q uint
 	if params.quality > 6 {
 		q = 7
@@ -144,7 +144,7 @@ func (h *hashForgetfulChain) StitchToPreviousBlock(num_bytes uint, position uint
 }
 
 func (h *hashForgetfulChain) PrepareDistanceCache(distance_cache []int) {
-	PrepareDistanceCache(distance_cache, h.numLastDistancesToCheck)
+	prepareDistanceCache(distance_cache, h.numLastDistancesToCheck)
 }
 
 /* Find a longest backward match of &data[cur_ix] up to the length of
@@ -158,7 +158,7 @@ func (h *hashForgetfulChain) PrepareDistanceCache(distance_cache []int) {
    Does not look for matches further away than max_backward.
    Writes the best match into |out|.
    |out|->score is updated only if a better match is found. */
-func (h *hashForgetfulChain) FindLongestMatch(dictionary *BrotliEncoderDictionary, data []byte, ring_buffer_mask uint, distance_cache []int, cur_ix uint, max_length uint, max_backward uint, gap uint, max_distance uint, out *HasherSearchResult) {
+func (h *hashForgetfulChain) FindLongestMatch(dictionary *encoderDictionary, data []byte, ring_buffer_mask uint, distance_cache []int, cur_ix uint, max_length uint, max_backward uint, gap uint, max_distance uint, out *hasherSearchResult) {
 	var cur_ix_masked uint = cur_ix & ring_buffer_mask
 	var min_score uint = out.score
 	var best_score uint = out.score
@@ -185,12 +185,12 @@ func (h *hashForgetfulChain) FindLongestMatch(dictionary *BrotliEncoderDictionar
 
 		prev_ix &= ring_buffer_mask
 		{
-			var len uint = FindMatchLengthWithLimit(data[prev_ix:], data[cur_ix_masked:], max_length)
+			var len uint = findMatchLengthWithLimit(data[prev_ix:], data[cur_ix_masked:], max_length)
 			if len >= 2 {
-				var score uint = BackwardReferenceScoreUsingLastDistance(uint(len))
+				var score uint = backwardReferenceScoreUsingLastDistance(uint(len))
 				if best_score < score {
 					if i != 0 {
-						score -= BackwardReferencePenaltyUsingLastDistance(uint(i))
+						score -= backwardReferencePenaltyUsingLastDistance(uint(i))
 					}
 					if best_score < score {
 						best_score = score
@@ -228,12 +228,12 @@ func (h *hashForgetfulChain) FindLongestMatch(dictionary *BrotliEncoderDictionar
 				continue
 			}
 			{
-				var len uint = FindMatchLengthWithLimit(data[prev_ix:], data[cur_ix_masked:], max_length)
+				var len uint = findMatchLengthWithLimit(data[prev_ix:], data[cur_ix_masked:], max_length)
 				if len >= 4 {
 					/* Comparing for >= 3 does not change the semantics, but just saves
 					   for a few unnecessary binary logarithms in backward reference
 					   score, since we are not interested in such short matches. */
-					var score uint = BackwardReferenceScore(uint(len), backward)
+					var score uint = backwardReferenceScore(uint(len), backward)
 					if best_score < score {
 						best_score = score
 						best_len = uint(len)
@@ -249,6 +249,6 @@ func (h *hashForgetfulChain) FindLongestMatch(dictionary *BrotliEncoderDictionar
 	}
 
 	if out.score == min_score {
-		SearchInStaticDictionary(dictionary, h, data[cur_ix_masked:], max_length, max_backward+gap, max_distance, out, false)
+		searchInStaticDictionary(dictionary, h, data[cur_ix_masked:], max_length, max_backward+gap, max_distance, out, false)
 	}
 }

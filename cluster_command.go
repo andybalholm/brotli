@@ -9,7 +9,7 @@ package brotli
 
 /* Computes the bit cost reduction by combining out[idx1] and out[idx2] and if
    it is below a threshold, stores the pair (idx1, idx2) in the *pairs queue. */
-func compareAndPushToQueueCommand(out []HistogramCommand, cluster_size []uint32, idx1 uint32, idx2 uint32, max_num_pairs uint, pairs []histogramPair, num_pairs *uint) {
+func compareAndPushToQueueCommand(out []histogramCommand, cluster_size []uint32, idx1 uint32, idx2 uint32, max_num_pairs uint, pairs []histogramPair, num_pairs *uint) {
 	var is_good_pair bool = false
 	var p histogramPair
 	p.idx2 = 0
@@ -45,9 +45,9 @@ func compareAndPushToQueueCommand(out []HistogramCommand, cluster_size []uint32,
 		} else {
 			threshold = brotli_max_double(0.0, pairs[0].cost_diff)
 		}
-		var combo HistogramCommand = out[idx1]
+		var combo histogramCommand = out[idx1]
 		var cost_combo float64
-		HistogramAddHistogramCommand(&combo, &out[idx2])
+		histogramAddHistogramCommand(&combo, &out[idx2])
 		cost_combo = populationCostCommand(&combo)
 		if cost_combo < threshold-p.cost_diff {
 			p.cost_combo = cost_combo
@@ -72,7 +72,7 @@ func compareAndPushToQueueCommand(out []HistogramCommand, cluster_size []uint32,
 	}
 }
 
-func histogramCombineCommand(out []HistogramCommand, cluster_size []uint32, symbols []uint32, clusters []uint32, pairs []histogramPair, num_clusters uint, symbols_size uint, max_clusters uint, max_num_pairs uint) uint {
+func histogramCombineCommand(out []histogramCommand, cluster_size []uint32, symbols []uint32, clusters []uint32, pairs []histogramPair, num_clusters uint, symbols_size uint, max_clusters uint, max_num_pairs uint) uint {
 	var cost_diff_threshold float64 = 0.0
 	var min_cluster_size uint = 1
 	var num_pairs uint = 0
@@ -102,7 +102,7 @@ func histogramCombineCommand(out []HistogramCommand, cluster_size []uint32, symb
 		best_idx1 = pairs[0].idx1
 
 		best_idx2 = pairs[0].idx2
-		HistogramAddHistogramCommand(&out[best_idx1], &out[best_idx2])
+		histogramAddHistogramCommand(&out[best_idx1], &out[best_idx2])
 		out[best_idx1].bit_cost_ = pairs[0].cost_combo
 		cluster_size[best_idx1] += cluster_size[best_idx2]
 		for i = 0; i < symbols_size; i++ {
@@ -154,12 +154,12 @@ func histogramCombineCommand(out []HistogramCommand, cluster_size []uint32, symb
 }
 
 /* What is the bit cost of moving histogram from cur_symbol to candidate. */
-func histogramBitCostDistanceCommand(histogram *HistogramCommand, candidate *HistogramCommand) float64 {
+func histogramBitCostDistanceCommand(histogram *histogramCommand, candidate *histogramCommand) float64 {
 	if histogram.total_count_ == 0 {
 		return 0.0
 	} else {
-		var tmp HistogramCommand = *histogram
-		HistogramAddHistogramCommand(&tmp, candidate)
+		var tmp histogramCommand = *histogram
+		histogramAddHistogramCommand(&tmp, candidate)
 		return populationCostCommand(&tmp) - candidate.bit_cost_
 	}
 }
@@ -168,7 +168,7 @@ func histogramBitCostDistanceCommand(histogram *HistogramCommand, candidate *His
    When called, clusters[0..num_clusters) contains the unique values from
    symbols[0..in_size), but this property is not preserved in this function.
    Note: we assume that out[]->bit_cost_ is already up-to-date. */
-func histogramRemapCommand(in []HistogramCommand, in_size uint, clusters []uint32, num_clusters uint, out []HistogramCommand, symbols []uint32) {
+func histogramRemapCommand(in []histogramCommand, in_size uint, clusters []uint32, num_clusters uint, out []histogramCommand, symbols []uint32) {
 	var i uint
 	for i = 0; i < in_size; i++ {
 		var best_out uint32
@@ -192,11 +192,11 @@ func histogramRemapCommand(in []HistogramCommand, in_size uint, clusters []uint3
 
 	/* Recompute each out based on raw and symbols. */
 	for i = 0; i < num_clusters; i++ {
-		HistogramClearCommand(&out[clusters[i]])
+		histogramClearCommand(&out[clusters[i]])
 	}
 
 	for i = 0; i < in_size; i++ {
-		HistogramAddHistogramCommand(&out[symbols[i]], &in[i])
+		histogramAddHistogramCommand(&out[symbols[i]], &in[i])
 	}
 }
 
@@ -213,10 +213,10 @@ func histogramRemapCommand(in []HistogramCommand, in_size uint, clusters []uint3
 
 var histogramReindexCommand_kInvalidIndex uint32 = BROTLI_UINT32_MAX
 
-func histogramReindexCommand(out []HistogramCommand, symbols []uint32, length uint) uint {
+func histogramReindexCommand(out []histogramCommand, symbols []uint32, length uint) uint {
 	var new_index []uint32 = make([]uint32, length)
 	var next_index uint32
-	var tmp []HistogramCommand
+	var tmp []histogramCommand
 	var i uint
 	for i = 0; i < length; i++ {
 		new_index[i] = histogramReindexCommand_kInvalidIndex
@@ -232,7 +232,7 @@ func histogramReindexCommand(out []HistogramCommand, symbols []uint32, length ui
 
 	/* TODO: by using idea of "cycle-sort" we can avoid allocation of
 	   tmp and reduce the number of copying by the factor of 2. */
-	tmp = make([]HistogramCommand, next_index)
+	tmp = make([]histogramCommand, next_index)
 
 	next_index = 0
 	for i = 0; i < length; i++ {
@@ -253,7 +253,7 @@ func histogramReindexCommand(out []HistogramCommand, symbols []uint32, length ui
 	return uint(next_index)
 }
 
-func clusterHistogramsCommand(in []HistogramCommand, in_size uint, max_histograms uint, out []HistogramCommand, out_size *uint, histogram_symbols []uint32) {
+func clusterHistogramsCommand(in []histogramCommand, in_size uint, max_histograms uint, out []histogramCommand, out_size *uint, histogram_symbols []uint32) {
 	var cluster_size []uint32 = make([]uint32, in_size)
 	var clusters []uint32 = make([]uint32, in_size)
 	var num_clusters uint = 0

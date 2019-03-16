@@ -11,7 +11,7 @@ package brotli
 
 /* Represents the range of values belonging to a prefix code:
    [offset, offset + 2^nbits) */
-type PrefixCodeRange1 struct {
+type prefixCodeRange1 struct {
 	offset uint16
 	nbits  byte
 }

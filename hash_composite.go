@@ -32,13 +32,13 @@ func (h *hashComposite) StoreLookahead() uint {
 }
 
 type hashComposite struct {
-	HasherCommon
-	ha     HasherHandle
-	hb     HasherHandle
-	params *BrotliEncoderParams
+	hasherCommon
+	ha     hasherHandle
+	hb     hasherHandle
+	params *encoderParams
 }
 
-func (h *hashComposite) Initialize(params *BrotliEncoderParams) {
+func (h *hashComposite) Initialize(params *encoderParams) {
 	h.params = params
 }
 
@@ -48,8 +48,8 @@ func (h *hashComposite) Initialize(params *BrotliEncoderParams) {
    those params to all hashers InitializehashComposite */
 func (h *hashComposite) Prepare(one_shot bool, input_size uint, data []byte) {
 	if h.ha == nil {
-		var common_a *HasherCommon
-		var common_b *HasherCommon
+		var common_a *hasherCommon
+		var common_b *hasherCommon
 
 		common_a = h.ha.Common()
 		common_a.params = h.params.hasher
@@ -90,7 +90,7 @@ func (h *hashComposite) PrepareDistanceCache(distance_cache []int) {
 	h.hb.PrepareDistanceCache(distance_cache)
 }
 
-func (h *hashComposite) FindLongestMatch(dictionary *BrotliEncoderDictionary, data []byte, ring_buffer_mask uint, distance_cache []int, cur_ix uint, max_length uint, max_backward uint, gap uint, max_distance uint, out *HasherSearchResult) {
+func (h *hashComposite) FindLongestMatch(dictionary *encoderDictionary, data []byte, ring_buffer_mask uint, distance_cache []int, cur_ix uint, max_length uint, max_backward uint, gap uint, max_distance uint, out *hasherSearchResult) {
 	h.ha.FindLongestMatch(dictionary, data, ring_buffer_mask, distance_cache, cur_ix, max_length, max_backward, gap, max_distance, out)
 	h.hb.FindLongestMatch(dictionary, data, ring_buffer_mask, distance_cache, cur_ix, max_length, max_backward, gap, max_distance, out)
 }

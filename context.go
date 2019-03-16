@@ -179,17 +179,17 @@ package brotli
 /* Lookup table to map the previous two bytes to a context id.
 
 There are four different context modeling modes defined here:
-  CONTEXT_LSB6: context id is the least significant 6 bits of the last byte,
-  CONTEXT_MSB6: context id is the most significant 6 bits of the last byte,
-  CONTEXT_UTF8: second-order context model tuned for UTF8-encoded text,
-  CONTEXT_SIGNED: second-order context model tuned for signed integers.
+  contextLSB6: context id is the least significant 6 bits of the last byte,
+  contextMSB6: context id is the most significant 6 bits of the last byte,
+  contextUTF8: second-order context model tuned for UTF8-encoded text,
+  contextSigned: second-order context model tuned for signed integers.
 
 If |p1| and |p2| are the previous two bytes, and |mode| is current context
 mode, we calculate the context as:
 
   context = ContextLut(mode)[p1] | ContextLut(mode)[p2 + 256].
 
-For CONTEXT_UTF8 mode, if the previous two bytes are ASCII characters
+For contextUTF8 mode, if the previous two bytes are ASCII characters
 (i.e. < 128), this will be equivalent to
 
   context = 4 * context1(p1) + context2(p2),
@@ -257,10 +257,10 @@ context ids and the type of the next byte is summarized in the table below:
 |-------------|-------------------|---------------------|------------------|
 */
 const (
-	CONTEXT_LSB6   = 0
-	CONTEXT_MSB6   = 1
-	CONTEXT_UTF8   = 2
-	CONTEXT_SIGNED = 3
+	contextLSB6   = 0
+	contextMSB6   = 1
+	contextUTF8   = 2
+	contextSigned = 3
 )
 
 /* Common context lookup table for all context modes. */
@@ -2340,12 +2340,12 @@ var kContextLookup = [2048]byte{
 	7,
 }
 
-type ContextLut []byte
+type contextLUT []byte
 
-func BROTLI_CONTEXT_LUT(mode int) ContextLut {
+func getContextLUT(mode int) contextLUT {
 	return kContextLookup[mode<<9:]
 }
 
-func BROTLI_CONTEXT(p1 byte, p2 byte, lut ContextLut) byte {
+func getContext(p1 byte, p2 byte, lut contextLUT) byte {
 	return lut[p1] | lut[256+int(p2)]
 }

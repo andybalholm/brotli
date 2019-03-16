@@ -4317,7 +4317,7 @@ var kStaticCommandCodeBits = [numCommandSymbols]uint16{
 	2047,
 }
 
-func StoreStaticCommandHuffmanTree(storage_ix *uint, storage []byte) {
+func storeStaticCommandHuffmanTree(storage_ix *uint, storage []byte) {
 	BrotliWriteBits(56, 0x92624416307003, storage_ix, storage)
 	BrotliWriteBits(3, 0x00000000, storage_ix, storage)
 }
@@ -4389,6 +4389,6 @@ var kStaticDistanceCodeBits = [64]uint16{
 	63,
 }
 
-func StoreStaticDistanceHuffmanTree(storage_ix *uint, storage []byte) {
+func storeStaticDistanceHuffmanTree(storage_ix *uint, storage []byte) {
 	BrotliWriteBits(28, 0x0369DC03, storage_ix, storage)
 }

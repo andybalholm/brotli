@@ -23,7 +23,7 @@ var (
 // NewWriter initializes new Writer instance.
 func NewWriter(dst io.Writer, options WriterOptions) *Writer {
 	w := new(Writer)
-	BrotliEncoderInitState(w)
+	encoderInitState(w)
 	w.params.quality = options.Quality
 	if options.LGWin > 0 {
 		w.params.lgwin = uint(options.LGWin)
@@ -40,7 +40,7 @@ func (w *Writer) writeChunk(p []byte, op int) (n int, err error) {
 	for {
 		availableIn := uint(len(p))
 		nextIn := p
-		success := BrotliEncoderCompressStream(w, op, &availableIn, &nextIn)
+		success := encoderCompressStream(w, op, &availableIn, &nextIn)
 		bytesConsumed := len(p) - int(availableIn)
 		p = p[bytesConsumed:]
 		n += bytesConsumed
@@ -48,7 +48,7 @@ func (w *Writer) writeChunk(p []byte, op int) (n int, err error) {
 			return n, errEncode
 		}
 
-		outputData := BrotliEncoderTakeOutput(w)
+		outputData := encoderTakeOutput(w)
 
 		if len(outputData) > 0 {
 			_, err = w.dst.Write(outputData)
@@ -67,14 +67,14 @@ func (w *Writer) writeChunk(p []byte, op int) (n int, err error) {
 // not yet complete until after Close.
 // Flush has a negative impact on compression.
 func (w *Writer) Flush() error {
-	_, err := w.writeChunk(nil, BROTLI_OPERATION_FLUSH)
+	_, err := w.writeChunk(nil, operationFlush)
 	return err
 }
 
 // Close flushes remaining data to the decorated writer.
 func (w *Writer) Close() error {
 	// If stream is already closed, it is reported by `writeChunk`.
-	_, err := w.writeChunk(nil, BROTLI_OPERATION_FINISH)
+	_, err := w.writeChunk(nil, operationFinish)
 	w.dst = nil
 	return err
 }
@@ -82,5 +82,5 @@ func (w *Writer) Close() error {
 // Write implements io.Writer. Flush or Close must be called to ensure that the
 // encoded bytes are actually flushed to the underlying Writer.
 func (w *Writer) Write(p []byte) (n int, err error) {
-	return w.writeChunk(p, BROTLI_OPERATION_PROCESS)
+	return w.writeChunk(p, operationProcess)
 }

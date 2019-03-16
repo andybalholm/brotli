@@ -199,7 +199,7 @@ package brotli
 */
 
 /* Parameters for the Brotli encoder with chosen quality levels. */
-type BrotliHasherParams struct {
+type hasherParams struct {
 	type_                       int
 	bucket_bits                 int
 	block_bits                  int
@@ -207,7 +207,7 @@ type BrotliHasherParams struct {
 	num_last_distances_to_check int
 }
 
-type BrotliDistanceParams struct {
+type distanceParams struct {
 	distance_postfix_bits     uint32
 	num_direct_distance_codes uint32
 	alphabet_size             uint32
@@ -215,7 +215,7 @@ type BrotliDistanceParams struct {
 }
 
 /* Encoding parameters */
-type BrotliEncoderParams struct {
+type encoderParams struct {
 	mode                             int
 	quality                          int
 	lgwin                            uint
@@ -223,7 +223,7 @@ type BrotliEncoderParams struct {
 	size_hint                        uint
 	disable_literal_context_modeling bool
 	large_window                     bool
-	hasher                           BrotliHasherParams
-	dist                             BrotliDistanceParams
-	dictionary                       BrotliEncoderDictionary
+	hasher                           hasherParams
+	dist                             distanceParams
+	dictionary                       encoderDictionary
 }

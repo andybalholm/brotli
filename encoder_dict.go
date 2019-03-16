@@ -1,8 +1,8 @@
 package brotli
 
 /* Dictionary data (words and transforms) for 1 possible context */
-type BrotliEncoderDictionary struct {
-	words                 *BrotliDictionary
+type encoderDictionary struct {
+	words                 *dictionary
 	cutoffTransformsCount uint32
 	cutoffTransforms      uint64
 	hash_table            []uint16
@@ -10,8 +10,8 @@ type BrotliEncoderDictionary struct {
 	dict_words            []DictWord
 }
 
-func BrotliInitEncoderDictionary(dict *BrotliEncoderDictionary) {
-	dict.words = BrotliGetDictionary()
+func initEncoderDictionary(dict *encoderDictionary) {
+	dict.words = getDictionary()
 
 	dict.hash_table = kStaticDictionaryHash[:]
 	dict.buckets = kStaticDictionaryBuckets[:]
