@@ -32,7 +32,7 @@ package brotli
 
 /* Here distance_code is an intermediate code, i.e. one of the special codes or
    the actual distance increased by BROTLI_NUM_DISTANCE_SHORT_CODES - 1. */
-func PrefixEncodeCopyDistance(distance_code uint, num_direct_codes uint, postfix_bits uint, code *uint16, extra_bits *uint32) {
+func prefixEncodeCopyDistance(distance_code uint, num_direct_codes uint, postfix_bits uint, code *uint16, extra_bits *uint32) {
 	if distance_code < numDistanceShortCodes+num_direct_codes {
 		*code = uint16(distance_code)
 		*extra_bits = 0

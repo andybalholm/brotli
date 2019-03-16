@@ -53,7 +53,7 @@ func createBackwardReferences(num_bytes uint, position uint, ringbuffer []byte, 
 	} else {
 		store_end = position
 	}
-	var random_heuristics_window_size uint = LiteralSpreeLengthForSparseSearch(params)
+	var random_heuristics_window_size uint = literalSpreeLengthForSparseSearch(params)
 	var apply_random_heuristics uint = position + random_heuristics_window_size
 	var gap uint = 0
 	/* Set maximum distance, see section 9.1. of the spec. */
@@ -81,7 +81,7 @@ func createBackwardReferences(num_bytes uint, position uint, ringbuffer []byte, 
 			for ; ; max_length-- {
 				var cost_diff_lazy uint = 175
 				var sr2 hasherSearchResult
-				if params.quality < MIN_QUALITY_FOR_EXTENSIVE_REFERENCE_SEARCH {
+				if params.quality < minQualityForExtensiveReferenceSearch {
 					sr2.len = brotli_min_size_t(sr.len-1, max_length)
 				} else {
 					sr2.len = 0

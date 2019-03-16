@@ -60,7 +60,7 @@ package brotli
 
    For n bits, we take the last 5 bits, OR that with high bits in BYTE-0,
    and locate the rest in BYTE+1, BYTE+2, etc. */
-func BrotliWriteBits(n_bits uint, bits uint64, pos *uint, array []byte) {
+func writeBits(n_bits uint, bits uint64, pos *uint, array []byte) {
 	var array_pos []byte = array[*pos>>3:]
 	var bits_reserved_in_first_byte uint = (*pos & 7)
 	/* implicit & 0xFF is assumed for uint8_t arithmetics */
@@ -79,15 +79,15 @@ func BrotliWriteBits(n_bits uint, bits uint64, pos *uint, array []byte) {
 	*pos += n_bits
 }
 
-func BrotliWriteSingleBit(bit bool, pos *uint, array []byte) {
+func writeSingleBit(bit bool, pos *uint, array []byte) {
 	if bit {
-		BrotliWriteBits(1, 1, pos, array)
+		writeBits(1, 1, pos, array)
 	} else {
-		BrotliWriteBits(1, 0, pos, array)
+		writeBits(1, 0, pos, array)
 	}
 }
 
-func BrotliWriteBitsPrepareStorage(pos uint, array []byte) {
+func writeBitsPrepareStorage(pos uint, array []byte) {
 	assert(pos&7 == 0)
 	array[pos>>3] = 0
 }

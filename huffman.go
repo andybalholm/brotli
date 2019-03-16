@@ -477,7 +477,7 @@ func buildCodeLengthsHuffmanTable(table []huffmanCode, code_lengths []byte, coun
 	}
 }
 
-func buildHuffmanTable(root_table []huffmanCode, root_bits int, symbol_lists SymbolList, count []uint16) uint32 {
+func buildHuffmanTable(root_table []huffmanCode, root_bits int, symbol_lists symbolList, count []uint16) uint32 {
 	var code huffmanCode /* current table entry */ /* next available space in table */ /* current code length */ /* symbol index in original or sorted table */ /* prefix code */ /* prefix code addend */ /* 2nd level table prefix code */ /* 2nd level table prefix code addend */ /* step size to replicate values in current table */ /* key length of current table */ /* size of current table */ /* sum of root table size and 2nd level table sizes */
 	var table []huffmanCode
 	var len int
@@ -497,7 +497,7 @@ func buildHuffmanTable(root_table []huffmanCode, root_bits int, symbol_lists Sym
 	assert(root_bits <= reverseBitsMax)
 	assert(huffmanMaxCodeLength-root_bits <= reverseBitsMax)
 
-	for SymbolListGet(symbol_lists, max_length) == 0xFFFF {
+	for symbolListGet(symbol_lists, max_length) == 0xFFFF {
 		max_length--
 	}
 	max_length += huffmanMaxCodeLength + 1
@@ -521,7 +521,7 @@ func buildHuffmanTable(root_table []huffmanCode, root_bits int, symbol_lists Sym
 	for {
 		symbol = bits - (huffmanMaxCodeLength + 1)
 		for bits_count = int(count[bits]); bits_count != 0; bits_count-- {
-			symbol = int(SymbolListGet(symbol_lists, symbol))
+			symbol = int(symbolListGet(symbol_lists, symbol))
 			code = constructHuffmanCode(byte(bits), uint16(symbol))
 			replicateValue(table[reverseBits8(key):], step, table_size, code)
 			key += key_step
@@ -562,7 +562,7 @@ func buildHuffmanTable(root_table []huffmanCode, root_bits int, symbol_lists Sym
 				sub_key = 0
 			}
 
-			symbol = int(SymbolListGet(symbol_lists, symbol))
+			symbol = int(symbolListGet(symbol_lists, symbol))
 			code = constructHuffmanCode(byte(len-root_bits), uint16(symbol))
 			replicateValue(table[reverseBits8(sub_key):], step, table_size, code)
 			sub_key += sub_key_step

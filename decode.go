@@ -115,7 +115,7 @@ var kCodeLengthPrefixLength = [16]byte{2, 2, 2, 3, 2, 2, 2, 4, 2, 2, 2, 3, 2, 2,
 var kCodeLengthPrefixValue = [16]byte{0, 4, 3, 2, 0, 4, 3, 1, 0, 4, 3, 2, 0, 4, 3, 5}
 
 func decoderSetParameter(state *Reader, p int, value uint32) bool {
-	if state.state != BROTLI_STATE_UNINITED {
+	if state.state != stateUninited {
 		return false
 	}
 	switch p {
@@ -200,7 +200,7 @@ func decodeWindowBits(s *Reader, br *bitReader) int {
 func decodeVarLenUint8(s *Reader, br *bitReader, value *uint32) int {
 	var bits uint32
 	switch s.substate_decode_uint8 {
-	case BROTLI_STATE_DECODE_UINT8_NONE:
+	case stateDecodeUint8None:
 		if !safeReadBits(br, 1, &bits) {
 			return decoderNeedsMoreInput
 		}
@@ -212,15 +212,15 @@ func decodeVarLenUint8(s *Reader, br *bitReader, value *uint32) int {
 		fallthrough
 
 		/* Fall through. */
-	case BROTLI_STATE_DECODE_UINT8_SHORT:
+	case stateDecodeUint8Short:
 		if !safeReadBits(br, 3, &bits) {
-			s.substate_decode_uint8 = BROTLI_STATE_DECODE_UINT8_SHORT
+			s.substate_decode_uint8 = stateDecodeUint8Short
 			return decoderNeedsMoreInput
 		}
 
 		if bits == 0 {
 			*value = 1
-			s.substate_decode_uint8 = BROTLI_STATE_DECODE_UINT8_NONE
+			s.substate_decode_uint8 = stateDecodeUint8None
 			return decoderSuccess
 		}
 
@@ -229,14 +229,14 @@ func decodeVarLenUint8(s *Reader, br *bitReader, value *uint32) int {
 		fallthrough
 
 		/* Fall through. */
-	case BROTLI_STATE_DECODE_UINT8_LONG:
+	case stateDecodeUint8Long:
 		if !safeReadBits(br, *value, &bits) {
-			s.substate_decode_uint8 = BROTLI_STATE_DECODE_UINT8_LONG
+			s.substate_decode_uint8 = stateDecodeUint8Long
 			return decoderNeedsMoreInput
 		}
 
 		*value = (1 << *value) + bits
-		s.substate_decode_uint8 = BROTLI_STATE_DECODE_UINT8_NONE
+		s.substate_decode_uint8 = stateDecodeUint8None
 		return decoderSuccess
 
 	default:
@@ -250,7 +250,7 @@ func decodeMetaBlockLength(s *Reader, br *bitReader) int {
 	var i int
 	for {
 		switch s.substate_metablock_header {
-		case BROTLI_STATE_METABLOCK_HEADER_NONE:
+		case stateMetablockHeaderNone:
 			if !safeReadBits(br, 1, &bits) {
 				return decoderNeedsMoreInput
 			}
@@ -264,29 +264,29 @@ func decodeMetaBlockLength(s *Reader, br *bitReader) int {
 			s.is_uncompressed = 0
 			s.is_metadata = 0
 			if s.is_last_metablock == 0 {
-				s.substate_metablock_header = BROTLI_STATE_METABLOCK_HEADER_NIBBLES
+				s.substate_metablock_header = stateMetablockHeaderNibbles
 				break
 			}
 
-			s.substate_metablock_header = BROTLI_STATE_METABLOCK_HEADER_EMPTY
+			s.substate_metablock_header = stateMetablockHeaderEmpty
 			fallthrough
 
 			/* Fall through. */
-		case BROTLI_STATE_METABLOCK_HEADER_EMPTY:
+		case stateMetablockHeaderEmpty:
 			if !safeReadBits(br, 1, &bits) {
 				return decoderNeedsMoreInput
 			}
 
 			if bits != 0 {
-				s.substate_metablock_header = BROTLI_STATE_METABLOCK_HEADER_NONE
+				s.substate_metablock_header = stateMetablockHeaderNone
 				return decoderSuccess
 			}
 
-			s.substate_metablock_header = BROTLI_STATE_METABLOCK_HEADER_NIBBLES
+			s.substate_metablock_header = stateMetablockHeaderNibbles
 			fallthrough
 
 			/* Fall through. */
-		case BROTLI_STATE_METABLOCK_HEADER_NIBBLES:
+		case stateMetablockHeaderNibbles:
 			if !safeReadBits(br, 2, &bits) {
 				return decoderNeedsMoreInput
 			}
@@ -295,15 +295,15 @@ func decodeMetaBlockLength(s *Reader, br *bitReader) int {
 			s.loop_counter = 0
 			if bits == 3 {
 				s.is_metadata = 1
-				s.substate_metablock_header = BROTLI_STATE_METABLOCK_HEADER_RESERVED
+				s.substate_metablock_header = stateMetablockHeaderReserved
 				break
 			}
 
-			s.substate_metablock_header = BROTLI_STATE_METABLOCK_HEADER_SIZE
+			s.substate_metablock_header = stateMetablockHeaderSize
 			fallthrough
 
 			/* Fall through. */
-		case BROTLI_STATE_METABLOCK_HEADER_SIZE:
+		case stateMetablockHeaderSize:
 			i = s.loop_counter
 
 			for ; i < int(s.size_nibbles); i++ {
@@ -319,11 +319,11 @@ func decodeMetaBlockLength(s *Reader, br *bitReader) int {
 				s.meta_block_remaining_len |= int(bits << uint(i*4))
 			}
 
-			s.substate_metablock_header = BROTLI_STATE_METABLOCK_HEADER_UNCOMPRESSED
+			s.substate_metablock_header = stateMetablockHeaderUncompressed
 			fallthrough
 
 			/* Fall through. */
-		case BROTLI_STATE_METABLOCK_HEADER_UNCOMPRESSED:
+		case stateMetablockHeaderUncompressed:
 			if s.is_last_metablock == 0 {
 				if !safeReadBits(br, 1, &bits) {
 					return decoderNeedsMoreInput
@@ -337,10 +337,10 @@ func decodeMetaBlockLength(s *Reader, br *bitReader) int {
 			}
 
 			s.meta_block_remaining_len++
-			s.substate_metablock_header = BROTLI_STATE_METABLOCK_HEADER_NONE
+			s.substate_metablock_header = stateMetablockHeaderNone
 			return decoderSuccess
 
-		case BROTLI_STATE_METABLOCK_HEADER_RESERVED:
+		case stateMetablockHeaderReserved:
 			if !safeReadBits(br, 1, &bits) {
 				return decoderNeedsMoreInput
 			}
@@ -349,26 +349,26 @@ func decodeMetaBlockLength(s *Reader, br *bitReader) int {
 				return decoderErrorFormatReserved
 			}
 
-			s.substate_metablock_header = BROTLI_STATE_METABLOCK_HEADER_BYTES
+			s.substate_metablock_header = stateMetablockHeaderBytes
 			fallthrough
 
 			/* Fall through. */
-		case BROTLI_STATE_METABLOCK_HEADER_BYTES:
+		case stateMetablockHeaderBytes:
 			if !safeReadBits(br, 2, &bits) {
 				return decoderNeedsMoreInput
 			}
 
 			if bits == 0 {
-				s.substate_metablock_header = BROTLI_STATE_METABLOCK_HEADER_NONE
+				s.substate_metablock_header = stateMetablockHeaderNone
 				return decoderSuccess
 			}
 
 			s.size_nibbles = uint(byte(bits))
-			s.substate_metablock_header = BROTLI_STATE_METABLOCK_HEADER_METADATA
+			s.substate_metablock_header = stateMetablockHeaderMetadata
 			fallthrough
 
 			/* Fall through. */
-		case BROTLI_STATE_METABLOCK_HEADER_METADATA:
+		case stateMetablockHeaderMetadata:
 			i = s.loop_counter
 
 			for ; i < int(s.size_nibbles); i++ {
@@ -385,7 +385,7 @@ func decodeMetaBlockLength(s *Reader, br *bitReader) int {
 			}
 
 			s.meta_block_remaining_len++
-			s.substate_metablock_header = BROTLI_STATE_METABLOCK_HEADER_NONE
+			s.substate_metablock_header = stateMetablockHeaderNone
 			return decoderSuccess
 
 		default:
@@ -476,7 +476,7 @@ func preloadSymbol(safe int, table []huffmanCode, br *bitReader, bits *uint32, v
 		return
 	}
 
-	table = table[BrotliGetBits(br, huffmanTableBits):]
+	table = table[getBits(br, huffmanTableBits):]
 	*bits = uint32(table[0].bits)
 	*value = uint32(table[0].value)
 }
@@ -526,7 +526,7 @@ func readSimpleHuffmanSymbols(alphabet_size uint32, max_symbol uint32, s *Reader
 		var v uint32
 		if !safeReadBits(br, max_bits, &v) {
 			s.sub_loop_counter = i
-			s.substate_huffman = BROTLI_STATE_HUFFMAN_SIMPLE_READ
+			s.substate_huffman = stateHuffmanSimpleRead
 			return decoderNeedsMoreInput
 		}
 
@@ -556,10 +556,10 @@ func readSimpleHuffmanSymbols(alphabet_size uint32, max_symbol uint32, s *Reader
    C) extend corresponding index-chain
    D) reduce the Huffman space
    E) update the histogram */
-func processSingleCodeLength(code_len uint32, symbol *uint32, repeat *uint32, space *uint32, prev_code_len *uint32, symbol_lists SymbolList, code_length_histo []uint16, next_symbol []int) {
+func processSingleCodeLength(code_len uint32, symbol *uint32, repeat *uint32, space *uint32, prev_code_len *uint32, symbol_lists symbolList, code_length_histo []uint16, next_symbol []int) {
 	*repeat = 0
 	if code_len != 0 { /* code_len == 1..15 */
-		SymbolListPut(symbol_lists, next_symbol[code_len], uint16(*symbol))
+		symbolListPut(symbol_lists, next_symbol[code_len], uint16(*symbol))
 		next_symbol[code_len] = int(*symbol)
 		*prev_code_len = code_len
 		*space -= 32768 >> code_len
@@ -579,7 +579,7 @@ func processSingleCodeLength(code_len uint32, symbol *uint32, repeat *uint32, sp
 
    PRECONDITION: code_len == BROTLI_REPEAT_PREVIOUS_CODE_LENGTH or
                  code_len == BROTLI_REPEAT_ZERO_CODE_LENGTH */
-func processRepeatedCodeLength(code_len uint32, repeat_delta uint32, alphabet_size uint32, symbol *uint32, repeat *uint32, space *uint32, prev_code_len *uint32, repeat_code_len *uint32, symbol_lists SymbolList, code_length_histo []uint16, next_symbol []int) {
+func processRepeatedCodeLength(code_len uint32, repeat_delta uint32, alphabet_size uint32, symbol *uint32, repeat *uint32, space *uint32, prev_code_len *uint32, repeat_code_len *uint32, symbol_lists symbolList, code_length_histo []uint16, next_symbol []int) {
 	var old_repeat uint32 /* for BROTLI_REPEAT_ZERO_CODE_LENGTH */ /* for BROTLI_REPEAT_ZERO_CODE_LENGTH */
 	var extra_bits uint32 = 3
 	var new_len uint32 = 0
@@ -611,7 +611,7 @@ func processRepeatedCodeLength(code_len uint32, repeat_delta uint32, alphabet_si
 		var last uint = uint(*symbol + repeat_delta)
 		var next int = next_symbol[*repeat_code_len]
 		for {
-			SymbolListPut(symbol_lists, next, uint16(*symbol))
+			symbolListPut(symbol_lists, next, uint16(*symbol))
 			next = int(*symbol)
 			(*symbol)++
 			if (*symbol) == uint32(last) {
@@ -635,7 +635,7 @@ func readSymbolCodeLengths(alphabet_size uint32, s *Reader) int {
 	var space uint32 = s.space
 	var prev_code_len uint32 = s.prev_code_len
 	var repeat_code_len uint32 = s.repeat_code_len
-	var symbol_lists SymbolList = s.symbol_lists
+	var symbol_lists symbolList = s.symbol_lists
 	var code_length_histo []uint16 = s.code_length_histo[:]
 	var next_symbol []int = s.next_symbol[:]
 	if !warmupBitReader(br) {
@@ -744,7 +744,7 @@ func readCodeLengthCodeLengths(s *Reader) int {
 				s.sub_loop_counter = i
 				s.repeat = num_codes
 				s.space = space
-				s.substate_huffman = BROTLI_STATE_HUFFMAN_COMPLEX
+				s.substate_huffman = stateHuffmanComplex
 				return decoderNeedsMoreInput
 			}
 		}
@@ -790,7 +790,7 @@ func readHuffmanCode(alphabet_size uint32, max_symbol uint32, table []huffmanCod
 	/* State machine. */
 	for {
 		switch s.substate_huffman {
-		case BROTLI_STATE_HUFFMAN_NONE:
+		case stateHuffmanNone:
 			if !safeReadBits(br, 2, &s.sub_loop_counter) {
 				return decoderNeedsMoreInput
 			}
@@ -810,23 +810,23 @@ func readHuffmanCode(alphabet_size uint32, max_symbol uint32, table []huffmanCod
 					s.code_length_code_lengths[i] = 0
 				}
 
-				s.substate_huffman = BROTLI_STATE_HUFFMAN_COMPLEX
+				s.substate_huffman = stateHuffmanComplex
 				continue
 			}
 			fallthrough
 
 			/* Read symbols, codes & code lengths directly. */
 		/* Fall through. */
-		case BROTLI_STATE_HUFFMAN_SIMPLE_SIZE:
+		case stateHuffmanSimpleSize:
 			if !safeReadBits(br, 2, &s.symbol) { /* num_symbols */
-				s.substate_huffman = BROTLI_STATE_HUFFMAN_SIMPLE_SIZE
+				s.substate_huffman = stateHuffmanSimpleSize
 				return decoderNeedsMoreInput
 			}
 
 			s.sub_loop_counter = 0
 			fallthrough
 		/* Fall through. */
-		case BROTLI_STATE_HUFFMAN_SIMPLE_READ:
+		case stateHuffmanSimpleRead:
 			{
 				var result int = readSimpleHuffmanSymbols(alphabet_size, max_symbol, s)
 				if result != decoderSuccess {
@@ -836,13 +836,13 @@ func readHuffmanCode(alphabet_size uint32, max_symbol uint32, table []huffmanCod
 			fallthrough
 
 			/* Fall through. */
-		case BROTLI_STATE_HUFFMAN_SIMPLE_BUILD:
+		case stateHuffmanSimpleBuild:
 			{
 				var table_size uint32
 				if s.symbol == 3 {
 					var bits uint32
 					if !safeReadBits(br, 1, &bits) {
-						s.substate_huffman = BROTLI_STATE_HUFFMAN_SIMPLE_BUILD
+						s.substate_huffman = stateHuffmanSimpleBuild
 						return decoderNeedsMoreInput
 					}
 
@@ -854,13 +854,13 @@ func readHuffmanCode(alphabet_size uint32, max_symbol uint32, table []huffmanCod
 					*opt_table_size = table_size
 				}
 
-				s.substate_huffman = BROTLI_STATE_HUFFMAN_NONE
+				s.substate_huffman = stateHuffmanNone
 				return decoderSuccess
 			}
 			fallthrough
 
 			/* Decode Huffman-coded code lengths. */
-		case BROTLI_STATE_HUFFMAN_COMPLEX:
+		case stateHuffmanComplex:
 			{
 				var i uint32
 				var result int = readCodeLengthCodeLengths(s)
@@ -875,7 +875,7 @@ func readHuffmanCode(alphabet_size uint32, max_symbol uint32, table []huffmanCod
 
 				for i = 0; i <= huffmanMaxCodeLength; i++ {
 					s.next_symbol[i] = int(i) - (huffmanMaxCodeLength + 1)
-					SymbolListPut(s.symbol_lists, s.next_symbol[i], 0xFFFF)
+					symbolListPut(s.symbol_lists, s.next_symbol[i], 0xFFFF)
 				}
 
 				s.symbol = 0
@@ -883,12 +883,12 @@ func readHuffmanCode(alphabet_size uint32, max_symbol uint32, table []huffmanCod
 				s.repeat = 0
 				s.repeat_code_len = 0
 				s.space = 32768
-				s.substate_huffman = BROTLI_STATE_HUFFMAN_LENGTH_SYMBOLS
+				s.substate_huffman = stateHuffmanLengthSymbols
 			}
 			fallthrough
 
 			/* Fall through. */
-		case BROTLI_STATE_HUFFMAN_LENGTH_SYMBOLS:
+		case stateHuffmanLengthSymbols:
 			{
 				var table_size uint32
 				var result int = readSymbolCodeLengths(max_symbol, s)
@@ -909,7 +909,7 @@ func readHuffmanCode(alphabet_size uint32, max_symbol uint32, table []huffmanCod
 					*opt_table_size = table_size
 				}
 
-				s.substate_huffman = BROTLI_STATE_HUFFMAN_NONE
+				s.substate_huffman = stateHuffmanNone
 				return decoderSuccess
 			}
 			fallthrough
@@ -933,7 +933,7 @@ func readBlockLength(table []huffmanCode, br *bitReader) uint32 {
    reading can't be continued with ReadBlockLength. */
 func safeReadBlockLength(s *Reader, result *uint32, table []huffmanCode, br *bitReader) bool {
 	var index uint32
-	if s.substate_read_block_length == BROTLI_STATE_READ_BLOCK_LENGTH_NONE {
+	if s.substate_read_block_length == stateReadBlockLengthNone {
 		if !safeReadSymbol(table, br, &index) {
 			return false
 		}
@@ -945,12 +945,12 @@ func safeReadBlockLength(s *Reader, result *uint32, table []huffmanCode, br *bit
 		var nbits uint32 = kBlockLengthPrefixCode[index].nbits
 		if !safeReadBits(br, nbits, &bits) {
 			s.block_length_index = index
-			s.substate_read_block_length = BROTLI_STATE_READ_BLOCK_LENGTH_SUFFIX
+			s.substate_read_block_length = stateReadBlockLengthSuffix
 			return false
 		}
 
 		*result = kBlockLengthPrefixCode[index].offset + bits
-		s.substate_read_block_length = BROTLI_STATE_READ_BLOCK_LENGTH_NONE
+		s.substate_read_block_length = stateReadBlockLengthNone
 		return true
 	}
 }
@@ -994,10 +994,10 @@ func inverseMoveToFrontTransform(v []byte, v_len uint32, state *Reader) {
 
 /* Decodes a series of Huffman table using ReadHuffmanCode function. */
 func huffmanTreeGroupDecode(group *huffmanTreeGroup, s *Reader) int {
-	if s.substate_tree_group != BROTLI_STATE_TREE_GROUP_LOOP {
+	if s.substate_tree_group != stateTreeGroupLoop {
 		s.next = group.codes
 		s.htree_index = 0
-		s.substate_tree_group = BROTLI_STATE_TREE_GROUP_LOOP
+		s.substate_tree_group = stateTreeGroupLoop
 	}
 
 	for s.htree_index < int(group.num_htrees) {
@@ -1011,7 +1011,7 @@ func huffmanTreeGroupDecode(group *huffmanTreeGroup, s *Reader) int {
 		s.htree_index++
 	}
 
-	s.substate_tree_group = BROTLI_STATE_TREE_GROUP_NONE
+	s.substate_tree_group = stateTreeGroupNone
 	return decoderSuccess
 }
 
@@ -1028,7 +1028,7 @@ func decodeContextMap(context_map_size uint32, num_htrees *uint32, context_map_a
 	var result int = decoderSuccess
 
 	switch int(s.substate_context_map) {
-	case BROTLI_STATE_CONTEXT_MAP_NONE:
+	case stateContextMapNone:
 		result = decodeVarLenUint8(s, br, num_htrees)
 		if result != decoderSuccess {
 			return result
@@ -1048,10 +1048,10 @@ func decodeContextMap(context_map_size uint32, num_htrees *uint32, context_map_a
 			return decoderSuccess
 		}
 
-		s.substate_context_map = BROTLI_STATE_CONTEXT_MAP_READ_PREFIX
+		s.substate_context_map = stateContextMapReadPrefix
 		fallthrough
 	/* Fall through. */
-	case BROTLI_STATE_CONTEXT_MAP_READ_PREFIX:
+	case stateContextMapReadPrefix:
 		{
 			var bits uint32
 
@@ -1069,12 +1069,12 @@ func decodeContextMap(context_map_size uint32, num_htrees *uint32, context_map_a
 				dropBits(br, 1)
 			}
 
-			s.substate_context_map = BROTLI_STATE_CONTEXT_MAP_HUFFMAN
+			s.substate_context_map = stateContextMapHuffman
 		}
 		fallthrough
 
 		/* Fall through. */
-	case BROTLI_STATE_CONTEXT_MAP_HUFFMAN:
+	case stateContextMapHuffman:
 		{
 			var alphabet_size uint32 = *num_htrees + s.max_run_length_prefix
 			result = readHuffmanCode(alphabet_size, alphabet_size, s.context_map_table[:], nil, s)
@@ -1082,12 +1082,12 @@ func decodeContextMap(context_map_size uint32, num_htrees *uint32, context_map_a
 				return result
 			}
 			s.code = 0xFFFF
-			s.substate_context_map = BROTLI_STATE_CONTEXT_MAP_DECODE
+			s.substate_context_map = stateContextMapDecode
 		}
 		fallthrough
 
 		/* Fall through. */
-	case BROTLI_STATE_CONTEXT_MAP_DECODE:
+	case stateContextMapDecode:
 		{
 			var context_index uint32 = s.context_index
 			var max_run_length_prefix uint32 = s.max_run_length_prefix
@@ -1145,11 +1145,11 @@ func decodeContextMap(context_map_size uint32, num_htrees *uint32, context_map_a
 		fallthrough
 
 		/* Fall through. */
-	case BROTLI_STATE_CONTEXT_MAP_TRANSFORM:
+	case stateContextMapTransform:
 		{
 			var bits uint32
 			if !safeReadBits(br, 1, &bits) {
-				s.substate_context_map = BROTLI_STATE_CONTEXT_MAP_TRANSFORM
+				s.substate_context_map = stateContextMapTransform
 				return decoderNeedsMoreInput
 			}
 
@@ -1157,7 +1157,7 @@ func decodeContextMap(context_map_size uint32, num_htrees *uint32, context_map_a
 				inverseMoveToFrontTransform(*context_map_arg, context_map_size, s)
 			}
 
-			s.substate_context_map = BROTLI_STATE_CONTEXT_MAP_NONE
+			s.substate_context_map = stateContextMapNone
 			return decoderSuccess
 		}
 		fallthrough
@@ -1193,7 +1193,7 @@ func decodeBlockTypeAndLength(safe int, s *Reader, tree_type int) bool {
 			return false
 		}
 		if !safeReadBlockLength(s, &s.block_length[tree_type], len_tree, br) {
-			s.substate_read_block_length = BROTLI_STATE_READ_BLOCK_LENGTH_NONE
+			s.substate_read_block_length = stateReadBlockLengthNone
 			bitReaderRestoreState(br, &memento)
 			return false
 		}
@@ -1428,7 +1428,7 @@ func copyUncompressedBlockToOutput(available_out *uint, next_out *[]byte, total_
 	/* State machine */
 	for {
 		switch s.substate_uncompressed {
-		case BROTLI_STATE_UNCOMPRESSED_NONE:
+		case stateUncompressedNone:
 			{
 				var nbytes int = int(getRemainingBytes(&s.br))
 				if nbytes > s.meta_block_remaining_len {
@@ -1452,12 +1452,12 @@ func copyUncompressedBlockToOutput(available_out *uint, next_out *[]byte, total_
 					return decoderNeedsMoreInput
 				}
 
-				s.substate_uncompressed = BROTLI_STATE_UNCOMPRESSED_WRITE
+				s.substate_uncompressed = stateUncompressedWrite
 			}
 			fallthrough
 
 			/* Fall through. */
-		case BROTLI_STATE_UNCOMPRESSED_WRITE:
+		case stateUncompressedWrite:
 			{
 				var result int
 				result = writeRingBuffer(s, available_out, next_out, total_out, false)
@@ -1469,7 +1469,7 @@ func copyUncompressedBlockToOutput(available_out *uint, next_out *[]byte, total_
 					s.max_distance = s.max_backward_distance
 				}
 
-				s.substate_uncompressed = BROTLI_STATE_UNCOMPRESSED_NONE
+				s.substate_uncompressed = stateUncompressedNone
 				break
 			}
 		}
@@ -1668,7 +1668,7 @@ func readCommandInternal(safe int, s *Reader, br *bitReader, insert_length *int)
 	var cmd_code uint32
 	var insert_len_extra uint32 = 0
 	var copy_length uint32
-	var v CmdLutElement
+	var v cmdLutElement
 	var memento bitReaderState
 	if safe == 0 {
 		cmd_code = readSymbol(s.htree_command, br)
@@ -1736,13 +1736,13 @@ func processCommandsInternal(safe int, s *Reader) int {
 	}
 
 	/* Jump into state machine. */
-	if s.state == BROTLI_STATE_COMMAND_BEGIN {
+	if s.state == stateCommandBegin {
 		goto CommandBegin
-	} else if s.state == BROTLI_STATE_COMMAND_INNER {
+	} else if s.state == stateCommandInner {
 		goto CommandInner
-	} else if s.state == BROTLI_STATE_COMMAND_POST_DECODE_LITERALS {
+	} else if s.state == stateCommandPostDecodeLiterals {
 		goto CommandPostDecodeLiterals
-	} else if s.state == BROTLI_STATE_COMMAND_POST_WRAP_COPY {
+	} else if s.state == stateCommandPostWrapCopy {
 		goto CommandPostWrapCopy
 	} else {
 		return decoderErrorUnreachable
@@ -1750,11 +1750,11 @@ func processCommandsInternal(safe int, s *Reader) int {
 
 CommandBegin:
 	if safe != 0 {
-		s.state = BROTLI_STATE_COMMAND_BEGIN
+		s.state = stateCommandBegin
 	}
 
 	if !checkInputAmountMaybeSafe(safe, br, 28) { /* 156 bits + 7 bytes */
-		s.state = BROTLI_STATE_COMMAND_BEGIN
+		s.state = stateCommandBegin
 		result = decoderNeedsMoreInput
 		goto saveStateAndReturn
 	}
@@ -1790,7 +1790,7 @@ CommandBegin:
 
 CommandInner:
 	if safe != 0 {
-		s.state = BROTLI_STATE_COMMAND_INNER
+		s.state = stateCommandInner
 	}
 
 	/* Read the literals in the command. */
@@ -1800,7 +1800,7 @@ CommandInner:
 		preloadSymbol(safe, s.literal_htree, br, &bits, &value)
 		for {
 			if !checkInputAmountMaybeSafe(safe, br, 28) { /* 162 bits + 7 bytes */
-				s.state = BROTLI_STATE_COMMAND_INNER
+				s.state = stateCommandInner
 				result = decoderNeedsMoreInput
 				goto saveStateAndReturn
 			}
@@ -1836,7 +1836,7 @@ CommandInner:
 			s.block_length[0]--
 			pos++
 			if pos == s.ringbuffer_size {
-				s.state = BROTLI_STATE_COMMAND_INNER_WRITE
+				s.state = stateCommandInnerWrite
 				i--
 				goto saveStateAndReturn
 			}
@@ -1851,7 +1851,7 @@ CommandInner:
 		for {
 			var context byte
 			if !checkInputAmountMaybeSafe(safe, br, 28) { /* 162 bits + 7 bytes */
-				s.state = BROTLI_STATE_COMMAND_INNER
+				s.state = stateCommandInner
 				result = decoderNeedsMoreInput
 				goto saveStateAndReturn
 			}
@@ -1890,7 +1890,7 @@ CommandInner:
 			s.block_length[0]--
 			pos++
 			if pos == s.ringbuffer_size {
-				s.state = BROTLI_STATE_COMMAND_INNER_WRITE
+				s.state = stateCommandInnerWrite
 				i--
 				goto saveStateAndReturn
 			}
@@ -1902,13 +1902,13 @@ CommandInner:
 	}
 
 	if s.meta_block_remaining_len <= 0 {
-		s.state = BROTLI_STATE_METABLOCK_DONE
+		s.state = stateMetablockDone
 		goto saveStateAndReturn
 	}
 
 CommandPostDecodeLiterals:
 	if safe != 0 {
-		s.state = BROTLI_STATE_COMMAND_POST_DECODE_LITERALS
+		s.state = stateCommandPostDecodeLiterals
 	}
 
 	if s.distance_code >= 0 {
@@ -1967,7 +1967,7 @@ CommandPostDecodeLiterals:
 		if i >= minDictionaryWordLength && i <= maxDictionaryWordLength {
 			var address int = s.distance_code - s.max_distance - 1
 			var words *dictionary = s.dictionary
-			var transforms *BrotliTransforms = s.transforms
+			var trans *transforms = s.transforms
 			var offset int = int(s.dictionary.offsets_by_length[i])
 			var shift uint32 = uint32(s.dictionary.size_bits_by_length[i])
 			var mask int = int(bitMask(shift))
@@ -1982,20 +1982,20 @@ CommandPostDecodeLiterals:
 				return decoderErrorDictionaryNotSet
 			}
 
-			if transform_idx < int(transforms.num_transforms) {
+			if transform_idx < int(trans.num_transforms) {
 				var word []byte
 				word = words.data[offset:]
 				var len int = i
-				if transform_idx == int(transforms.cutOffTransforms[0]) {
+				if transform_idx == int(trans.cutOffTransforms[0]) {
 					copy(s.ringbuffer[pos:], word[:uint(len)])
 				} else {
-					len = BrotliTransformDictionaryWord(s.ringbuffer[pos:], word, int(len), transforms, transform_idx)
+					len = transformDictionaryWord(s.ringbuffer[pos:], word, int(len), trans, transform_idx)
 				}
 
 				pos += int(len)
 				s.meta_block_remaining_len -= int(len)
 				if pos >= s.ringbuffer_size {
-					s.state = BROTLI_STATE_COMMAND_POST_WRITE_1
+					s.state = stateCommandPostWrite1
 					goto saveStateAndReturn
 				}
 			} else {
@@ -2048,7 +2048,7 @@ CommandPostDecodeLiterals:
 
 	if s.meta_block_remaining_len <= 0 {
 		/* Next metablock, if any. */
-		s.state = BROTLI_STATE_METABLOCK_DONE
+		s.state = stateMetablockDone
 
 		goto saveStateAndReturn
 	} else {
@@ -2066,7 +2066,7 @@ CommandPostWrapCopy:
 			pos++
 			wrap_guard--
 			if wrap_guard == 0 {
-				s.state = BROTLI_STATE_COMMAND_POST_WRITE_2
+				s.state = stateCommandPostWrite2
 				goto saveStateAndReturn
 			}
 		}
@@ -2074,7 +2074,7 @@ CommandPostWrapCopy:
 
 	if s.meta_block_remaining_len <= 0 {
 		/* Next metablock, if any. */
-		s.state = BROTLI_STATE_METABLOCK_DONE
+		s.state = stateMetablockDone
 
 		goto saveStateAndReturn
 	} else {
@@ -2238,7 +2238,7 @@ func decoderDecompressStream(s *Reader, available_in *uint, next_in *[]byte, ava
 
 		switch s.state {
 		/* Prepare to the first read. */
-		case BROTLI_STATE_UNINITED:
+		case stateUninited:
 			if !warmupBitReader(br) {
 				result = decoderNeedsMoreInput
 				break
@@ -2251,13 +2251,13 @@ func decoderDecompressStream(s *Reader, available_in *uint, next_in *[]byte, ava
 			}
 
 			if s.large_window {
-				s.state = BROTLI_STATE_LARGE_WINDOW_BITS
+				s.state = stateLargeWindowBits
 				break
 			}
 
-			s.state = BROTLI_STATE_INITIALIZE
+			s.state = stateInitialize
 
-		case BROTLI_STATE_LARGE_WINDOW_BITS:
+		case stateLargeWindowBits:
 			if !safeReadBits(br, 6, &s.window_bits) {
 				result = decoderNeedsMoreInput
 				break
@@ -2268,12 +2268,12 @@ func decoderDecompressStream(s *Reader, available_in *uint, next_in *[]byte, ava
 				break
 			}
 
-			s.state = BROTLI_STATE_INITIALIZE
+			s.state = stateInitialize
 			fallthrough
 
 			/* Maximum distance, see section 9.1. of the spec. */
 		/* Fall through. */
-		case BROTLI_STATE_INITIALIZE:
+		case stateInitialize:
 			s.max_backward_distance = (1 << s.window_bits) - windowGap
 
 			/* Allocate memory for both block_type_trees and block_len_trees. */
@@ -2286,18 +2286,18 @@ func decoderDecompressStream(s *Reader, available_in *uint, next_in *[]byte, ava
 
 			s.block_len_trees = s.block_type_trees[3*huffmanMaxSize258:]
 
-			s.state = BROTLI_STATE_METABLOCK_BEGIN
+			s.state = stateMetablockBegin
 			fallthrough
 
 			/* Fall through. */
-		case BROTLI_STATE_METABLOCK_BEGIN:
-			BrotliDecoderStateMetablockBegin(s)
+		case stateMetablockBegin:
+			decoderStateMetablockBegin(s)
 
-			s.state = BROTLI_STATE_METABLOCK_HEADER
+			s.state = stateMetablockHeader
 			fallthrough
 
 			/* Fall through. */
-		case BROTLI_STATE_METABLOCK_HEADER:
+		case stateMetablockHeader:
 			result = decodeMetaBlockLength(s, br)
 			/* Reads 2 - 31 bits. */
 			if result != decoderSuccess {
@@ -2312,36 +2312,36 @@ func decoderDecompressStream(s *Reader, available_in *uint, next_in *[]byte, ava
 			}
 
 			if s.is_metadata != 0 {
-				s.state = BROTLI_STATE_METADATA
+				s.state = stateMetadata
 				break
 			}
 
 			if s.meta_block_remaining_len == 0 {
-				s.state = BROTLI_STATE_METABLOCK_DONE
+				s.state = stateMetablockDone
 				break
 			}
 
 			calculateRingBufferSize(s)
 			if s.is_uncompressed != 0 {
-				s.state = BROTLI_STATE_UNCOMPRESSED
+				s.state = stateUncompressed
 				break
 			}
 
 			s.loop_counter = 0
-			s.state = BROTLI_STATE_HUFFMAN_CODE_0
-		case BROTLI_STATE_UNCOMPRESSED:
+			s.state = stateHuffmanCode0
+		case stateUncompressed:
 			{
 				result = copyUncompressedBlockToOutput(available_out, next_out, nil, s)
 				if result != decoderSuccess {
 					break
 				}
 
-				s.state = BROTLI_STATE_METABLOCK_DONE
+				s.state = stateMetablockDone
 				break
 			}
 			fallthrough
 
-		case BROTLI_STATE_METADATA:
+		case stateMetadata:
 			for ; s.meta_block_remaining_len > 0; s.meta_block_remaining_len-- {
 				var bits uint32
 
@@ -2353,12 +2353,12 @@ func decoderDecompressStream(s *Reader, available_in *uint, next_in *[]byte, ava
 			}
 
 			if result == decoderSuccess {
-				s.state = BROTLI_STATE_METABLOCK_DONE
+				s.state = stateMetablockDone
 			}
 
-		case BROTLI_STATE_HUFFMAN_CODE_0:
+		case stateHuffmanCode0:
 			if s.loop_counter >= 3 {
-				s.state = BROTLI_STATE_METABLOCK_HEADER_2
+				s.state = stateMetablockHeader2
 				break
 			}
 
@@ -2375,10 +2375,10 @@ func decoderDecompressStream(s *Reader, available_in *uint, next_in *[]byte, ava
 				break
 			}
 
-			s.state = BROTLI_STATE_HUFFMAN_CODE_1
+			s.state = stateHuffmanCode1
 			fallthrough
 		/* Fall through. */
-		case BROTLI_STATE_HUFFMAN_CODE_1:
+		case stateHuffmanCode1:
 			{
 				var alphabet_size uint32 = s.num_block_types[s.loop_counter] + 2
 				var tree_offset int = s.loop_counter * huffmanMaxSize258
@@ -2386,12 +2386,12 @@ func decoderDecompressStream(s *Reader, available_in *uint, next_in *[]byte, ava
 				if result != decoderSuccess {
 					break
 				}
-				s.state = BROTLI_STATE_HUFFMAN_CODE_2
+				s.state = stateHuffmanCode2
 			}
 			fallthrough
 
 			/* Fall through. */
-		case BROTLI_STATE_HUFFMAN_CODE_2:
+		case stateHuffmanCode2:
 			{
 				var alphabet_size uint32 = numBlockLenSymbols
 				var tree_offset int = s.loop_counter * huffmanMaxSize26
@@ -2399,12 +2399,12 @@ func decoderDecompressStream(s *Reader, available_in *uint, next_in *[]byte, ava
 				if result != decoderSuccess {
 					break
 				}
-				s.state = BROTLI_STATE_HUFFMAN_CODE_3
+				s.state = stateHuffmanCode3
 			}
 			fallthrough
 
 			/* Fall through. */
-		case BROTLI_STATE_HUFFMAN_CODE_3:
+		case stateHuffmanCode3:
 			{
 				var tree_offset int = s.loop_counter * huffmanMaxSize26
 				if !safeReadBlockLength(s, &s.block_length[s.loop_counter], s.block_len_trees[tree_offset:], br) {
@@ -2413,11 +2413,11 @@ func decoderDecompressStream(s *Reader, available_in *uint, next_in *[]byte, ava
 				}
 
 				s.loop_counter++
-				s.state = BROTLI_STATE_HUFFMAN_CODE_0
+				s.state = stateHuffmanCode0
 				break
 			}
 			fallthrough
-		case BROTLI_STATE_METABLOCK_HEADER_2:
+		case stateMetablockHeader2:
 			{
 				var bits uint32
 				if !safeReadBits(br, 6, &bits) {
@@ -2436,23 +2436,23 @@ func decoderDecompressStream(s *Reader, available_in *uint, next_in *[]byte, ava
 				}
 
 				s.loop_counter = 0
-				s.state = BROTLI_STATE_CONTEXT_MODES
+				s.state = stateContextModes
 			}
 			fallthrough
 
 			/* Fall through. */
-		case BROTLI_STATE_CONTEXT_MODES:
+		case stateContextModes:
 			result = readContextModes(s)
 
 			if result != decoderSuccess {
 				break
 			}
 
-			s.state = BROTLI_STATE_CONTEXT_MAP_1
+			s.state = stateContextMap1
 			fallthrough
 
 			/* Fall through. */
-		case BROTLI_STATE_CONTEXT_MAP_1:
+		case stateContextMap1:
 			result = decodeContextMap(s.num_block_types[0]<<literalContextBits, &s.num_literal_htrees, &s.context_map, s)
 
 			if result != decoderSuccess {
@@ -2460,10 +2460,10 @@ func decoderDecompressStream(s *Reader, available_in *uint, next_in *[]byte, ava
 			}
 
 			detectTrivialLiteralBlockTypes(s)
-			s.state = BROTLI_STATE_CONTEXT_MAP_2
+			s.state = stateContextMap2
 			fallthrough
 		/* Fall through. */
-		case BROTLI_STATE_CONTEXT_MAP_2:
+		case stateContextMap2:
 			{
 				var num_direct_codes uint32 = s.num_direct_distance_codes - numDistanceShortCodes
 				var num_distance_codes uint32
@@ -2481,15 +2481,15 @@ func decoderDecompressStream(s *Reader, available_in *uint, next_in *[]byte, ava
 					break
 				}
 
-				if !BrotliDecoderHuffmanTreeGroupInit(s, &s.literal_hgroup, numLiteralSymbols, numLiteralSymbols, s.num_literal_htrees) {
+				if !decoderHuffmanTreeGroupInit(s, &s.literal_hgroup, numLiteralSymbols, numLiteralSymbols, s.num_literal_htrees) {
 					allocation_success = false
 				}
 
-				if !BrotliDecoderHuffmanTreeGroupInit(s, &s.insert_copy_hgroup, numCommandSymbols, numCommandSymbols, s.num_block_types[1]) {
+				if !decoderHuffmanTreeGroupInit(s, &s.insert_copy_hgroup, numCommandSymbols, numCommandSymbols, s.num_block_types[1]) {
 					allocation_success = false
 				}
 
-				if !BrotliDecoderHuffmanTreeGroupInit(s, &s.distance_hgroup, num_distance_codes, max_distance_symbol, s.num_dist_htrees) {
+				if !decoderHuffmanTreeGroupInit(s, &s.distance_hgroup, num_distance_codes, max_distance_symbol, s.num_dist_htrees) {
 					allocation_success = false
 				}
 
@@ -2498,12 +2498,12 @@ func decoderDecompressStream(s *Reader, available_in *uint, next_in *[]byte, ava
 				}
 
 				s.loop_counter = 0
-				s.state = BROTLI_STATE_TREE_GROUP
+				s.state = stateTreeGroup
 			}
 			fallthrough
 
 			/* Fall through. */
-		case BROTLI_STATE_TREE_GROUP:
+		case stateTreeGroup:
 			{
 				var hgroup *huffmanTreeGroup = nil
 				switch s.loop_counter {
@@ -2531,34 +2531,34 @@ func decoderDecompressStream(s *Reader, available_in *uint, next_in *[]byte, ava
 						break
 					}
 
-					s.state = BROTLI_STATE_COMMAND_BEGIN
+					s.state = stateCommandBegin
 				}
 
 				break
 			}
 			fallthrough
 
-		case BROTLI_STATE_COMMAND_BEGIN,
+		case stateCommandBegin,
 			/* Fall through. */
-			BROTLI_STATE_COMMAND_INNER,
+			stateCommandInner,
 
 			/* Fall through. */
-			BROTLI_STATE_COMMAND_POST_DECODE_LITERALS,
+			stateCommandPostDecodeLiterals,
 
 			/* Fall through. */
-			BROTLI_STATE_COMMAND_POST_WRAP_COPY:
+			stateCommandPostWrapCopy:
 			result = processCommands(s)
 
 			if result == decoderNeedsMoreInput {
 				result = safeProcessCommands(s)
 			}
 
-		case BROTLI_STATE_COMMAND_INNER_WRITE,
+		case stateCommandInnerWrite,
 			/* Fall through. */
-			BROTLI_STATE_COMMAND_POST_WRITE_1,
+			stateCommandPostWrite1,
 
 			/* Fall through. */
-			BROTLI_STATE_COMMAND_POST_WRITE_2:
+			stateCommandPostWrite2:
 			result = writeRingBuffer(s, available_out, next_out, nil, false)
 
 			if result != decoderSuccess {
@@ -2570,40 +2570,40 @@ func decoderDecompressStream(s *Reader, available_in *uint, next_in *[]byte, ava
 				s.max_distance = s.max_backward_distance
 			}
 
-			if s.state == BROTLI_STATE_COMMAND_POST_WRITE_1 {
+			if s.state == stateCommandPostWrite1 {
 				if s.meta_block_remaining_len == 0 {
 					/* Next metablock, if any. */
-					s.state = BROTLI_STATE_METABLOCK_DONE
+					s.state = stateMetablockDone
 				} else {
-					s.state = BROTLI_STATE_COMMAND_BEGIN
+					s.state = stateCommandBegin
 				}
 
 				break
-			} else if s.state == BROTLI_STATE_COMMAND_POST_WRITE_2 {
-				s.state = BROTLI_STATE_COMMAND_POST_WRAP_COPY /* BROTLI_STATE_COMMAND_INNER_WRITE */
+			} else if s.state == stateCommandPostWrite2 {
+				s.state = stateCommandPostWrapCopy /* BROTLI_STATE_COMMAND_INNER_WRITE */
 			} else {
 				if s.loop_counter == 0 {
 					if s.meta_block_remaining_len == 0 {
-						s.state = BROTLI_STATE_METABLOCK_DONE
+						s.state = stateMetablockDone
 					} else {
-						s.state = BROTLI_STATE_COMMAND_POST_DECODE_LITERALS
+						s.state = stateCommandPostDecodeLiterals
 					}
 
 					break
 				}
 
-				s.state = BROTLI_STATE_COMMAND_INNER
+				s.state = stateCommandInner
 			}
 
-		case BROTLI_STATE_METABLOCK_DONE:
+		case stateMetablockDone:
 			if s.meta_block_remaining_len < 0 {
 				result = decoderErrorFormatBlockLength2
 				break
 			}
 
-			BrotliDecoderStateCleanupAfterMetablock(s)
+			decoderStateCleanupAfterMetablock(s)
 			if s.is_last_metablock == 0 {
-				s.state = BROTLI_STATE_METABLOCK_BEGIN
+				s.state = stateMetablockBegin
 				break
 			}
 
@@ -2618,11 +2618,11 @@ func decoderDecompressStream(s *Reader, available_in *uint, next_in *[]byte, ava
 				*next_in = br.input[br.byte_pos:]
 			}
 
-			s.state = BROTLI_STATE_DONE
+			s.state = stateDone
 			fallthrough
 
 			/* Fall through. */
-		case BROTLI_STATE_DONE:
+		case stateDone:
 			if s.ringbuffer != nil {
 				result = writeRingBuffer(s, available_out, next_out, nil, true)
 				if result != decoderSuccess {

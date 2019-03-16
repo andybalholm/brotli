@@ -15,16 +15,16 @@ package brotli
 
 /* Sliding window over the input data. */
 
-/* A RingBuffer(window_bits, tail_bits) contains `1 << window_bits' bytes of
+/* A ringBuffer(window_bits, tail_bits) contains `1 << window_bits' bytes of
    data in a circular manner: writing a byte writes it to:
      `position() % (1 << window_bits)'.
-   For convenience, the RingBuffer array contains another copy of the
+   For convenience, the ringBuffer array contains another copy of the
    first `1 << tail_bits' bytes:
      buffer_[i] == buffer_[i + (1 << window_bits)], if i < (1 << tail_bits),
    and another copy of the last two bytes:
      buffer_[-1] == buffer_[(1 << window_bits) - 1] and
      buffer_[-2] == buffer_[(1 << window_bits) - 2]. */
-type RingBuffer struct {
+type ringBuffer struct {
 	size_       uint32
 	mask_       uint32
 	tail_size_  uint32
@@ -35,15 +35,15 @@ type RingBuffer struct {
 	buffer_     []byte
 }
 
-func RingBufferInit(rb *RingBuffer) {
+func ringBufferInit(rb *ringBuffer) {
 	rb.cur_size_ = 0
 	rb.pos_ = 0
 	rb.data_ = nil
 	rb.buffer_ = nil
 }
 
-func RingBufferSetup(params *encoderParams, rb *RingBuffer) {
-	var window_bits int = ComputeRbBits(params)
+func ringBufferSetup(params *encoderParams, rb *ringBuffer) {
+	var window_bits int = computeRbBits(params)
 	var tail_bits int = params.lgblock
 	*(*uint32)(&rb.size_) = 1 << uint(window_bits)
 	*(*uint32)(&rb.mask_) = (1 << uint(window_bits)) - 1
@@ -51,20 +51,16 @@ func RingBufferSetup(params *encoderParams, rb *RingBuffer) {
 	*(*uint32)(&rb.total_size_) = rb.size_ + rb.tail_size_
 }
 
-func RingBufferFree(rb *RingBuffer) {
-	rb.data_ = nil
-}
-
 /* Allocates or re-allocates data_ to the given length + plus some slack
    region before and after. Fills the slack regions with zeros. */
 
-var RingBufferInitBuffer_kSlackForEightByteHashingEverywhere uint = 7
+var kSlackForEightByteHashingEverywhere uint = 7
 
-func RingBufferInitBuffer(buflen uint32, rb *RingBuffer) {
-	var new_data []byte = make([]byte, (2 + uint(buflen) + RingBufferInitBuffer_kSlackForEightByteHashingEverywhere))
+func ringBufferInitBuffer(buflen uint32, rb *ringBuffer) {
+	var new_data []byte = make([]byte, (2 + uint(buflen) + kSlackForEightByteHashingEverywhere))
 	var i uint
 	if rb.data_ != nil {
-		copy(new_data, rb.data_[:2+rb.cur_size_+uint32(RingBufferInitBuffer_kSlackForEightByteHashingEverywhere)])
+		copy(new_data, rb.data_[:2+rb.cur_size_+uint32(kSlackForEightByteHashingEverywhere)])
 		rb.data_ = nil
 	}
 
@@ -73,12 +69,12 @@ func RingBufferInitBuffer(buflen uint32, rb *RingBuffer) {
 	rb.buffer_ = rb.data_[2:]
 	rb.data_[1] = 0
 	rb.data_[0] = rb.data_[1]
-	for i = 0; i < RingBufferInitBuffer_kSlackForEightByteHashingEverywhere; i++ {
+	for i = 0; i < kSlackForEightByteHashingEverywhere; i++ {
 		rb.buffer_[rb.cur_size_+uint32(i)] = 0
 	}
 }
 
-func RingBufferWriteTail(bytes []byte, n uint, rb *RingBuffer) {
+func ringBufferWriteTail(bytes []byte, n uint, rb *ringBuffer) {
 	var masked_pos uint = uint(rb.pos_ & rb.mask_)
 	if uint32(masked_pos) < rb.tail_size_ {
 		/* Just fill the tail buffer with the beginning data. */
@@ -88,7 +84,7 @@ func RingBufferWriteTail(bytes []byte, n uint, rb *RingBuffer) {
 }
 
 /* Push bytes into the ring buffer. */
-func RingBufferWrite(bytes []byte, n uint, rb *RingBuffer) {
+func ringBufferWrite(bytes []byte, n uint, rb *ringBuffer) {
 	if rb.pos_ == 0 && uint32(n) < rb.tail_size_ {
 		/* Special case for the first write: to process the first block, we don't
 		   need to allocate the whole ring-buffer and we don't need the tail
@@ -98,14 +94,14 @@ func RingBufferWrite(bytes []byte, n uint, rb *RingBuffer) {
 		   will need to reallocate to the full size anyway. */
 		rb.pos_ = uint32(n)
 
-		RingBufferInitBuffer(rb.pos_, rb)
+		ringBufferInitBuffer(rb.pos_, rb)
 		copy(rb.buffer_, bytes[:n])
 		return
 	}
 
 	if rb.cur_size_ < rb.total_size_ {
 		/* Lazily allocate the full buffer. */
-		RingBufferInitBuffer(rb.total_size_, rb)
+		ringBufferInitBuffer(rb.total_size_, rb)
 
 		/* Initialize the last two bytes to zero, so that we don't have to worry
 		   later when we copy the last two bytes to the first two positions. */
@@ -118,7 +114,7 @@ func RingBufferWrite(bytes []byte, n uint, rb *RingBuffer) {
 
 		/* The length of the writes is limited so that we do not need to worry
 		   about a write */
-		RingBufferWriteTail(bytes, n, rb)
+		ringBufferWriteTail(bytes, n, rb)
 
 		if uint32(masked_pos+n) <= rb.size_ {
 			/* A single write fits. */

@@ -1,6 +1,9 @@
 package brotli
 
-import "io"
+import (
+	"io"
+	"math"
+)
 
 /* Copyright 2016 Google Inc. All Rights Reserved.
 
@@ -87,7 +90,7 @@ type Writer struct {
 	params              encoderParams
 	hasher_             hasherHandle
 	input_pos_          uint64
-	ringbuffer_         RingBuffer
+	ringbuffer_         ringBuffer
 	cmd_alloc_size_     uint
 	commands_           []command
 	num_commands_       uint
@@ -175,7 +178,7 @@ func hashTableSize(max_table_size uint, input_size uint) uint {
 }
 
 func getHashTable(s *Writer, quality int, input_size uint, table_size *uint) []int {
-	var max_table_size uint = MaxHashTableSize(quality)
+	var max_table_size uint = maxHashTableSize(quality)
 	var htsize uint = hashTableSize(max_table_size, input_size)
 	/* Use smaller hash table when input.size() is smaller, since we
 	   fill the table, incurring O(hash table size) overhead for
@@ -184,7 +187,7 @@ func getHashTable(s *Writer, quality int, input_size uint, table_size *uint) []i
 
 	var table []int
 	assert(max_table_size >= 256)
-	if quality == FAST_ONE_PASS_COMPRESSION_QUALITY {
+	if quality == fastOnePassCompressionQuality {
 		/* Only odd shifts are supported by fast-one-pass. */
 		if htsize&0xAAAAA == 0 {
 			htsize <<= 1
@@ -724,7 +727,7 @@ func chooseContextMap(quality int, bigram_histo []uint32, num_literal_contexts *
 	entropy[2] *= entropy[0]
 	entropy[3] *= entropy[0]
 
-	if quality < MIN_QUALITY_FOR_HQ_CONTEXT_MODELING {
+	if quality < minQualityForHqContextModeling {
 		/* 3 context models is a bit slower, don't use it at lower qualities. */
 		entropy[3] = entropy[1] * 10
 	}
@@ -876,7 +879,7 @@ func shouldUseComplexStaticContextMap(input []byte, start_pos uint, length uint,
 }
 
 func decideOverLiteralContextModeling(input []byte, start_pos uint, length uint, mask uint, quality int, size_hint uint, num_literal_contexts *uint, literal_context_map *[]uint32) {
-	if quality < MIN_QUALITY_FOR_CONTEXT_MODELING || length < 64 {
+	if quality < minQualityForContextModeling || length < 64 {
 		return
 	} else if shouldUseComplexStaticContextMap(input, start_pos, length, mask, quality, size_hint, num_literal_contexts, literal_context_map) {
 	} else /* Context map was already set, nothing else to do. */
@@ -935,7 +938,7 @@ func shouldCompress_encode(data []byte, mask uint, last_flush_pos uint64, bytes 
 func chooseContextMode(params *encoderParams, data []byte, pos uint, mask uint, length uint) int {
 	/* We only do the computation for the option of something else than
 	   CONTEXT_UTF8 for the highest qualities */
-	if params.quality >= MIN_QUALITY_FOR_HQ_BLOCK_SPLITTING && !BrotliIsMostlyUTF8(data, pos, mask, length, kMinUTF8Ratio) {
+	if params.quality >= minQualityForHqBlockSplitting && !isMostlyUTF8(data, pos, mask, length, kMinUTF8Ratio) {
 		return contextSigned
 	}
 
@@ -951,7 +954,7 @@ func writeMetaBlockInternal(data []byte, mask uint, last_flush_pos uint64, bytes
 
 	if bytes == 0 {
 		/* Write the ISLAST and ISEMPTY bits. */
-		BrotliWriteBits(2, 3, storage_ix, storage)
+		writeBits(2, 3, storage_ix, storage)
 
 		*storage_ix = (*storage_ix + 7) &^ 7
 		return
@@ -969,14 +972,14 @@ func writeMetaBlockInternal(data []byte, mask uint, last_flush_pos uint64, bytes
 	assert(*storage_ix <= 14)
 	last_bytes = uint16(storage[1]<<8 | storage[0])
 	last_bytes_bits = byte(*storage_ix)
-	if params.quality <= MAX_QUALITY_FOR_STATIC_ENTROPY_CODES {
+	if params.quality <= maxQualityForStaticEntropyCodes {
 		storeMetaBlockFast(data, uint(wrapped_last_flush_pos), bytes, mask, is_last, params, commands, num_commands, storage_ix, storage)
-	} else if params.quality < MIN_QUALITY_FOR_BLOCK_SPLIT {
+	} else if params.quality < minQualityForBlockSplit {
 		storeMetaBlockTrivial(data, uint(wrapped_last_flush_pos), bytes, mask, is_last, params, commands, num_commands, storage_ix, storage)
 	} else {
 		var mb metaBlockSplit
 		initMetaBlockSplit(&mb)
-		if params.quality < MIN_QUALITY_FOR_HQ_BLOCK_SPLITTING {
+		if params.quality < minQualityForHqBlockSplitting {
 			var num_literal_contexts uint = 1
 			var literal_context_map []uint32 = nil
 			if !params.disable_literal_context_modeling {
@@ -988,7 +991,7 @@ func writeMetaBlockInternal(data []byte, mask uint, last_flush_pos uint64, bytes
 			buildMetaBlock(data, uint(wrapped_last_flush_pos), mask, &block_params, prev_byte, prev_byte2, commands, num_commands, literal_context_mode, &mb)
 		}
 
-		if params.quality >= MIN_QUALITY_FOR_OPTIMIZE_HISTOGRAMS {
+		if params.quality >= minQualityForOptimizeHistograms {
 			/* The number of distance symbols effectively used for distance
 			   histograms. It might be less than distance alphabet size
 			   for "Large Window Brotli" (32-bit). */
@@ -1019,7 +1022,7 @@ func chooseDistanceParams(params *encoderParams) {
 	var distance_postfix_bits uint32 = 0
 	var num_direct_distance_codes uint32 = 0
 
-	if params.quality >= MIN_QUALITY_FOR_NONZERO_DISTANCE_PARAMS {
+	if params.quality >= minQualityForNonzeroDistanceParams {
 		var ndirect_msb uint32
 		if params.mode == modeFont {
 			distance_postfix_bits = 1
@@ -1046,25 +1049,25 @@ func ensureInitialized(s *Writer) bool {
 
 	s.last_bytes_bits_ = 0
 	s.last_bytes_ = 0
-	s.remaining_metadata_bytes_ = BROTLI_UINT32_MAX
+	s.remaining_metadata_bytes_ = math.MaxUint32
 
-	SanitizeParams(&s.params)
-	s.params.lgblock = ComputeLgBlock(&s.params)
+	sanitizeParams(&s.params)
+	s.params.lgblock = computeLgBlock(&s.params)
 	chooseDistanceParams(&s.params)
 
-	RingBufferSetup(&s.params, &s.ringbuffer_)
+	ringBufferSetup(&s.params, &s.ringbuffer_)
 
 	/* Initialize last byte with stream header. */
 	{
 		var lgwin int = int(s.params.lgwin)
-		if s.params.quality == FAST_ONE_PASS_COMPRESSION_QUALITY || s.params.quality == FAST_TWO_PASS_COMPRESSION_QUALITY {
+		if s.params.quality == fastOnePassCompressionQuality || s.params.quality == fastTwoPassCompressionQuality {
 			lgwin = brotli_max_int(lgwin, 18)
 		}
 
 		encodeWindowBits(lgwin, s.params.large_window, &s.last_bytes_, &s.last_bytes_bits_)
 	}
 
-	if s.params.quality == FAST_ONE_PASS_COMPRESSION_QUALITY {
+	if s.params.quality == fastOnePassCompressionQuality {
 		initCommandPrefixCodes(s.cmd_depths_[:], s.cmd_bits_[:], s.cmd_code_[:], &s.cmd_code_numbits_)
 	}
 
@@ -1112,7 +1115,7 @@ func encoderInitState(s *Writer) {
 	s.is_last_block_emitted_ = false
 	s.is_initialized_ = false
 
-	RingBufferInit(&s.ringbuffer_)
+	ringBufferInit(&s.ringbuffer_)
 
 	s.commands_ = nil
 	s.cmd_alloc_size_ = 0
@@ -1137,8 +1140,8 @@ func encoderInitState(s *Writer) {
    copied to the ring buffer, otherwise the next WriteBrotliData() will fail.
 */
 func copyInputToRingBuffer(s *Writer, input_size uint, input_buffer []byte) {
-	var ringbuffer_ *RingBuffer = &s.ringbuffer_
-	RingBufferWrite(input_buffer, input_size, ringbuffer_)
+	var ringbuffer_ *ringBuffer = &s.ringbuffer_
+	ringBufferWrite(input_buffer, input_size, ringbuffer_)
 	s.input_pos_ += uint64(input_size)
 
 	/* TL;DR: If needed, initialize 7 more bytes in the ring buffer to make the
@@ -1262,12 +1265,12 @@ func encodeData(s *Writer, is_last bool, force_flush bool, out_size *uint, outpu
 		return false
 	}
 
-	if s.params.quality == FAST_TWO_PASS_COMPRESSION_QUALITY && s.command_buf_ == nil {
+	if s.params.quality == fastTwoPassCompressionQuality && s.command_buf_ == nil {
 		s.command_buf_ = make([]uint32, kCompressFragmentTwoPassBlockSize)
 		s.literal_buf_ = make([]byte, kCompressFragmentTwoPassBlockSize)
 	}
 
-	if s.params.quality == FAST_ONE_PASS_COMPRESSION_QUALITY || s.params.quality == FAST_TWO_PASS_COMPRESSION_QUALITY {
+	if s.params.quality == fastOnePassCompressionQuality || s.params.quality == fastTwoPassCompressionQuality {
 		var storage []byte
 		var storage_ix uint = uint(s.last_bytes_bits_)
 		var table_size uint
@@ -1285,7 +1288,7 @@ func encodeData(s *Writer, is_last bool, force_flush bool, out_size *uint, outpu
 		storage[0] = byte(s.last_bytes_)
 		storage[1] = byte(s.last_bytes_ >> 8)
 		table = getHashTable(s, s.params.quality, uint(bytes), &table_size)
-		if s.params.quality == FAST_ONE_PASS_COMPRESSION_QUALITY {
+		if s.params.quality == fastOnePassCompressionQuality {
 			compressFragmentFast(data[wrapped_last_processed_pos&mask:], uint(bytes), is_last, table, table_size, s.cmd_depths_[:], s.cmd_bits_[:], &s.cmd_code_numbits_, s.cmd_code_[:], &storage_ix, storage)
 		} else {
 			compressFragmentTwoPass(data[wrapped_last_processed_pos&mask:], uint(bytes), is_last, s.command_buf_, s.literal_buf_, table, table_size, &storage_ix, storage)
@@ -1327,22 +1330,22 @@ func encodeData(s *Writer, is_last bool, force_flush bool, out_size *uint, outpu
 		extendLastCommand(s, &bytes, &wrapped_last_processed_pos)
 	}
 
-	if s.params.quality == ZOPFLIFICATION_QUALITY {
+	if s.params.quality == zopflificationQuality {
 		assert(s.params.hasher.type_ == 10)
 		createZopfliBackwardReferences(uint(bytes), uint(wrapped_last_processed_pos), data, uint(mask), &s.params, s.hasher_.(*h10), s.dist_cache_[:], &s.last_insert_len_, s.commands_[s.num_commands_:], &s.num_commands_, &s.num_literals_)
-	} else if s.params.quality == HQ_ZOPFLIFICATION_QUALITY {
+	} else if s.params.quality == hqZopflificationQuality {
 		assert(s.params.hasher.type_ == 10)
 		createHqZopfliBackwardReferences(uint(bytes), uint(wrapped_last_processed_pos), data, uint(mask), &s.params, s.hasher_, s.dist_cache_[:], &s.last_insert_len_, s.commands_[s.num_commands_:], &s.num_commands_, &s.num_literals_)
 	} else {
 		createBackwardReferences(uint(bytes), uint(wrapped_last_processed_pos), data, uint(mask), &s.params, s.hasher_, s.dist_cache_[:], &s.last_insert_len_, s.commands_[s.num_commands_:], &s.num_commands_, &s.num_literals_)
 	}
 	{
-		var max_length uint = MaxMetablockSize(&s.params)
+		var max_length uint = maxMetablockSize(&s.params)
 		var max_literals uint = max_length / 8
 		var max_commands uint = max_length / 8
 		var processed_bytes uint = uint(s.input_pos_ - s.last_flush_pos_)
 		var next_input_fits_metablock bool = (processed_bytes+inputBlockSize(s) <= max_length)
-		var should_flush bool = (s.params.quality < MIN_QUALITY_FOR_BLOCK_SPLIT && s.num_literals_+s.num_commands_ >= MAX_NUM_DELAYED_SYMBOLS)
+		var should_flush bool = (s.params.quality < minQualityForBlockSplit && s.num_literals_+s.num_commands_ >= maxNumDelayedSymbols)
 		/* If maximal possible additional block doesn't fit metablock, flush now. */
 		/* TODO: Postpone decision until next block arrives? */
 
@@ -1425,11 +1428,11 @@ func writeMetadataHeader(s *Writer, block_size uint, header []byte) uint {
 	s.last_bytes_ = 0
 	s.last_bytes_bits_ = 0
 
-	BrotliWriteBits(1, 0, &storage_ix, header)
-	BrotliWriteBits(2, 3, &storage_ix, header)
-	BrotliWriteBits(1, 0, &storage_ix, header)
+	writeBits(1, 0, &storage_ix, header)
+	writeBits(2, 3, &storage_ix, header)
+	writeBits(1, 0, &storage_ix, header)
 	if block_size == 0 {
-		BrotliWriteBits(2, 0, &storage_ix, header)
+		writeBits(2, 0, &storage_ix, header)
 	} else {
 		var nbits uint32
 		if block_size == 1 {
@@ -1438,8 +1441,8 @@ func writeMetadataHeader(s *Writer, block_size uint, header []byte) uint {
 			nbits = log2FloorNonZero(uint(uint32(block_size)-1)) + 1
 		}
 		var nbytes uint32 = (nbits + 7) / 8
-		BrotliWriteBits(2, uint64(nbytes), &storage_ix, header)
-		BrotliWriteBits(uint(8*nbytes), uint64(block_size)-1, &storage_ix, header)
+		writeBits(2, uint64(nbytes), &storage_ix, header)
+		writeBits(uint(8*nbytes), uint64(block_size)-1, &storage_ix, header)
 	}
 
 	return (storage_ix + 7) >> 3
@@ -1490,11 +1493,11 @@ func encoderCompressStreamFast(s *Writer, op int, available_in *uint, next_in *[
 	var command_buf []uint32 = nil
 	var tmp_literal_buf []byte = nil
 	var literal_buf []byte = nil
-	if s.params.quality != FAST_ONE_PASS_COMPRESSION_QUALITY && s.params.quality != FAST_TWO_PASS_COMPRESSION_QUALITY {
+	if s.params.quality != fastOnePassCompressionQuality && s.params.quality != fastTwoPassCompressionQuality {
 		return false
 	}
 
-	if s.params.quality == FAST_TWO_PASS_COMPRESSION_QUALITY {
+	if s.params.quality == fastTwoPassCompressionQuality {
 		if s.command_buf_ == nil && buf_size == kCompressFragmentTwoPassBlockSize {
 			s.command_buf_ = make([]uint32, kCompressFragmentTwoPassBlockSize)
 			s.literal_buf_ = make([]byte, kCompressFragmentTwoPassBlockSize)
@@ -1541,7 +1544,7 @@ func encoderCompressStreamFast(s *Writer, op int, available_in *uint, next_in *[
 			storage[1] = byte(s.last_bytes_ >> 8)
 			table = getHashTable(s, s.params.quality, block_size, &table_size)
 
-			if s.params.quality == FAST_ONE_PASS_COMPRESSION_QUALITY {
+			if s.params.quality == fastOnePassCompressionQuality {
 				compressFragmentFast(*next_in, block_size, is_last, table, table_size, s.cmd_depths_[:], s.cmd_bits_[:], &s.cmd_code_numbits_, s.cmd_code_[:], &storage_ix, storage)
 			} else {
 				compressFragmentTwoPass(*next_in, block_size, is_last, command_buf, literal_buf, table, table_size, &storage_ix, storage)
@@ -1616,7 +1619,7 @@ func processMetadata(s *Writer, available_in *uint, next_in *[]byte) bool {
 			/* Exit workflow only when there is no more input and no more output.
 			   Otherwise client may continue producing empty metadata blocks. */
 			if s.remaining_metadata_bytes_ == 0 {
-				s.remaining_metadata_bytes_ = BROTLI_UINT32_MAX
+				s.remaining_metadata_bytes_ = math.MaxUint32
 				s.stream_state_ = streamProcessing
 				break
 			}
@@ -1659,7 +1662,7 @@ func encoderCompressStream(s *Writer, op int, available_in *uint, next_in *[]byt
 	}
 
 	/* Unfinished metadata block; check requirements. */
-	if s.remaining_metadata_bytes_ != BROTLI_UINT32_MAX {
+	if s.remaining_metadata_bytes_ != math.MaxUint32 {
 		if uint32(*available_in) != s.remaining_metadata_bytes_ {
 			return false
 		}
@@ -1681,7 +1684,7 @@ func encoderCompressStream(s *Writer, op int, available_in *uint, next_in *[]byt
 		return false
 	}
 
-	if s.params.quality == FAST_ONE_PASS_COMPRESSION_QUALITY || s.params.quality == FAST_TWO_PASS_COMPRESSION_QUALITY {
+	if s.params.quality == fastOnePassCompressionQuality || s.params.quality == fastTwoPassCompressionQuality {
 		return encoderCompressStreamFast(s, op, available_in, next_in)
 	}
 

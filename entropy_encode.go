@@ -1,5 +1,7 @@
 package brotli
 
+import "math"
+
 /* Copyright 2010 Google Inc. All Rights Reserved.
 
    Distributed under MIT license.
@@ -164,7 +166,7 @@ func sortHuffmanTree(v0 *huffmanTree, v1 *huffmanTree) bool {
 func createHuffmanTree(data []uint32, length uint, tree_limit int, tree []huffmanTree, depth []byte) {
 	var count_limit uint32
 	var sentinel huffmanTree
-	initHuffmanTree(&sentinel, BROTLI_UINT32_MAX, -1, -1)
+	initHuffmanTree(&sentinel, math.MaxUint32, -1, -1)
 
 	/* For block sizes below 64 kB, we never need to do a second iteration
 	   of this loop. Probably all of our block sizes will be smaller than

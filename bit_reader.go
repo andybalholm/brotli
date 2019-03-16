@@ -154,7 +154,7 @@ func get16BitsUnmasked(br *bitReader) uint32 {
 
 /* Returns the specified number of bits from |br| without advancing bit
    position. */
-func BrotliGetBits(br *bitReader, n_bits uint32) uint32 {
+func getBits(br *bitReader, n_bits uint32) uint32 {
 	fillBitWindow(br, n_bits)
 	return uint32(getBitsUnmasked(br)) & bitMask(n_bits)
 }

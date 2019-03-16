@@ -1,5 +1,7 @@
 package brotli
 
+import "math"
+
 /* NOLINT(build/header_guard) */
 /* Copyright 2013 Google Inc. All Rights Reserved.
 
@@ -184,7 +186,7 @@ func buildBlockHistogramsDistance(data []uint16, length uint, block_ids []byte, 
 	}
 }
 
-var clusterBlocksDistance_kInvalidIndex uint32 = BROTLI_UINT32_MAX
+var clusterBlocksDistance_kInvalidIndex uint32 = math.MaxUint32
 
 func clusterBlocksDistance(data []uint16, length uint, num_blocks uint, block_ids []byte, split *blockSplit) {
 	var histogram_symbols []uint32 = make([]uint32, num_blocks)
@@ -406,7 +408,7 @@ func splitByteVectorDistance(data []uint16, length uint, literals_per_histogram 
 		var switch_signal []byte = make([]byte, (length * bitmaplen))
 		var new_id []uint16 = make([]uint16, num_histograms)
 		var iters uint
-		if params.quality < HQ_ZOPFLIFICATION_QUALITY {
+		if params.quality < hqZopflificationQuality {
 			iters = 3
 		} else {
 			iters = 10

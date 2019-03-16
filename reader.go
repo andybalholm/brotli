@@ -23,7 +23,7 @@ const readBufSize = 32 * 1024
 // NewReader initializes new Reader instance.
 func NewReader(src io.Reader) *Reader {
 	r := new(Reader)
-	BrotliDecoderStateInit(r)
+	decoderStateInit(r)
 	r.src = src
 	r.buf = make([]byte, readBufSize)
 	return r

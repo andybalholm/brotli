@@ -7,64 +7,64 @@ package brotli
    aforementioned functions will be available only to brotli internals.
 */
 const (
-	BROTLI_TRANSFORM_IDENTITY        = 0
-	BROTLI_TRANSFORM_OMIT_LAST_1     = 1
-	BROTLI_TRANSFORM_OMIT_LAST_2     = 2
-	BROTLI_TRANSFORM_OMIT_LAST_3     = 3
-	BROTLI_TRANSFORM_OMIT_LAST_4     = 4
-	BROTLI_TRANSFORM_OMIT_LAST_5     = 5
-	BROTLI_TRANSFORM_OMIT_LAST_6     = 6
-	BROTLI_TRANSFORM_OMIT_LAST_7     = 7
-	BROTLI_TRANSFORM_OMIT_LAST_8     = 8
-	BROTLI_TRANSFORM_OMIT_LAST_9     = 9
-	BROTLI_TRANSFORM_UPPERCASE_FIRST = 10
-	BROTLI_TRANSFORM_UPPERCASE_ALL   = 11
-	BROTLI_TRANSFORM_OMIT_FIRST_1    = 12
-	BROTLI_TRANSFORM_OMIT_FIRST_2    = 13
-	BROTLI_TRANSFORM_OMIT_FIRST_3    = 14
-	BROTLI_TRANSFORM_OMIT_FIRST_4    = 15
-	BROTLI_TRANSFORM_OMIT_FIRST_5    = 16
-	BROTLI_TRANSFORM_OMIT_FIRST_6    = 17
-	BROTLI_TRANSFORM_OMIT_FIRST_7    = 18
-	BROTLI_TRANSFORM_OMIT_FIRST_8    = 19
-	BROTLI_TRANSFORM_OMIT_FIRST_9    = 20
-	BROTLI_TRANSFORM_SHIFT_FIRST     = 21
-	BROTLI_TRANSFORM_SHIFT_ALL       = 22 + iota - 22
-	BROTLI_NUM_TRANSFORM_TYPES
+	transformIdentity       = 0
+	transformOmitLast1      = 1
+	transformOmitLast2      = 2
+	transformOmitLast3      = 3
+	transformOmitLast4      = 4
+	transformOmitLast5      = 5
+	transformOmitLast6      = 6
+	transformOmitLast7      = 7
+	transformOmitLast8      = 8
+	transformOmitLast9      = 9
+	transformUppercaseFirst = 10
+	transformUppercaseAll   = 11
+	transformOmitFirst1     = 12
+	transformOmitFirst2     = 13
+	transformOmitFirst3     = 14
+	transformOmitFirst4     = 15
+	transformOmitFirst5     = 16
+	transformOmitFirst6     = 17
+	transformOmitFirst7     = 18
+	transformOmitFirst8     = 19
+	transformOmitFirst9     = 20
+	transformShiftFirst     = 21
+	transformShiftAll       = 22 + iota - 22
+	numTransformTypes
 )
 
-const BROTLI_TRANSFORMS_MAX_CUT_OFF = BROTLI_TRANSFORM_OMIT_LAST_9
+const transformsMaxCutOff = transformOmitLast9
 
-type BrotliTransforms struct {
+type transforms struct {
 	prefix_suffix_size uint16
 	prefix_suffix      []byte
 	prefix_suffix_map  []uint16
 	num_transforms     uint32
 	transforms         []byte
 	params             []byte
-	cutOffTransforms   [BROTLI_TRANSFORMS_MAX_CUT_OFF + 1]int16
+	cutOffTransforms   [transformsMaxCutOff + 1]int16
 }
 
 /* T is BrotliTransforms*; result is uint8_t. */
-func BROTLI_TRANSFORM_PREFIX_ID(t *BrotliTransforms, I int) byte {
+func transformPrefixId(t *transforms, I int) byte {
 	return t.transforms[(I*3)+0]
 }
 
-func BROTLI_TRANSFORM_TYPE(t *BrotliTransforms, I int) byte {
+func transformType(t *transforms, I int) byte {
 	return t.transforms[(I*3)+1]
 }
 
-func BROTLI_TRANSFORM_SUFFIX_ID(t *BrotliTransforms, I int) byte {
+func transformSuffixId(t *transforms, I int) byte {
 	return t.transforms[(I*3)+2]
 }
 
 /* T is BrotliTransforms*; result is const uint8_t*. */
-func BROTLI_TRANSFORM_PREFIX(t *BrotliTransforms, I int) []byte {
-	return t.prefix_suffix[t.prefix_suffix_map[BROTLI_TRANSFORM_PREFIX_ID(t, I)]:]
+func transformPrefix(t *transforms, I int) []byte {
+	return t.prefix_suffix[t.prefix_suffix_map[transformPrefixId(t, I)]:]
 }
 
-func BROTLI_TRANSFORM_SUFFIX(t *BrotliTransforms, I int) []byte {
-	return t.prefix_suffix[t.prefix_suffix_map[BROTLI_TRANSFORM_SUFFIX_ID(t, I)]:]
+func transformSuffix(t *transforms, I int) []byte {
+	return t.prefix_suffix[t.prefix_suffix_map[transformSuffixId(t, I)]:]
 }
 
 /* RFC 7932 transforms string data */
@@ -139,385 +139,385 @@ var kPrefixSuffixMap = [50]uint16{
 /* RFC 7932 transforms */
 var kTransformsData = []byte{
 	49,
-	BROTLI_TRANSFORM_IDENTITY,
+	transformIdentity,
 	49,
 	49,
-	BROTLI_TRANSFORM_IDENTITY,
+	transformIdentity,
 	0,
 	0,
-	BROTLI_TRANSFORM_IDENTITY,
+	transformIdentity,
 	0,
 	49,
-	BROTLI_TRANSFORM_OMIT_FIRST_1,
+	transformOmitFirst1,
 	49,
 	49,
-	BROTLI_TRANSFORM_UPPERCASE_FIRST,
+	transformUppercaseFirst,
 	0,
 	49,
-	BROTLI_TRANSFORM_IDENTITY,
+	transformIdentity,
 	47,
 	0,
-	BROTLI_TRANSFORM_IDENTITY,
+	transformIdentity,
 	49,
 	4,
-	BROTLI_TRANSFORM_IDENTITY,
+	transformIdentity,
 	0,
 	49,
-	BROTLI_TRANSFORM_IDENTITY,
+	transformIdentity,
 	3,
 	49,
-	BROTLI_TRANSFORM_UPPERCASE_FIRST,
+	transformUppercaseFirst,
 	49,
 	49,
-	BROTLI_TRANSFORM_IDENTITY,
+	transformIdentity,
 	6,
 	49,
-	BROTLI_TRANSFORM_OMIT_FIRST_2,
+	transformOmitFirst2,
 	49,
 	49,
-	BROTLI_TRANSFORM_OMIT_LAST_1,
+	transformOmitLast1,
 	49,
 	1,
-	BROTLI_TRANSFORM_IDENTITY,
+	transformIdentity,
 	0,
 	49,
-	BROTLI_TRANSFORM_IDENTITY,
+	transformIdentity,
 	1,
 	0,
-	BROTLI_TRANSFORM_UPPERCASE_FIRST,
+	transformUppercaseFirst,
 	0,
 	49,
-	BROTLI_TRANSFORM_IDENTITY,
+	transformIdentity,
 	7,
 	49,
-	BROTLI_TRANSFORM_IDENTITY,
+	transformIdentity,
 	9,
 	48,
-	BROTLI_TRANSFORM_IDENTITY,
+	transformIdentity,
 	0,
 	49,
-	BROTLI_TRANSFORM_IDENTITY,
+	transformIdentity,
 	8,
 	49,
-	BROTLI_TRANSFORM_IDENTITY,
+	transformIdentity,
 	5,
 	49,
-	BROTLI_TRANSFORM_IDENTITY,
+	transformIdentity,
 	10,
 	49,
-	BROTLI_TRANSFORM_IDENTITY,
+	transformIdentity,
 	11,
 	49,
-	BROTLI_TRANSFORM_OMIT_LAST_3,
+	transformOmitLast3,
 	49,
 	49,
-	BROTLI_TRANSFORM_IDENTITY,
+	transformIdentity,
 	13,
 	49,
-	BROTLI_TRANSFORM_IDENTITY,
+	transformIdentity,
 	14,
 	49,
-	BROTLI_TRANSFORM_OMIT_FIRST_3,
+	transformOmitFirst3,
 	49,
 	49,
-	BROTLI_TRANSFORM_OMIT_LAST_2,
+	transformOmitLast2,
 	49,
 	49,
-	BROTLI_TRANSFORM_IDENTITY,
+	transformIdentity,
 	15,
 	49,
-	BROTLI_TRANSFORM_IDENTITY,
+	transformIdentity,
 	16,
 	0,
-	BROTLI_TRANSFORM_UPPERCASE_FIRST,
+	transformUppercaseFirst,
 	49,
 	49,
-	BROTLI_TRANSFORM_IDENTITY,
+	transformIdentity,
 	12,
 	5,
-	BROTLI_TRANSFORM_IDENTITY,
+	transformIdentity,
 	49,
 	0,
-	BROTLI_TRANSFORM_IDENTITY,
+	transformIdentity,
 	1,
 	49,
-	BROTLI_TRANSFORM_OMIT_FIRST_4,
+	transformOmitFirst4,
 	49,
 	49,
-	BROTLI_TRANSFORM_IDENTITY,
+	transformIdentity,
 	18,
 	49,
-	BROTLI_TRANSFORM_IDENTITY,
+	transformIdentity,
 	17,
 	49,
-	BROTLI_TRANSFORM_IDENTITY,
+	transformIdentity,
 	19,
 	49,
-	BROTLI_TRANSFORM_IDENTITY,
+	transformIdentity,
 	20,
 	49,
-	BROTLI_TRANSFORM_OMIT_FIRST_5,
+	transformOmitFirst5,
 	49,
 	49,
-	BROTLI_TRANSFORM_OMIT_FIRST_6,
+	transformOmitFirst6,
 	49,
 	47,
-	BROTLI_TRANSFORM_IDENTITY,
+	transformIdentity,
 	49,
 	49,
-	BROTLI_TRANSFORM_OMIT_LAST_4,
+	transformOmitLast4,
 	49,
 	49,
-	BROTLI_TRANSFORM_IDENTITY,
+	transformIdentity,
 	22,
 	49,
-	BROTLI_TRANSFORM_UPPERCASE_ALL,
+	transformUppercaseAll,
 	49,
 	49,
-	BROTLI_TRANSFORM_IDENTITY,
+	transformIdentity,
 	23,
 	49,
-	BROTLI_TRANSFORM_IDENTITY,
+	transformIdentity,
 	24,
 	49,
-	BROTLI_TRANSFORM_IDENTITY,
+	transformIdentity,
 	25,
 	49,
-	BROTLI_TRANSFORM_OMIT_LAST_7,
+	transformOmitLast7,
 	49,
 	49,
-	BROTLI_TRANSFORM_OMIT_LAST_1,
+	transformOmitLast1,
 	26,
 	49,
-	BROTLI_TRANSFORM_IDENTITY,
+	transformIdentity,
 	27,
 	49,
-	BROTLI_TRANSFORM_IDENTITY,
+	transformIdentity,
 	28,
 	0,
-	BROTLI_TRANSFORM_IDENTITY,
+	transformIdentity,
 	12,
 	49,
-	BROTLI_TRANSFORM_IDENTITY,
+	transformIdentity,
 	29,
 	49,
-	BROTLI_TRANSFORM_OMIT_FIRST_9,
+	transformOmitFirst9,
 	49,
 	49,
-	BROTLI_TRANSFORM_OMIT_FIRST_7,
+	transformOmitFirst7,
 	49,
 	49,
-	BROTLI_TRANSFORM_OMIT_LAST_6,
+	transformOmitLast6,
 	49,
 	49,
-	BROTLI_TRANSFORM_IDENTITY,
+	transformIdentity,
 	21,
 	49,
-	BROTLI_TRANSFORM_UPPERCASE_FIRST,
+	transformUppercaseFirst,
 	1,
 	49,
-	BROTLI_TRANSFORM_OMIT_LAST_8,
+	transformOmitLast8,
 	49,
 	49,
-	BROTLI_TRANSFORM_IDENTITY,
+	transformIdentity,
 	31,
 	49,
-	BROTLI_TRANSFORM_IDENTITY,
+	transformIdentity,
 	32,
 	47,
-	BROTLI_TRANSFORM_IDENTITY,
+	transformIdentity,
 	3,
 	49,
-	BROTLI_TRANSFORM_OMIT_LAST_5,
+	transformOmitLast5,
 	49,
 	49,
-	BROTLI_TRANSFORM_OMIT_LAST_9,
+	transformOmitLast9,
 	49,
 	0,
-	BROTLI_TRANSFORM_UPPERCASE_FIRST,
+	transformUppercaseFirst,
 	1,
 	49,
-	BROTLI_TRANSFORM_UPPERCASE_FIRST,
+	transformUppercaseFirst,
 	8,
 	5,
-	BROTLI_TRANSFORM_IDENTITY,
+	transformIdentity,
 	21,
 	49,
-	BROTLI_TRANSFORM_UPPERCASE_ALL,
+	transformUppercaseAll,
 	0,
 	49,
-	BROTLI_TRANSFORM_UPPERCASE_FIRST,
+	transformUppercaseFirst,
 	10,
 	49,
-	BROTLI_TRANSFORM_IDENTITY,
+	transformIdentity,
 	30,
 	0,
-	BROTLI_TRANSFORM_IDENTITY,
+	transformIdentity,
 	5,
 	35,
-	BROTLI_TRANSFORM_IDENTITY,
+	transformIdentity,
 	49,
 	47,
-	BROTLI_TRANSFORM_IDENTITY,
+	transformIdentity,
 	2,
 	49,
-	BROTLI_TRANSFORM_UPPERCASE_FIRST,
+	transformUppercaseFirst,
 	17,
 	49,
-	BROTLI_TRANSFORM_IDENTITY,
+	transformIdentity,
 	36,
 	49,
-	BROTLI_TRANSFORM_IDENTITY,
+	transformIdentity,
 	33,
 	5,
-	BROTLI_TRANSFORM_IDENTITY,
+	transformIdentity,
 	0,
 	49,
-	BROTLI_TRANSFORM_UPPERCASE_FIRST,
+	transformUppercaseFirst,
 	21,
 	49,
-	BROTLI_TRANSFORM_UPPERCASE_FIRST,
+	transformUppercaseFirst,
 	5,
 	49,
-	BROTLI_TRANSFORM_IDENTITY,
+	transformIdentity,
 	37,
 	0,
-	BROTLI_TRANSFORM_IDENTITY,
+	transformIdentity,
 	30,
 	49,
-	BROTLI_TRANSFORM_IDENTITY,
+	transformIdentity,
 	38,
 	0,
-	BROTLI_TRANSFORM_UPPERCASE_ALL,
+	transformUppercaseAll,
 	0,
 	49,
-	BROTLI_TRANSFORM_IDENTITY,
+	transformIdentity,
 	39,
 	0,
-	BROTLI_TRANSFORM_UPPERCASE_ALL,
+	transformUppercaseAll,
 	49,
 	49,
-	BROTLI_TRANSFORM_IDENTITY,
+	transformIdentity,
 	34,
 	49,
-	BROTLI_TRANSFORM_UPPERCASE_ALL,
+	transformUppercaseAll,
 	8,
 	49,
-	BROTLI_TRANSFORM_UPPERCASE_FIRST,
+	transformUppercaseFirst,
 	12,
 	0,
-	BROTLI_TRANSFORM_IDENTITY,
+	transformIdentity,
 	21,
 	49,
-	BROTLI_TRANSFORM_IDENTITY,
+	transformIdentity,
 	40,
 	0,
-	BROTLI_TRANSFORM_UPPERCASE_FIRST,
+	transformUppercaseFirst,
 	12,
 	49,
-	BROTLI_TRANSFORM_IDENTITY,
+	transformIdentity,
 	41,
 	49,
-	BROTLI_TRANSFORM_IDENTITY,
+	transformIdentity,
 	42,
 	49,
-	BROTLI_TRANSFORM_UPPERCASE_ALL,
+	transformUppercaseAll,
 	17,
 	49,
-	BROTLI_TRANSFORM_IDENTITY,
+	transformIdentity,
 	43,
 	0,
-	BROTLI_TRANSFORM_UPPERCASE_FIRST,
+	transformUppercaseFirst,
 	5,
 	49,
-	BROTLI_TRANSFORM_UPPERCASE_ALL,
+	transformUppercaseAll,
 	10,
 	0,
-	BROTLI_TRANSFORM_IDENTITY,
+	transformIdentity,
 	34,
 	49,
-	BROTLI_TRANSFORM_UPPERCASE_FIRST,
+	transformUppercaseFirst,
 	33,
 	49,
-	BROTLI_TRANSFORM_IDENTITY,
+	transformIdentity,
 	44,
 	49,
-	BROTLI_TRANSFORM_UPPERCASE_ALL,
+	transformUppercaseAll,
 	5,
 	45,
-	BROTLI_TRANSFORM_IDENTITY,
+	transformIdentity,
 	49,
 	0,
-	BROTLI_TRANSFORM_IDENTITY,
+	transformIdentity,
 	33,
 	49,
-	BROTLI_TRANSFORM_UPPERCASE_FIRST,
+	transformUppercaseFirst,
 	30,
 	49,
-	BROTLI_TRANSFORM_UPPERCASE_ALL,
+	transformUppercaseAll,
 	30,
 	49,
-	BROTLI_TRANSFORM_IDENTITY,
+	transformIdentity,
 	46,
 	49,
-	BROTLI_TRANSFORM_UPPERCASE_ALL,
+	transformUppercaseAll,
 	1,
 	49,
-	BROTLI_TRANSFORM_UPPERCASE_FIRST,
+	transformUppercaseFirst,
 	34,
 	0,
-	BROTLI_TRANSFORM_UPPERCASE_FIRST,
+	transformUppercaseFirst,
 	33,
 	0,
-	BROTLI_TRANSFORM_UPPERCASE_ALL,
+	transformUppercaseAll,
 	30,
 	0,
-	BROTLI_TRANSFORM_UPPERCASE_ALL,
+	transformUppercaseAll,
 	1,
 	49,
-	BROTLI_TRANSFORM_UPPERCASE_ALL,
+	transformUppercaseAll,
 	33,
 	49,
-	BROTLI_TRANSFORM_UPPERCASE_ALL,
+	transformUppercaseAll,
 	21,
 	49,
-	BROTLI_TRANSFORM_UPPERCASE_ALL,
+	transformUppercaseAll,
 	12,
 	0,
-	BROTLI_TRANSFORM_UPPERCASE_ALL,
+	transformUppercaseAll,
 	5,
 	49,
-	BROTLI_TRANSFORM_UPPERCASE_ALL,
+	transformUppercaseAll,
 	34,
 	0,
-	BROTLI_TRANSFORM_UPPERCASE_ALL,
+	transformUppercaseAll,
 	12,
 	0,
-	BROTLI_TRANSFORM_UPPERCASE_FIRST,
+	transformUppercaseFirst,
 	30,
 	0,
-	BROTLI_TRANSFORM_UPPERCASE_ALL,
+	transformUppercaseAll,
 	34,
 	0,
-	BROTLI_TRANSFORM_UPPERCASE_FIRST,
+	transformUppercaseFirst,
 	34,
 }
 
-var kBrotliTransforms = BrotliTransforms{
+var kBrotliTransforms = transforms{
 	217,
 	[]byte(kPrefixSuffix),
 	kPrefixSuffixMap[:],
 	121,
 	kTransformsData,
 	nil, /* no extra parameters */
-	[BROTLI_TRANSFORMS_MAX_CUT_OFF + 1]int16{0, 12, 27, 23, 42, 63, 56, 48, 59, 64},
+	[transformsMaxCutOff + 1]int16{0, 12, 27, 23, 42, 63, 56, 48, 59, 64},
 }
 
-func BrotliGetTransforms() *BrotliTransforms {
+func getTransforms() *transforms {
 	return &kBrotliTransforms
 }
 
-func ToUpperCase(p []byte) int {
+func toUpperCase(p []byte) int {
 	if p[0] < 0xC0 {
 		if p[0] >= 'a' && p[0] <= 'z' {
 			p[0] ^= 32
@@ -538,7 +538,7 @@ func ToUpperCase(p []byte) int {
 	return 3
 }
 
-func Shift(word []byte, word_len int, parameter uint16) int {
+func shiftTransform(word []byte, word_len int, parameter uint16) int {
 	/* Limited sign extension: scalar < (1 << 24). */
 	var scalar uint32 = (uint32(parameter) & 0x7FFF) + (0x1000000 - (uint32(parameter) & 0x8000))
 	if word[0] < 0x80 {
@@ -585,11 +585,11 @@ func Shift(word []byte, word_len int, parameter uint16) int {
 	return 1
 }
 
-func BrotliTransformDictionaryWord(dst []byte, word []byte, len int, transforms *BrotliTransforms, transform_idx int) int {
+func transformDictionaryWord(dst []byte, word []byte, len int, trans *transforms, transform_idx int) int {
 	var idx int = 0
-	var prefix []byte = BROTLI_TRANSFORM_PREFIX(transforms, transform_idx)
-	var type_ byte = BROTLI_TRANSFORM_TYPE(transforms, transform_idx)
-	var suffix []byte = BROTLI_TRANSFORM_SUFFIX(transforms, transform_idx)
+	var prefix []byte = transformPrefix(trans, transform_idx)
+	var type_ byte = transformType(trans, transform_idx)
+	var suffix []byte = transformSuffix(trans, transform_idx)
 	{
 		var prefix_len int = int(prefix[0])
 		prefix = prefix[1:]
@@ -607,10 +607,10 @@ func BrotliTransformDictionaryWord(dst []byte, word []byte, len int, transforms 
 	{
 		var t int = int(type_)
 		var i int = 0
-		if t <= BROTLI_TRANSFORM_OMIT_LAST_9 {
+		if t <= transformOmitLast9 {
 			len -= t
-		} else if t >= BROTLI_TRANSFORM_OMIT_FIRST_1 && t <= BROTLI_TRANSFORM_OMIT_FIRST_9 {
-			var skip int = t - (BROTLI_TRANSFORM_OMIT_FIRST_1 - 1)
+		} else if t >= transformOmitFirst1 && t <= transformOmitFirst9 {
+			var skip int = t - (transformOmitFirst1 - 1)
 			word = word[skip:]
 			len -= skip
 		}
@@ -620,25 +620,25 @@ func BrotliTransformDictionaryWord(dst []byte, word []byte, len int, transforms 
 			idx++
 			i++
 		}
-		if t == BROTLI_TRANSFORM_UPPERCASE_FIRST {
-			ToUpperCase(dst[idx-len:])
-		} else if t == BROTLI_TRANSFORM_UPPERCASE_ALL {
+		if t == transformUppercaseFirst {
+			toUpperCase(dst[idx-len:])
+		} else if t == transformUppercaseAll {
 			var uppercase []byte = dst
 			uppercase = uppercase[idx-len:]
 			for len > 0 {
-				var step int = ToUpperCase(uppercase)
+				var step int = toUpperCase(uppercase)
 				uppercase = uppercase[step:]
 				len -= step
 			}
-		} else if t == BROTLI_TRANSFORM_SHIFT_FIRST {
-			var param uint16 = uint16(transforms.params[transform_idx*2] + (transforms.params[transform_idx*2+1] << 8))
-			Shift(dst[idx-len:], int(len), param)
-		} else if t == BROTLI_TRANSFORM_SHIFT_ALL {
-			var param uint16 = uint16(transforms.params[transform_idx*2] + (transforms.params[transform_idx*2+1] << 8))
+		} else if t == transformShiftFirst {
+			var param uint16 = uint16(trans.params[transform_idx*2] + (trans.params[transform_idx*2+1] << 8))
+			shiftTransform(dst[idx-len:], int(len), param)
+		} else if t == transformShiftAll {
+			var param uint16 = uint16(trans.params[transform_idx*2] + (trans.params[transform_idx*2+1] << 8))
 			var shift []byte = dst
 			shift = shift[idx-len:]
 			for len > 0 {
-				var step int = Shift(shift, int(len), param)
+				var step int = shiftTransform(shift, int(len), param)
 				shift = shift[step:]
 				len -= step
 			}

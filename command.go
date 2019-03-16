@@ -203,7 +203,7 @@ func initCommand(self *command, dist *distanceParams, insertlen uint, copylen ui
 	/* The distance prefix and extra bits are stored in this Command as if
 	   npostfix and ndirect were 0, they are only recomputed later after the
 	   clustering if needed. */
-	PrefixEncodeCopyDistance(distance_code, uint(dist.num_direct_distance_codes), uint(dist.distance_postfix_bits), &self.dist_prefix_, &self.dist_extra_)
+	prefixEncodeCopyDistance(distance_code, uint(dist.num_direct_distance_codes), uint(dist.distance_postfix_bits), &self.dist_prefix_, &self.dist_extra_)
 
 	getLengthCode(insertlen, uint(int(copylen)+copylen_code_delta), (self.dist_prefix_&0x3FF == 0), &self.cmd_prefix_)
 }

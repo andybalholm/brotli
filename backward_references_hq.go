@@ -1,5 +1,7 @@
 package brotli
 
+import "math"
+
 type zopfliNode struct {
 	length              uint32
 	distance            uint32
@@ -387,8 +389,8 @@ func updateNodes(num_bytes uint, block_start uint, pos uint, ringbuffer []byte, 
 	var cur_ix_masked uint = cur_ix & ringbuffer_mask
 	var max_distance uint = brotli_min_size_t(cur_ix, max_backward_limit)
 	var max_len uint = num_bytes - pos
-	var max_zopfli_len uint = MaxZopfliLen(params)
-	var max_iters uint = MaxZopfliCandidates(params)
+	var max_zopfli_len uint = maxZopfliLen(params)
+	var max_iters uint = maxZopfliCandidates(params)
 	var min_len uint
 	var result uint = 0
 	var k uint
@@ -487,7 +489,7 @@ func updateNodes(num_bytes uint, block_start uint, pos uint, ringbuffer []byte, 
 				var max_match_len uint
 				/* We already tried all possible last distance matches, so we can use
 				   normal distance code here. */
-				PrefixEncodeCopyDistance(dist_code, uint(params.dist.num_direct_distance_codes), uint(params.dist.distance_postfix_bits), &dist_symbol, &distextra)
+				prefixEncodeCopyDistance(dist_code, uint(params.dist.num_direct_distance_codes), uint(params.dist.distance_postfix_bits), &dist_symbol, &distextra)
 
 				distnumextra = uint32(dist_symbol) >> 10
 				dist_cost = base_cost + float32(distnumextra) + zopfliCostModelGetDistanceCost(model, uint(dist_symbol)&0x3FF)
@@ -529,7 +531,7 @@ func computeShortestPathFromNodes(num_bytes uint, nodes []zopfliNode) uint {
 	for nodes[index].dcode_insert_length&0x7FFFFFF == 0 && nodes[index].length == 1 {
 		index--
 	}
-	nodes[index].u.next = BROTLI_UINT32_MAX
+	nodes[index].u.next = math.MaxUint32
 	for index != 0 {
 		var len uint = uint(zopfliNodeCommandLength(&nodes[index]))
 		index -= uint(len)
@@ -547,7 +549,7 @@ func zopfliCreateCommands(num_bytes uint, block_start uint, nodes []zopfliNode, 
 	var offset uint32 = nodes[0].u.next
 	var i uint
 	var gap uint = 0
-	for i = 0; offset != BROTLI_UINT32_MAX; i++ {
+	for i = 0; offset != math.MaxUint32; i++ {
 		var next *zopfliNode = &nodes[uint32(pos)+offset]
 		var copy_length uint = uint(zopfliNodeCopyLength(next))
 		var insert_length uint = uint(next.dcode_insert_length & 0x7FFFFFF)
@@ -582,7 +584,7 @@ func zopfliCreateCommands(num_bytes uint, block_start uint, nodes []zopfliNode, 
 
 func zopfliIterate(num_bytes uint, position uint, ringbuffer []byte, ringbuffer_mask uint, params *encoderParams, gap uint, dist_cache []int, model *zopfliCostModel, num_matches []uint32, matches []backwardMatch, nodes []zopfliNode) uint {
 	var max_backward_limit uint = maxBackwardLimit(params.lgwin)
-	var max_zopfli_len uint = MaxZopfliLen(params)
+	var max_zopfli_len uint = maxZopfliLen(params)
 	var queue startPosQueue
 	var cur_match_pos uint = 0
 	var i uint
@@ -591,7 +593,7 @@ func zopfliIterate(num_bytes uint, position uint, ringbuffer []byte, ringbuffer_
 	initStartPosQueue(&queue)
 	for i = 0; i+3 < num_bytes; i++ {
 		var skip uint = updateNodes(num_bytes, position, i, ringbuffer, ringbuffer_mask, params, max_backward_limit, dist_cache, uint(num_matches[i]), matches[cur_match_pos:], model, &queue, nodes)
-		if skip < BROTLI_LONG_COPY_QUICK_STEP {
+		if skip < longCopyQuickStep {
 			skip = 0
 		}
 		cur_match_pos += uint(num_matches[i])
@@ -619,7 +621,7 @@ func zopfliIterate(num_bytes uint, position uint, ringbuffer []byte, ringbuffer_
 /* REQUIRES: nodes != NULL and len(nodes) >= num_bytes + 1 */
 func zopfliComputeShortestPath(num_bytes uint, position uint, ringbuffer []byte, ringbuffer_mask uint, params *encoderParams, dist_cache []int, hasher *h10, nodes []zopfliNode) uint {
 	var max_backward_limit uint = maxBackwardLimit(params.lgwin)
-	var max_zopfli_len uint = MaxZopfliLen(params)
+	var max_zopfli_len uint = maxZopfliLen(params)
 	var model zopfliCostModel
 	var queue startPosQueue
 	var matches [2 * (maxNumMatchesH10 + 64)]backwardMatch
@@ -649,7 +651,7 @@ func zopfliComputeShortestPath(num_bytes uint, position uint, ringbuffer []byte,
 		}
 
 		skip = updateNodes(num_bytes, position, i, ringbuffer, ringbuffer_mask, params, max_backward_limit, dist_cache, num_matches, matches[:], &model, &queue, nodes)
-		if skip < BROTLI_LONG_COPY_QUICK_STEP {
+		if skip < longCopyQuickStep {
 			skip = 0
 		}
 		if num_matches == 1 && backwardMatchLength(&matches[0]) > max_zopfli_len {
@@ -744,7 +746,7 @@ func createHqZopfliBackwardReferences(num_bytes uint, position uint, ringbuffer 
 		num_matches[i] = uint32(num_found_matches)
 		if num_found_matches > 0 {
 			var match_len uint = backwardMatchLength(&matches[cur_match_end-1])
-			if match_len > MAX_ZOPFLI_LEN_QUALITY_11 {
+			if match_len > maxZopfliLenQuality11 {
 				var skip uint = match_len - 1
 				matches[cur_match_pos] = matches[cur_match_end-1]
 				cur_match_pos++

@@ -1,36 +1,36 @@
 package brotli
 
-const FAST_ONE_PASS_COMPRESSION_QUALITY = 0
+const fastOnePassCompressionQuality = 0
 
-const FAST_TWO_PASS_COMPRESSION_QUALITY = 1
+const fastTwoPassCompressionQuality = 1
 
-const ZOPFLIFICATION_QUALITY = 10
+const zopflificationQuality = 10
 
-const HQ_ZOPFLIFICATION_QUALITY = 11
+const hqZopflificationQuality = 11
 
-const MAX_QUALITY_FOR_STATIC_ENTROPY_CODES = 2
+const maxQualityForStaticEntropyCodes = 2
 
-const MIN_QUALITY_FOR_BLOCK_SPLIT = 4
+const minQualityForBlockSplit = 4
 
-const MIN_QUALITY_FOR_NONZERO_DISTANCE_PARAMS = 4
+const minQualityForNonzeroDistanceParams = 4
 
-const MIN_QUALITY_FOR_OPTIMIZE_HISTOGRAMS = 4
+const minQualityForOptimizeHistograms = 4
 
-const MIN_QUALITY_FOR_EXTENSIVE_REFERENCE_SEARCH = 5
+const minQualityForExtensiveReferenceSearch = 5
 
-const MIN_QUALITY_FOR_CONTEXT_MODELING = 5
+const minQualityForContextModeling = 5
 
-const MIN_QUALITY_FOR_HQ_CONTEXT_MODELING = 7
+const minQualityForHqContextModeling = 7
 
-const MIN_QUALITY_FOR_HQ_BLOCK_SPLITTING = 10
+const minQualityForHqBlockSplitting = 10
 
 /* For quality below MIN_QUALITY_FOR_BLOCK_SPLIT there is no block splitting,
    so we buffer at most this much literals and commands. */
-const MAX_NUM_DELAYED_SYMBOLS = 0x2FFF
+const maxNumDelayedSymbols = 0x2FFF
 
 /* Returns hash-table size for quality levels 0 and 1. */
-func MaxHashTableSize(quality int) uint {
-	if quality == FAST_ONE_PASS_COMPRESSION_QUALITY {
+func maxHashTableSize(quality int) uint {
+	if quality == fastOnePassCompressionQuality {
 		return 1 << 15
 	} else {
 		return 1 << 17
@@ -38,23 +38,23 @@ func MaxHashTableSize(quality int) uint {
 }
 
 /* The maximum length for which the zopflification uses distinct distances. */
-const MAX_ZOPFLI_LEN_QUALITY_10 = 150
+const maxZopfliLenQuality10 = 150
 
-const MAX_ZOPFLI_LEN_QUALITY_11 = 325
+const maxZopfliLenQuality11 = 325
 
 /* Do not thoroughly search when a long copy is found. */
-const BROTLI_LONG_COPY_QUICK_STEP = 16384
+const longCopyQuickStep = 16384
 
-func MaxZopfliLen(params *encoderParams) uint {
+func maxZopfliLen(params *encoderParams) uint {
 	if params.quality <= 10 {
-		return MAX_ZOPFLI_LEN_QUALITY_10
+		return maxZopfliLenQuality10
 	} else {
-		return MAX_ZOPFLI_LEN_QUALITY_11
+		return maxZopfliLenQuality11
 	}
 }
 
 /* Number of best candidates to evaluate to expand Zopfli chain. */
-func MaxZopfliCandidates(params *encoderParams) uint {
+func maxZopfliCandidates(params *encoderParams) uint {
 	if params.quality <= 10 {
 		return 1
 	} else {
@@ -62,9 +62,9 @@ func MaxZopfliCandidates(params *encoderParams) uint {
 	}
 }
 
-func SanitizeParams(params *encoderParams) {
+func sanitizeParams(params *encoderParams) {
 	params.quality = brotli_min_int(maxQuality, brotli_max_int(minQuality, params.quality))
-	if params.quality <= MAX_QUALITY_FOR_STATIC_ENTROPY_CODES {
+	if params.quality <= maxQualityForStaticEntropyCodes {
 		params.large_window = false
 	}
 
@@ -84,11 +84,11 @@ func SanitizeParams(params *encoderParams) {
 }
 
 /* Returns optimized lg_block value. */
-func ComputeLgBlock(params *encoderParams) int {
+func computeLgBlock(params *encoderParams) int {
 	var lgblock int = params.lgblock
-	if params.quality == FAST_ONE_PASS_COMPRESSION_QUALITY || params.quality == FAST_TWO_PASS_COMPRESSION_QUALITY {
+	if params.quality == fastOnePassCompressionQuality || params.quality == fastTwoPassCompressionQuality {
 		lgblock = int(params.lgwin)
-	} else if params.quality < MIN_QUALITY_FOR_BLOCK_SPLIT {
+	} else if params.quality < minQualityForBlockSplit {
 		lgblock = 14
 	} else if lgblock == 0 {
 		lgblock = 16
@@ -107,12 +107,12 @@ func ComputeLgBlock(params *encoderParams) int {
    added block fits there completely and we still get lgwin bits and at least
    read_block_size_bits + 1 bits because the copy tail length needs to be
    smaller than ring-buffer size. */
-func ComputeRbBits(params *encoderParams) int {
+func computeRbBits(params *encoderParams) int {
 	return 1 + brotli_max_int(int(params.lgwin), params.lgblock)
 }
 
-func MaxMetablockSize(params *encoderParams) uint {
-	var bits int = brotli_min_int(ComputeRbBits(params), maxInputBlockBits)
+func maxMetablockSize(params *encoderParams) uint {
+	var bits int = brotli_min_int(computeRbBits(params), maxInputBlockBits)
 	return uint(1) << uint(bits)
 }
 
@@ -122,7 +122,7 @@ func MaxMetablockSize(params *encoderParams) uint {
    At first 8 byte strides are taken and every second byte is put to hasher.
    After 4x more literals stride by 16 bytes, every put 4-th byte to hasher.
    Applied only to qualities 2 to 9. */
-func LiteralSpreeLengthForSparseSearch(params *encoderParams) uint {
+func literalSpreeLengthForSparseSearch(params *encoderParams) uint {
 	if params.quality < 9 {
 		return 64
 	} else {
@@ -130,7 +130,7 @@ func LiteralSpreeLengthForSparseSearch(params *encoderParams) uint {
 	}
 }
 
-func ChooseHasher(params *encoderParams, hparams *hasherParams) {
+func chooseHasher(params *encoderParams, hparams *hasherParams) {
 	if params.quality > 9 {
 		hparams.type_ = 10
 	} else if params.quality == 4 && params.size_hint >= 1<<20 {

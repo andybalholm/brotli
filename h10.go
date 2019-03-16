@@ -165,13 +165,13 @@ func findAllMatchesH10(handle *h10, dictionary *encoderDictionary, data []byte, 
 	var cur_ix_masked uint = cur_ix & ring_buffer_mask
 	var best_len uint = 1
 	var short_match_max_backward uint
-	if params.quality != HQ_ZOPFLIFICATION_QUALITY {
+	if params.quality != hqZopflificationQuality {
 		short_match_max_backward = 16
 	} else {
 		short_match_max_backward = 64
 	}
 	var stop uint = cur_ix - short_match_max_backward
-	var dict_matches [BROTLI_MAX_STATIC_DICTIONARY_MATCH_LEN + 1]uint32
+	var dict_matches [maxStaticDictionaryMatchLen + 1]uint32
 	var i uint
 	if cur_ix < short_match_max_backward {
 		stop = 0
@@ -201,13 +201,13 @@ func findAllMatchesH10(handle *h10, dictionary *encoderDictionary, data []byte, 
 		matches = storeAndFindMatchesH10(handle, data, cur_ix, ring_buffer_mask, max_length, max_backward, &best_len, matches)
 	}
 
-	for i = 0; i <= BROTLI_MAX_STATIC_DICTIONARY_MATCH_LEN; i++ {
+	for i = 0; i <= maxStaticDictionaryMatchLen; i++ {
 		dict_matches[i] = kInvalidMatch
 	}
 	{
 		var minlen uint = brotli_max_size_t(4, best_len+1)
-		if BrotliFindAllStaticDictionaryMatches(dictionary, data[cur_ix_masked:], minlen, max_length, dict_matches[0:]) {
-			var maxlen uint = brotli_min_size_t(BROTLI_MAX_STATIC_DICTIONARY_MATCH_LEN, max_length)
+		if findAllStaticDictionaryMatches(dictionary, data[cur_ix_masked:], minlen, max_length, dict_matches[0:]) {
+			var maxlen uint = brotli_min_size_t(maxStaticDictionaryMatchLen, max_length)
 			var l uint
 			for l = minlen; l <= maxlen; l++ {
 				var dict_id uint32 = dict_matches[l]

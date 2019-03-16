@@ -124,7 +124,7 @@ func recomputeDistancePrefixes(cmds []command, num_commands uint, orig_params *d
 	for i = 0; i < num_commands; i++ {
 		var cmd *command = &cmds[i]
 		if commandCopyLen(cmd) != 0 && cmd.cmd_prefix_ >= 128 {
-			PrefixEncodeCopyDistance(uint(commandRestoreDistanceCode(cmd, orig_params)), uint(new_params.num_direct_distance_codes), uint(new_params.distance_postfix_bits), &cmd.dist_prefix_, &cmd.dist_extra_)
+			prefixEncodeCopyDistance(uint(commandRestoreDistanceCode(cmd, orig_params)), uint(new_params.num_direct_distance_codes), uint(new_params.distance_postfix_bits), &cmd.dist_prefix_, &cmd.dist_extra_)
 		}
 	}
 }
@@ -153,7 +153,7 @@ func computeDistanceCost(cmds []command, num_commands uint, orig_params *distanc
 					return false
 				}
 
-				PrefixEncodeCopyDistance(uint(distance), uint(new_params.num_direct_distance_codes), uint(new_params.distance_postfix_bits), &dist_prefix, &dist_extra)
+				prefixEncodeCopyDistance(uint(distance), uint(new_params.num_direct_distance_codes), uint(new_params.distance_postfix_bits), &dist_prefix, &dist_extra)
 			}
 
 			histogramAddDistance(&histo, uint(dist_prefix)&0x3FF)

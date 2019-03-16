@@ -7,15 +7,15 @@ package brotli
 */
 
 /* Utilities for building Huffman decoding tables. */
-type SymbolList struct {
+type symbolList struct {
 	storage []uint16
 	offset  int
 }
 
-func SymbolListGet(sl SymbolList, i int) uint16 {
+func symbolListGet(sl symbolList, i int) uint16 {
 	return sl.storage[i+sl.offset]
 }
 
-func SymbolListPut(sl SymbolList, i int, val uint16) {
+func symbolListPut(sl symbolList, i int, val uint16) {
 	sl.storage[i+sl.offset] = val
 }

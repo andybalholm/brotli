@@ -7,7 +7,7 @@ type encoderDictionary struct {
 	cutoffTransforms      uint64
 	hash_table            []uint16
 	buckets               []uint16
-	dict_words            []DictWord
+	dict_words            []dictWord
 }
 
 func initEncoderDictionary(dict *encoderDictionary) {

@@ -1,5 +1,7 @@
 package brotli
 
+import "math"
+
 /* NOLINT(build/header_guard) */
 /* Copyright 2013 Google Inc. All Rights Reserved.
 
@@ -211,7 +213,7 @@ func histogramRemapCommand(in []histogramCommand, in_size uint, clusters []uint3
        increasing order.
    Returns N, the number of unique values in symbols[]. */
 
-var histogramReindexCommand_kInvalidIndex uint32 = BROTLI_UINT32_MAX
+var histogramReindexCommand_kInvalidIndex uint32 = math.MaxUint32
 
 func histogramReindexCommand(out []histogramCommand, symbols []uint32, length uint) uint {
 	var new_index []uint32 = make([]uint32, length)

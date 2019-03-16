@@ -7,19 +7,13 @@ package brotli
 */
 
 /* Heuristics for deciding about the UTF8-ness of strings. */
-/* Copyright 2013 Google Inc. All Rights Reserved.
 
-   Distributed under MIT license.
-   See file LICENSE for detail or copy at https://opensource.org/licenses/MIT
-*/
-
-/* Heuristics for deciding about the UTF8-ness of strings. */
 var kMinUTF8Ratio float64 = 0.75
 
 /* Returns 1 if at least min_fraction of the bytes between pos and
    pos + length in the (data, mask) ring-buffer is UTF8-encoded, otherwise
    returns 0. */
-func BrotliParseAsUTF8(symbol *int, input []byte, size uint) uint {
+func parseAsUTF8(symbol *int, input []byte, size uint) uint {
 	/* ASCII */
 	if input[0]&0x80 == 0 {
 		*symbol = int(input[0])
@@ -59,14 +53,14 @@ func BrotliParseAsUTF8(symbol *int, input []byte, size uint) uint {
 }
 
 /* Returns 1 if at least min_fraction of the data is UTF8-encoded.*/
-func BrotliIsMostlyUTF8(data []byte, pos uint, mask uint, length uint, min_fraction float64) bool {
+func isMostlyUTF8(data []byte, pos uint, mask uint, length uint, min_fraction float64) bool {
 	var size_utf8 uint = 0
 	var i uint = 0
 	for i < length {
 		var symbol int
 		var current_data []byte
 		current_data = data[(pos+i)&mask:]
-		var bytes_read uint = BrotliParseAsUTF8(&symbol, current_data, length-i)
+		var bytes_read uint = parseAsUTF8(&symbol, current_data, length-i)
 		i += bytes_read
 		if symbol < 0x110000 {
 			size_utf8 += bytes_read

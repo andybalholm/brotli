@@ -778,8 +778,8 @@ var kStaticDistanceCodeDepth = [64]byte{
 
 var kCodeLengthBits = [18]uint32{0, 8, 4, 12, 2, 10, 6, 14, 1, 9, 5, 13, 3, 15, 31, 0, 11, 7}
 
-func StoreStaticCodeLengthCode(storage_ix *uint, storage []byte) {
-	BrotliWriteBits(40, 0x0000FF55555554, storage_ix, storage)
+func storeStaticCodeLengthCode(storage_ix *uint, storage []byte) {
+	writeBits(40, 0x0000FF55555554, storage_ix, storage)
 }
 
 var kZeroRepsBits = [numCommandSymbols]uint64{
@@ -4318,8 +4318,8 @@ var kStaticCommandCodeBits = [numCommandSymbols]uint16{
 }
 
 func storeStaticCommandHuffmanTree(storage_ix *uint, storage []byte) {
-	BrotliWriteBits(56, 0x92624416307003, storage_ix, storage)
-	BrotliWriteBits(3, 0x00000000, storage_ix, storage)
+	writeBits(56, 0x92624416307003, storage_ix, storage)
+	writeBits(3, 0x00000000, storage_ix, storage)
 }
 
 var kStaticDistanceCodeBits = [64]uint16{
@@ -4390,5 +4390,5 @@ var kStaticDistanceCodeBits = [64]uint16{
 }
 
 func storeStaticDistanceHuffmanTree(storage_ix *uint, storage []byte) {
-	BrotliWriteBits(28, 0x0369DC03, storage_ix, storage)
+	writeBits(28, 0x0369DC03, storage_ix, storage)
 }

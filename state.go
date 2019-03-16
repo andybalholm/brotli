@@ -7,88 +7,83 @@ import "io"
    Distributed under MIT license.
    See file LICENSE for detail or copy at https://opensource.org/licenses/MIT
 */
-/* Copyright 2015 Google Inc. All Rights Reserved.
-
-   Distributed under MIT license.
-   See file LICENSE for detail or copy at https://opensource.org/licenses/MIT
-*/
 
 /* Brotli state for partial streaming decoding. */
 const (
-	BROTLI_STATE_UNINITED = iota
-	BROTLI_STATE_LARGE_WINDOW_BITS
-	BROTLI_STATE_INITIALIZE
-	BROTLI_STATE_METABLOCK_BEGIN
-	BROTLI_STATE_METABLOCK_HEADER
-	BROTLI_STATE_METABLOCK_HEADER_2
-	BROTLI_STATE_CONTEXT_MODES
-	BROTLI_STATE_COMMAND_BEGIN
-	BROTLI_STATE_COMMAND_INNER
-	BROTLI_STATE_COMMAND_POST_DECODE_LITERALS
-	BROTLI_STATE_COMMAND_POST_WRAP_COPY
-	BROTLI_STATE_UNCOMPRESSED
-	BROTLI_STATE_METADATA
-	BROTLI_STATE_COMMAND_INNER_WRITE
-	BROTLI_STATE_METABLOCK_DONE
-	BROTLI_STATE_COMMAND_POST_WRITE_1
-	BROTLI_STATE_COMMAND_POST_WRITE_2
-	BROTLI_STATE_HUFFMAN_CODE_0
-	BROTLI_STATE_HUFFMAN_CODE_1
-	BROTLI_STATE_HUFFMAN_CODE_2
-	BROTLI_STATE_HUFFMAN_CODE_3
-	BROTLI_STATE_CONTEXT_MAP_1
-	BROTLI_STATE_CONTEXT_MAP_2
-	BROTLI_STATE_TREE_GROUP
-	BROTLI_STATE_DONE
+	stateUninited = iota
+	stateLargeWindowBits
+	stateInitialize
+	stateMetablockBegin
+	stateMetablockHeader
+	stateMetablockHeader2
+	stateContextModes
+	stateCommandBegin
+	stateCommandInner
+	stateCommandPostDecodeLiterals
+	stateCommandPostWrapCopy
+	stateUncompressed
+	stateMetadata
+	stateCommandInnerWrite
+	stateMetablockDone
+	stateCommandPostWrite1
+	stateCommandPostWrite2
+	stateHuffmanCode0
+	stateHuffmanCode1
+	stateHuffmanCode2
+	stateHuffmanCode3
+	stateContextMap1
+	stateContextMap2
+	stateTreeGroup
+	stateDone
 )
 
 const (
-	BROTLI_STATE_METABLOCK_HEADER_NONE = iota
-	BROTLI_STATE_METABLOCK_HEADER_EMPTY
-	BROTLI_STATE_METABLOCK_HEADER_NIBBLES
-	BROTLI_STATE_METABLOCK_HEADER_SIZE
-	BROTLI_STATE_METABLOCK_HEADER_UNCOMPRESSED
-	BROTLI_STATE_METABLOCK_HEADER_RESERVED
-	BROTLI_STATE_METABLOCK_HEADER_BYTES
-	BROTLI_STATE_METABLOCK_HEADER_METADATA
+	stateMetablockHeaderNone = iota
+	stateMetablockHeaderEmpty
+	stateMetablockHeaderNibbles
+	stateMetablockHeaderSize
+	stateMetablockHeaderUncompressed
+	stateMetablockHeaderReserved
+	stateMetablockHeaderBytes
+	stateMetablockHeaderMetadata
 )
 
 const (
-	BROTLI_STATE_UNCOMPRESSED_NONE = iota
-	BROTLI_STATE_UNCOMPRESSED_WRITE
+	stateUncompressedNone = iota
+	stateUncompressedWrite
 )
 
 const (
-	BROTLI_STATE_TREE_GROUP_NONE = iota
-	BROTLI_STATE_TREE_GROUP_LOOP
+	stateTreeGroupNone = iota
+	stateTreeGroupLoop
 )
 
 const (
-	BROTLI_STATE_CONTEXT_MAP_NONE = iota
-	BROTLI_STATE_CONTEXT_MAP_READ_PREFIX
-	BROTLI_STATE_CONTEXT_MAP_HUFFMAN
-	BROTLI_STATE_CONTEXT_MAP_DECODE
-	BROTLI_STATE_CONTEXT_MAP_TRANSFORM
+	stateContextMapNone = iota
+	stateContextMapReadPrefix
+	stateContextMapHuffman
+	stateContextMapDecode
+	stateContextMapTransform
 )
 
 const (
-	BROTLI_STATE_HUFFMAN_NONE = iota
-	BROTLI_STATE_HUFFMAN_SIMPLE_SIZE
-	BROTLI_STATE_HUFFMAN_SIMPLE_READ
-	BROTLI_STATE_HUFFMAN_SIMPLE_BUILD
-	BROTLI_STATE_HUFFMAN_COMPLEX
-	BROTLI_STATE_HUFFMAN_LENGTH_SYMBOLS
+	stateHuffmanNone = iota
+	stateHuffmanSimpleSize
+	stateHuffmanSimpleRead
+	stateHuffmanSimpleBuild
+	stateHuffmanComplex
+	stateHuffmanLengthSymbols
 )
 
 const (
-	BROTLI_STATE_DECODE_UINT8_NONE = iota
-	BROTLI_STATE_DECODE_UINT8_SHORT
-	BROTLI_STATE_DECODE_UINT8_LONG
+	stateDecodeUint8None = iota
+	stateDecodeUint8Short
+	stateDecodeUint8Long
 )
 
 const (
-	BROTLI_STATE_READ_BLOCK_LENGTH_NONE = iota
-	BROTLI_STATE_READ_BLOCK_LENGTH_SUFFIX
+	stateReadBlockLengthNone = iota
+	stateReadBlockLengthSuffix
 )
 
 type Reader struct {
@@ -148,7 +143,7 @@ type Reader struct {
 	repeat                      uint32
 	space                       uint32
 	table                       [32]huffmanCode
-	symbol_lists                SymbolList
+	symbol_lists                symbolList
 	symbols_lists_array         [huffmanMaxCodeLength + 1 + numCommandSymbols]uint16
 	next_symbol                 [32]int
 	code_length_code_lengths    [codeLengthCodes]byte
@@ -179,23 +174,23 @@ type Reader struct {
 	context_map                 []byte
 	context_modes               []byte
 	dictionary                  *dictionary
-	transforms                  *BrotliTransforms
+	transforms                  *transforms
 	trivial_literal_contexts    [8]uint32
 }
 
-func BrotliDecoderStateInit(s *Reader) bool {
+func decoderStateInit(s *Reader) bool {
 	s.error_code = 0 /* BROTLI_DECODER_NO_ERROR */
 
 	initBitReader(&s.br)
-	s.state = BROTLI_STATE_UNINITED
+	s.state = stateUninited
 	s.large_window = false
-	s.substate_metablock_header = BROTLI_STATE_METABLOCK_HEADER_NONE
-	s.substate_tree_group = BROTLI_STATE_TREE_GROUP_NONE
-	s.substate_context_map = BROTLI_STATE_CONTEXT_MAP_NONE
-	s.substate_uncompressed = BROTLI_STATE_UNCOMPRESSED_NONE
-	s.substate_huffman = BROTLI_STATE_HUFFMAN_NONE
-	s.substate_decode_uint8 = BROTLI_STATE_DECODE_UINT8_NONE
-	s.substate_read_block_length = BROTLI_STATE_READ_BLOCK_LENGTH_NONE
+	s.substate_metablock_header = stateMetablockHeaderNone
+	s.substate_tree_group = stateTreeGroupNone
+	s.substate_context_map = stateContextMapNone
+	s.substate_uncompressed = stateUncompressedNone
+	s.substate_huffman = stateHuffmanNone
+	s.substate_decode_uint8 = stateDecodeUint8None
+	s.substate_read_block_length = stateReadBlockLengthNone
 
 	s.buffer_length = 0
 	s.loop_counter = 0
@@ -245,12 +240,12 @@ func BrotliDecoderStateInit(s *Reader) bool {
 	s.symbol_lists.offset = huffmanMaxCodeLength + 1
 
 	s.dictionary = getDictionary()
-	s.transforms = BrotliGetTransforms()
+	s.transforms = getTransforms()
 
 	return true
 }
 
-func BrotliDecoderStateMetablockBegin(s *Reader) {
+func decoderStateMetablockBegin(s *Reader) {
 	s.meta_block_remaining_len = 0
 	s.block_length[0] = 1 << 24
 	s.block_length[1] = 1 << 24
@@ -280,7 +275,7 @@ func BrotliDecoderStateMetablockBegin(s *Reader) {
 	s.distance_hgroup.htrees = nil
 }
 
-func BrotliDecoderStateCleanupAfterMetablock(s *Reader) {
+func decoderStateCleanupAfterMetablock(s *Reader) {
 	s.context_modes = nil
 	s.context_map = nil
 	s.dist_context_map = nil
@@ -289,14 +284,7 @@ func BrotliDecoderStateCleanupAfterMetablock(s *Reader) {
 	s.distance_hgroup.htrees = nil
 }
 
-func BrotliDecoderStateCleanup(s *Reader) {
-	BrotliDecoderStateCleanupAfterMetablock(s)
-
-	s.ringbuffer = nil
-	s.block_type_trees = nil
-}
-
-func BrotliDecoderHuffmanTreeGroupInit(s *Reader, group *huffmanTreeGroup, alphabet_size uint32, max_symbol uint32, ntrees uint32) bool {
+func decoderHuffmanTreeGroupInit(s *Reader, group *huffmanTreeGroup, alphabet_size uint32, max_symbol uint32, ntrees uint32) bool {
 	var max_table_size uint = uint(kMaxHuffmanTableSize[(alphabet_size+31)>>5])
 	group.alphabet_size = uint16(alphabet_size)
 	group.max_symbol = uint16(max_symbol)

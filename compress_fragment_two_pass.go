@@ -212,7 +212,7 @@ func storeMetaBlockHeader(len uint, is_uncompressed bool, storage_ix *uint, stor
 	var nibbles uint = 6
 
 	/* ISLAST */
-	BrotliWriteBits(1, 0, storage_ix, storage)
+	writeBits(1, 0, storage_ix, storage)
 
 	if len <= 1<<16 {
 		nibbles = 4
@@ -220,11 +220,11 @@ func storeMetaBlockHeader(len uint, is_uncompressed bool, storage_ix *uint, stor
 		nibbles = 5
 	}
 
-	BrotliWriteBits(2, uint64(nibbles)-4, storage_ix, storage)
-	BrotliWriteBits(nibbles*4, uint64(len)-1, storage_ix, storage)
+	writeBits(2, uint64(nibbles)-4, storage_ix, storage)
+	writeBits(nibbles*4, uint64(len)-1, storage_ix, storage)
 
 	/* ISUNCOMPRESSED */
-	BrotliWriteSingleBit(is_uncompressed, storage_ix, storage)
+	writeSingleBit(is_uncompressed, storage_ix, storage)
 }
 
 func createCommands(input []byte, block_size uint, input_size uint, base_ip_ptr []byte, table []int, table_bits uint, min_match uint, literals *[]byte, commands *[]uint32) {
@@ -639,14 +639,14 @@ func storeCommands(literals []byte, num_literals uint, commands []uint32, num_co
 		var code uint32 = cmd & 0xFF
 		var extra uint32 = cmd >> 8
 		assert(code < 128)
-		BrotliWriteBits(uint(cmd_depths[code]), uint64(cmd_bits[code]), storage_ix, storage)
-		BrotliWriteBits(uint(storeCommands_kNumExtraBits[code]), uint64(extra), storage_ix, storage)
+		writeBits(uint(cmd_depths[code]), uint64(cmd_bits[code]), storage_ix, storage)
+		writeBits(uint(storeCommands_kNumExtraBits[code]), uint64(extra), storage_ix, storage)
 		if code < 24 {
 			var insert uint32 = storeCommands_kInsertOffset[code] + extra
 			var j uint32
 			for j = 0; j < insert; j++ {
 				var lit byte = literals[0]
-				BrotliWriteBits(uint(lit_depths[lit]), uint64(lit_bits[lit]), storage_ix, storage)
+				writeBits(uint(lit_depths[lit]), uint64(lit_bits[lit]), storage_ix, storage)
 				literals = literals[1:]
 			}
 		}
@@ -706,7 +706,7 @@ func compressFragmentTwoPassImpl(input []byte, input_size uint, is_last bool, co
 			storeMetaBlockHeader(block_size, false, storage_ix, storage)
 
 			/* No block splits, no contexts. */
-			BrotliWriteBits(13, 0, storage_ix, storage)
+			writeBits(13, 0, storage_ix, storage)
 
 			storeCommands(literal_buf, num_literals, command_buf, num_commands, storage_ix, storage)
 		} else {
@@ -739,8 +739,8 @@ func compressFragmentTwoPass(input []byte, input_size uint, is_last bool, comman
 	}
 
 	if is_last {
-		BrotliWriteBits(1, 1, storage_ix, storage) /* islast */
-		BrotliWriteBits(1, 1, storage_ix, storage) /* isempty */
+		writeBits(1, 1, storage_ix, storage) /* islast */
+		writeBits(1, 1, storage_ix, storage) /* isempty */
 		*storage_ix = (*storage_ix + 7) &^ 7
 	}
 }

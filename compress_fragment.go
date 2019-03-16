@@ -191,101 +191,101 @@ func buildAndStoreCommandPrefixCode1(histogram []uint32, depth []byte, bits []ui
 func emitInsertLen1(insertlen uint, depth []byte, bits []uint16, histo []uint32, storage_ix *uint, storage []byte) {
 	if insertlen < 6 {
 		var code uint = insertlen + 40
-		BrotliWriteBits(uint(depth[code]), uint64(bits[code]), storage_ix, storage)
+		writeBits(uint(depth[code]), uint64(bits[code]), storage_ix, storage)
 		histo[code]++
 	} else if insertlen < 130 {
 		var tail uint = insertlen - 2
 		var nbits uint32 = log2FloorNonZero(tail) - 1
 		var prefix uint = tail >> nbits
 		var inscode uint = uint((nbits << 1) + uint32(prefix) + 42)
-		BrotliWriteBits(uint(depth[inscode]), uint64(bits[inscode]), storage_ix, storage)
-		BrotliWriteBits(uint(nbits), uint64(tail)-(uint64(prefix)<<nbits), storage_ix, storage)
+		writeBits(uint(depth[inscode]), uint64(bits[inscode]), storage_ix, storage)
+		writeBits(uint(nbits), uint64(tail)-(uint64(prefix)<<nbits), storage_ix, storage)
 		histo[inscode]++
 	} else if insertlen < 2114 {
 		var tail uint = insertlen - 66
 		var nbits uint32 = log2FloorNonZero(tail)
 		var code uint = uint(nbits + 50)
-		BrotliWriteBits(uint(depth[code]), uint64(bits[code]), storage_ix, storage)
-		BrotliWriteBits(uint(nbits), uint64(tail)-(uint64(uint(1))<<nbits), storage_ix, storage)
+		writeBits(uint(depth[code]), uint64(bits[code]), storage_ix, storage)
+		writeBits(uint(nbits), uint64(tail)-(uint64(uint(1))<<nbits), storage_ix, storage)
 		histo[code]++
 	} else {
-		BrotliWriteBits(uint(depth[61]), uint64(bits[61]), storage_ix, storage)
-		BrotliWriteBits(12, uint64(insertlen)-2114, storage_ix, storage)
+		writeBits(uint(depth[61]), uint64(bits[61]), storage_ix, storage)
+		writeBits(12, uint64(insertlen)-2114, storage_ix, storage)
 		histo[61]++
 	}
 }
 
 func emitLongInsertLen(insertlen uint, depth []byte, bits []uint16, histo []uint32, storage_ix *uint, storage []byte) {
 	if insertlen < 22594 {
-		BrotliWriteBits(uint(depth[62]), uint64(bits[62]), storage_ix, storage)
-		BrotliWriteBits(14, uint64(insertlen)-6210, storage_ix, storage)
+		writeBits(uint(depth[62]), uint64(bits[62]), storage_ix, storage)
+		writeBits(14, uint64(insertlen)-6210, storage_ix, storage)
 		histo[62]++
 	} else {
-		BrotliWriteBits(uint(depth[63]), uint64(bits[63]), storage_ix, storage)
-		BrotliWriteBits(24, uint64(insertlen)-22594, storage_ix, storage)
+		writeBits(uint(depth[63]), uint64(bits[63]), storage_ix, storage)
+		writeBits(24, uint64(insertlen)-22594, storage_ix, storage)
 		histo[63]++
 	}
 }
 
 func emitCopyLen1(copylen uint, depth []byte, bits []uint16, histo []uint32, storage_ix *uint, storage []byte) {
 	if copylen < 10 {
-		BrotliWriteBits(uint(depth[copylen+14]), uint64(bits[copylen+14]), storage_ix, storage)
+		writeBits(uint(depth[copylen+14]), uint64(bits[copylen+14]), storage_ix, storage)
 		histo[copylen+14]++
 	} else if copylen < 134 {
 		var tail uint = copylen - 6
 		var nbits uint32 = log2FloorNonZero(tail) - 1
 		var prefix uint = tail >> nbits
 		var code uint = uint((nbits << 1) + uint32(prefix) + 20)
-		BrotliWriteBits(uint(depth[code]), uint64(bits[code]), storage_ix, storage)
-		BrotliWriteBits(uint(nbits), uint64(tail)-(uint64(prefix)<<nbits), storage_ix, storage)
+		writeBits(uint(depth[code]), uint64(bits[code]), storage_ix, storage)
+		writeBits(uint(nbits), uint64(tail)-(uint64(prefix)<<nbits), storage_ix, storage)
 		histo[code]++
 	} else if copylen < 2118 {
 		var tail uint = copylen - 70
 		var nbits uint32 = log2FloorNonZero(tail)
 		var code uint = uint(nbits + 28)
-		BrotliWriteBits(uint(depth[code]), uint64(bits[code]), storage_ix, storage)
-		BrotliWriteBits(uint(nbits), uint64(tail)-(uint64(uint(1))<<nbits), storage_ix, storage)
+		writeBits(uint(depth[code]), uint64(bits[code]), storage_ix, storage)
+		writeBits(uint(nbits), uint64(tail)-(uint64(uint(1))<<nbits), storage_ix, storage)
 		histo[code]++
 	} else {
-		BrotliWriteBits(uint(depth[39]), uint64(bits[39]), storage_ix, storage)
-		BrotliWriteBits(24, uint64(copylen)-2118, storage_ix, storage)
+		writeBits(uint(depth[39]), uint64(bits[39]), storage_ix, storage)
+		writeBits(24, uint64(copylen)-2118, storage_ix, storage)
 		histo[39]++
 	}
 }
 
 func emitCopyLenLastDistance1(copylen uint, depth []byte, bits []uint16, histo []uint32, storage_ix *uint, storage []byte) {
 	if copylen < 12 {
-		BrotliWriteBits(uint(depth[copylen-4]), uint64(bits[copylen-4]), storage_ix, storage)
+		writeBits(uint(depth[copylen-4]), uint64(bits[copylen-4]), storage_ix, storage)
 		histo[copylen-4]++
 	} else if copylen < 72 {
 		var tail uint = copylen - 8
 		var nbits uint32 = log2FloorNonZero(tail) - 1
 		var prefix uint = tail >> nbits
 		var code uint = uint((nbits << 1) + uint32(prefix) + 4)
-		BrotliWriteBits(uint(depth[code]), uint64(bits[code]), storage_ix, storage)
-		BrotliWriteBits(uint(nbits), uint64(tail)-(uint64(prefix)<<nbits), storage_ix, storage)
+		writeBits(uint(depth[code]), uint64(bits[code]), storage_ix, storage)
+		writeBits(uint(nbits), uint64(tail)-(uint64(prefix)<<nbits), storage_ix, storage)
 		histo[code]++
 	} else if copylen < 136 {
 		var tail uint = copylen - 8
 		var code uint = (tail >> 5) + 30
-		BrotliWriteBits(uint(depth[code]), uint64(bits[code]), storage_ix, storage)
-		BrotliWriteBits(5, uint64(tail)&31, storage_ix, storage)
-		BrotliWriteBits(uint(depth[64]), uint64(bits[64]), storage_ix, storage)
+		writeBits(uint(depth[code]), uint64(bits[code]), storage_ix, storage)
+		writeBits(5, uint64(tail)&31, storage_ix, storage)
+		writeBits(uint(depth[64]), uint64(bits[64]), storage_ix, storage)
 		histo[code]++
 		histo[64]++
 	} else if copylen < 2120 {
 		var tail uint = copylen - 72
 		var nbits uint32 = log2FloorNonZero(tail)
 		var code uint = uint(nbits + 28)
-		BrotliWriteBits(uint(depth[code]), uint64(bits[code]), storage_ix, storage)
-		BrotliWriteBits(uint(nbits), uint64(tail)-(uint64(uint(1))<<nbits), storage_ix, storage)
-		BrotliWriteBits(uint(depth[64]), uint64(bits[64]), storage_ix, storage)
+		writeBits(uint(depth[code]), uint64(bits[code]), storage_ix, storage)
+		writeBits(uint(nbits), uint64(tail)-(uint64(uint(1))<<nbits), storage_ix, storage)
+		writeBits(uint(depth[64]), uint64(bits[64]), storage_ix, storage)
 		histo[code]++
 		histo[64]++
 	} else {
-		BrotliWriteBits(uint(depth[39]), uint64(bits[39]), storage_ix, storage)
-		BrotliWriteBits(24, uint64(copylen)-2120, storage_ix, storage)
-		BrotliWriteBits(uint(depth[64]), uint64(bits[64]), storage_ix, storage)
+		writeBits(uint(depth[39]), uint64(bits[39]), storage_ix, storage)
+		writeBits(24, uint64(copylen)-2120, storage_ix, storage)
+		writeBits(uint(depth[64]), uint64(bits[64]), storage_ix, storage)
 		histo[39]++
 		histo[64]++
 	}
@@ -297,8 +297,8 @@ func emitDistance1(distance uint, depth []byte, bits []uint16, histo []uint32, s
 	var prefix uint = (d >> nbits) & 1
 	var offset uint = (2 + prefix) << nbits
 	var distcode uint = uint(2*(nbits-1) + uint32(prefix) + 80)
-	BrotliWriteBits(uint(depth[distcode]), uint64(bits[distcode]), storage_ix, storage)
-	BrotliWriteBits(uint(nbits), uint64(d)-uint64(offset), storage_ix, storage)
+	writeBits(uint(depth[distcode]), uint64(bits[distcode]), storage_ix, storage)
+	writeBits(uint(nbits), uint64(d)-uint64(offset), storage_ix, storage)
 	histo[distcode]++
 }
 
@@ -306,7 +306,7 @@ func emitLiterals(input []byte, len uint, depth []byte, bits []uint16, storage_i
 	var j uint
 	for j = 0; j < len; j++ {
 		var lit byte = input[j]
-		BrotliWriteBits(uint(depth[lit]), uint64(bits[lit]), storage_ix, storage)
+		writeBits(uint(depth[lit]), uint64(bits[lit]), storage_ix, storage)
 	}
 }
 
@@ -315,7 +315,7 @@ func storeMetaBlockHeader1(len uint, is_uncompressed bool, storage_ix *uint, sto
 	var nibbles uint = 6
 
 	/* ISLAST */
-	BrotliWriteBits(1, 0, storage_ix, storage)
+	writeBits(1, 0, storage_ix, storage)
 
 	if len <= 1<<16 {
 		nibbles = 4
@@ -323,11 +323,11 @@ func storeMetaBlockHeader1(len uint, is_uncompressed bool, storage_ix *uint, sto
 		nibbles = 5
 	}
 
-	BrotliWriteBits(2, uint64(nibbles)-4, storage_ix, storage)
-	BrotliWriteBits(nibbles*4, uint64(len)-1, storage_ix, storage)
+	writeBits(2, uint64(nibbles)-4, storage_ix, storage)
+	writeBits(nibbles*4, uint64(len)-1, storage_ix, storage)
 
 	/* ISUNCOMPRESSED */
-	BrotliWriteSingleBit(is_uncompressed, storage_ix, storage)
+	writeSingleBit(is_uncompressed, storage_ix, storage)
 }
 
 func updateBits(n_bits uint, bits uint32, pos uint, array []byte) {
@@ -556,18 +556,18 @@ func compressFragmentFastImpl(in []byte, input_size uint, is_last bool, table []
 	storeMetaBlockHeader1(block_size, false, storage_ix, storage)
 
 	/* No block splits, no contexts. */
-	BrotliWriteBits(13, 0, storage_ix, storage)
+	writeBits(13, 0, storage_ix, storage)
 
 	literal_ratio = buildAndStoreLiteralPrefixCode(in[input:], block_size, lit_depth[:], lit_bits[:], storage_ix, storage)
 	{
 		/* Store the pre-compressed command and distance prefix codes. */
 		var i uint
 		for i = 0; i+7 < *cmd_code_numbits; i += 8 {
-			BrotliWriteBits(8, uint64(cmd_code[i>>3]), storage_ix, storage)
+			writeBits(8, uint64(cmd_code[i>>3]), storage_ix, storage)
 		}
 	}
 
-	BrotliWriteBits(*cmd_code_numbits&7, uint64(cmd_code[*cmd_code_numbits>>3]), storage_ix, storage)
+	writeBits(*cmd_code_numbits&7, uint64(cmd_code[*cmd_code_numbits>>3]), storage_ix, storage)
 
 	/* Initialize the command and distance histograms. We will gather
 	   statistics of command and distance codes during the processing
@@ -679,7 +679,7 @@ emit_commands:
 
 				emitLiterals(in[next_emit:], insert, lit_depth[:], lit_bits[:], storage_ix, storage)
 				if distance == last_distance {
-					BrotliWriteBits(uint(cmd_depth[64]), uint64(cmd_bits[64]), storage_ix, storage)
+					writeBits(uint(cmd_depth[64]), uint64(cmd_bits[64]), storage_ix, storage)
 					cmd_histo[64]++
 				} else {
 					emitDistance1(uint(distance), cmd_depth, cmd_bits, cmd_histo[:], storage_ix, storage)
@@ -804,7 +804,7 @@ next_block:
 		storeMetaBlockHeader1(block_size, false, storage_ix, storage)
 
 		/* No block splits, no contexts. */
-		BrotliWriteBits(13, 0, storage_ix, storage)
+		writeBits(13, 0, storage_ix, storage)
 
 		literal_ratio = buildAndStoreLiteralPrefixCode(in[input:], block_size, lit_depth[:], lit_bits[:], storage_ix, storage)
 		buildAndStoreCommandPrefixCode1(cmd_histo[:], cmd_depth, cmd_bits, storage_ix, storage)
@@ -827,8 +827,8 @@ func compressFragmentFast(input []byte, input_size uint, is_last bool, table []i
 
 	if input_size == 0 {
 		assert(is_last)
-		BrotliWriteBits(1, 1, storage_ix, storage) /* islast */
-		BrotliWriteBits(1, 1, storage_ix, storage) /* isempty */
+		writeBits(1, 1, storage_ix, storage) /* islast */
+		writeBits(1, 1, storage_ix, storage) /* isempty */
 		*storage_ix = (*storage_ix + 7) &^ 7
 		return
 	}
@@ -841,8 +841,8 @@ func compressFragmentFast(input []byte, input_size uint, is_last bool, table []i
 	}
 
 	if is_last {
-		BrotliWriteBits(1, 1, storage_ix, storage) /* islast */
-		BrotliWriteBits(1, 1, storage_ix, storage) /* isempty */
+		writeBits(1, 1, storage_ix, storage) /* islast */
+		writeBits(1, 1, storage_ix, storage) /* isempty */
 		*storage_ix = (*storage_ix + 7) &^ 7
 	}
 }

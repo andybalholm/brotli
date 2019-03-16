@@ -331,7 +331,7 @@ func hasherSetup(handle *hasherHandle, params *encoderParams, data []byte, posit
 	var common *hasherCommon = nil
 	var one_shot bool = (position == 0 && is_last)
 	if *handle == nil {
-		ChooseHasher(params, &params.hasher)
+		chooseHasher(params, &params.hasher)
 		self = newHasher(params.hasher.type_)
 
 		*handle = self
