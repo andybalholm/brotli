@@ -42,11 +42,10 @@ func ringBufferSetup(params *encoderParams, rb *ringBuffer) {
 	*(*uint32)(&rb.total_size_) = rb.size_ + rb.tail_size_
 }
 
+const kSlackForEightByteHashingEverywhere uint = 7
+
 /* Allocates or re-allocates data_ to the given length + plus some slack
    region before and after. Fills the slack regions with zeros. */
-
-var kSlackForEightByteHashingEverywhere uint = 7
-
 func ringBufferInitBuffer(buflen uint32, rb *ringBuffer) {
 	var new_data []byte = make([]byte, (2 + uint(buflen) + kSlackForEightByteHashingEverywhere))
 	var i uint

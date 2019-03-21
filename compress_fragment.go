@@ -69,7 +69,7 @@ func buildAndStoreLiteralPrefixCode(input []byte, input_size uint, depths []byte
 			histogram_total += uint(adjust)
 		}
 	} else {
-		var kSampleRate uint = 29
+		const kSampleRate uint = 29
 		for i = 0; i < input_size; i += kSampleRate {
 			histogram[input[i]]++
 		}
@@ -501,8 +501,8 @@ func compressFragmentFastImpl(in []byte, input_size uint, is_last bool, table []
 	var next_emit int = 0
 	var base_ip int = 0
 	var input int = 0
-	var kInputMarginBytes uint = windowGap
-	var kMinMatchLen uint = 5
+	const kInputMarginBytes uint = windowGap
+	const kMinMatchLen uint = 5
 	var metablock_start int = input
 	var block_size uint = brotli_min_size_t(input_size, compressFragmentFastImpl_kFirstBlockSize)
 	var total_block_size uint = block_size

@@ -72,7 +72,7 @@ const huffmanTableMask = 0xFF
 /* We need the slack region for the following reasons:
    - doing up to two 16-byte copies for fast backward copying
    - inserting transformed dictionary word (5 prefix + 24 base + 8 suffix) */
-var kRingBufferWriteAheadSlack uint32 = 42
+const kRingBufferWriteAheadSlack uint32 = 42
 
 var kCodeLengthCodeOrder = [codeLengthCodes]byte{1, 2, 3, 4, 0, 5, 17, 6, 16, 7, 8, 9, 10, 11, 12, 13, 14, 15}
 
@@ -1528,8 +1528,8 @@ func takeDistanceFromRingBuffer(s *Reader) {
 		s.distance_context = 1
 	} else {
 		var distance_code int = s.distance_code << 1
-		var kDistanceShortCodeIndexOffset uint32 = 0xAAAFFF1B
-		var kDistanceShortCodeValueOffset uint32 = 0xFA5FA500
+		const kDistanceShortCodeIndexOffset uint32 = 0xAAAFFF1B
+		const kDistanceShortCodeValueOffset uint32 = 0xFA5FA500
 		var v int = (s.dist_rb_idx + int(kDistanceShortCodeIndexOffset>>uint(distance_code))) & 0x3
 		/* kDistanceShortCodeIndexOffset has 2-bit values from LSB:
 		   3, 2, 1, 0, 3, 3, 3, 3, 3, 3, 2, 2, 2, 2, 2, 2 */

@@ -901,8 +901,8 @@ func shouldCompress_encode(data []byte, mask uint, last_flush_pos uint64, bytes 
 	if num_commands < (bytes>>8)+2 {
 		if float64(num_literals) > 0.99*float64(bytes) {
 			var literal_histo = [256]uint32{0}
-			var kSampleRate uint32 = 13
-			var kMinEntropy float64 = 7.92
+			const kSampleRate uint32 = 13
+			const kMinEntropy float64 = 7.92
 			var bit_cost_threshold float64 = float64(bytes) * kMinEntropy / float64(kSampleRate)
 			var t uint = uint((uint32(bytes) + kSampleRate - 1) / kSampleRate)
 			var pos uint32 = uint32(last_flush_pos)

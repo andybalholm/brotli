@@ -12,7 +12,7 @@ import "encoding/binary"
 
 const maxStaticDictionaryMatchLen = 37
 
-var kInvalidMatch uint32 = 0xFFFFFFF
+const kInvalidMatch uint32 = 0xFFFFFFF
 
 /* Copyright 2013 Google Inc. All Rights Reserved.
 

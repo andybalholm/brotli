@@ -51,7 +51,7 @@ func createBackwardReferences(num_bytes uint, position uint, ringbuffer []byte, 
 	var gap uint = 0
 	/* Set maximum distance, see section 9.1. of the spec. */
 
-	var kMinScore uint = scoreBase + 100
+	const kMinScore uint = scoreBase + 100
 
 	/* For speed up heuristics for random data. */
 

@@ -14,9 +14,9 @@ type dictWord struct {
 	idx       uint16
 }
 
-var kDictNumBits int = 15
+const kDictNumBits int = 15
 
-var kDictHashMul32 uint32 = 0x1E35A7BD
+const kDictHashMul32 uint32 = 0x1E35A7BD
 
 var kStaticDictionaryBuckets = [32768]uint16{
 	1,

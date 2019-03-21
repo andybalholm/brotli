@@ -9,9 +9,9 @@ package brotli
 /* NOTE: this hasher does not search in the dictionary. It is used as
    backup-hasher, the main hasher already searches in it. */
 
-var kRollingHashMul32hashRolling uint32 = 69069
+const kRollingHashMul32 uint32 = 69069
 
-var kInvalidPosHashRolling uint32 = 0xffffffff
+const kInvalidPosHashRolling uint32 = 0xffffffff
 
 /* This hasher uses a longer forward length, but returning a higher value here
    will hurt compression by the main hasher when combined with a composite
@@ -57,7 +57,7 @@ func (h *hashRolling) Initialize(params *encoderParams) {
 	h.state = 0
 	h.next_ix = 0
 
-	h.factor = kRollingHashMul32hashRolling
+	h.factor = kRollingHashMul32
 
 	/* Compute the factor of the oldest byte to remove: factor**steps modulo
 	   0xffffffff (the multiplications rely on 32-bit overflow) */

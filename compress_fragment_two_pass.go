@@ -14,7 +14,7 @@ import "encoding/binary"
    second pass we emit them into the bit stream using prefix codes built based
    on the actual command and literal byte histograms. */
 
-var kCompressFragmentTwoPassBlockSize uint = 1 << 17
+const kCompressFragmentTwoPassBlockSize uint = 1 << 17
 
 func hash1(p []byte, shift uint, length uint) uint32 {
 	var h uint64 = (binary.LittleEndian.Uint64(p) << ((8 - length) * 8)) * uint64(kHashMul32)
@@ -226,7 +226,7 @@ func createCommands(input []byte, block_size uint, input_size uint, base_ip_ptr 
 	var last_distance int = -1
 	/* "ip" is the input pointer. */
 
-	var kInputMarginBytes uint = windowGap
+	const kInputMarginBytes uint = windowGap
 
 	/* "next_emit" is a pointer to the first byte that is not covered by a
 	   previous copy. Bytes between "next_emit" and the start of the next copy or

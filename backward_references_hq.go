@@ -15,7 +15,7 @@ type zopfliNode struct {
 
 const maxEffectiveDistanceAlphabetSize = 544
 
-var kInfinity float32 = 1.7e38 /* ~= 2 ^ 127 */
+const kInfinity float32 = 1.7e38 /* ~= 2 ^ 127 */
 
 var kDistanceCacheIndex = []uint32{0, 1, 2, 3, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1}
 

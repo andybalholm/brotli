@@ -17,31 +17,21 @@ type blockSplit struct {
 	lengths_alloc_size uint
 }
 
-var kMaxLiteralHistograms uint = 100
-
-var kMaxCommandHistograms uint = 50
-
-var kLiteralBlockSwitchCost float64 = 28.1
-
-var kCommandBlockSwitchCost float64 = 13.5
-
-var kDistanceBlockSwitchCost float64 = 14.6
-
-var kLiteralStrideLength uint = 70
-
-var kCommandStrideLength uint = 40
-
-var kSymbolsPerLiteralHistogram uint = 544
-
-var kSymbolsPerCommandHistogram uint = 530
-
-var kSymbolsPerDistanceHistogram uint = 544
-
-var kMinLengthForBlockSplitting uint = 128
-
-var kIterMulForRefining uint = 2
-
-var kMinItersForRefining uint = 100
+const (
+	kMaxLiteralHistograms        uint    = 100
+	kMaxCommandHistograms        uint    = 50
+	kLiteralBlockSwitchCost      float64 = 28.1
+	kCommandBlockSwitchCost      float64 = 13.5
+	kDistanceBlockSwitchCost     float64 = 14.6
+	kLiteralStrideLength         uint    = 70
+	kCommandStrideLength         uint    = 40
+	kSymbolsPerLiteralHistogram  uint    = 544
+	kSymbolsPerCommandHistogram  uint    = 530
+	kSymbolsPerDistanceHistogram uint    = 544
+	kMinLengthForBlockSplitting  uint    = 128
+	kIterMulForRefining          uint    = 2
+	kMinItersForRefining         uint    = 100
+)
 
 func countLiterals(cmds []command, num_commands uint) uint {
 	var total_length uint = 0

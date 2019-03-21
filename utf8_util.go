@@ -8,7 +8,7 @@ package brotli
 
 /* Heuristics for deciding about the UTF8-ness of strings. */
 
-var kMinUTF8Ratio float64 = 0.75
+const kMinUTF8Ratio float64 = 0.75
 
 /* Returns 1 if at least min_fraction of the bytes between pos and
    pos + length in the (data, mask) ring-buffer is UTF8-encoded, otherwise

@@ -31,11 +31,11 @@ type hasherHandle interface {
 
 type score_t uint
 
-var kCutoffTransformsCount uint32 = 10
+const kCutoffTransformsCount uint32 = 10
 
 /*   0,  12,   27,    23,    42,    63,    56,    48,    59,    64 */
 /* 0+0, 4+8, 8+19, 12+11, 16+26, 20+43, 24+32, 28+20, 32+27, 36+28 */
-var kCutoffTransforms uint64 = 0x071B520ADA2D3200
+const kCutoffTransforms uint64 = 0x071B520ADA2D3200
 
 type hasherSearchResult struct {
 	len            uint
