@@ -5,46 +5,13 @@ package brotli
    Distributed under MIT license.
    See file LICENSE for detail or copy at https://opensource.org/licenses/MIT
 */
-/* Copyright 2013 Google Inc. All Rights Reserved.
 
-   Distributed under MIT license.
-   See file LICENSE for detail or copy at https://opensource.org/licenses/MIT
-*/
-
-/**
- * @file
- * API for Brotli decompression.
- */
-
-/**
- * Result type for ::BrotliDecoderDecompress and
- * ::BrotliDecoderDecompressStream functions.
- */
 const (
 	decoderResultError           = 0
 	decoderResultSuccess         = 1
 	decoderResultNeedsMoreInput  = 2
 	decoderResultNeedsMoreOutput = 3
 )
-
-/**
- * Template that evaluates items of ::BrotliDecoderErrorCode.
- *
- * Example: @code {.cpp}
- * // Log Brotli error code.
- * switch (brotliDecoderErrorCode) {
- * #define CASE_(PREFIX, NAME, CODE) \
- *   case BROTLI_DECODER ## PREFIX ## NAME: \
- *     LOG(INFO) << "error code:" << #NAME; \
- *     break;
- * #define NEWLINE_
- * BROTLI_DECODER_ERROR_CODES_LIST(CASE_, NEWLINE_)
- * #undef CASE_
- * #undef NEWLINE_
- *   default: LOG(FATAL) << "unknown brotli error code";
- * }
- * @endcode
- */
 
 /**
  * Error code for detailed logging / production debugging.

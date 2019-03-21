@@ -6,27 +6,6 @@ package brotli
    See file LICENSE for detail or copy at https://opensource.org/licenses/MIT
 */
 
-/* Function to find backward reference copies. */
-/* Copyright 2013 Google Inc. All Rights Reserved.
-
-   Distributed under MIT license.
-   See file LICENSE for detail or copy at https://opensource.org/licenses/MIT
-*/
-
-/* Function to find backward reference copies. */
-/* Copyright 2013 Google Inc. All Rights Reserved.
-
-   Distributed under MIT license.
-   See file LICENSE for detail or copy at https://opensource.org/licenses/MIT
-*/
-
-/* This class models a sequence of literals and a backward reference copy. */
-/* Copyright 2013 Google Inc. All Rights Reserved.
-
-   Distributed under MIT license.
-   See file LICENSE for detail or copy at https://opensource.org/licenses/MIT
-*/
-
 /* Functions for encoding of integers into prefix codes the amount of extra
    bits, and the actual values of the extra bits. */
 

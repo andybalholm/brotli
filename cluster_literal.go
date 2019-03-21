@@ -2,7 +2,6 @@ package brotli
 
 import "math"
 
-/* NOLINT(build/header_guard) */
 /* Copyright 2013 Google Inc. All Rights Reserved.
 
    Distributed under MIT license.

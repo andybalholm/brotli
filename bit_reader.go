@@ -9,6 +9,7 @@ import "encoding/binary"
 */
 
 /* Bit reading helpers */
+
 const shortFillBitWindowRead = (8 >> 1)
 
 var kBitMask = [33]uint32{

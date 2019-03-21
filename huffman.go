@@ -7,6 +7,7 @@ package brotli
 */
 
 /* Utilities for building Huffman decoding tables. */
+
 const huffmanMaxCodeLength = 15
 
 /* Maximum possible Huffman table size for an alphabet size of (index * 32),

@@ -5,11 +5,6 @@ package brotli
    Distributed under MIT license.
    See file LICENSE for detail or copy at https://opensource.org/licenses/MIT
 */
-/* Copyright 2013 Google Inc. All Rights Reserved.
-
-   Distributed under MIT license.
-   See file LICENSE for detail or copy at https://opensource.org/licenses/MIT
-*/
 
 /* Collection of static dictionary words. */
 type dictionary struct {
@@ -19,15 +14,6 @@ type dictionary struct {
 	data                []byte
 }
 
-/**
- * Sets dictionary data.
- *
- * When dictionary data is already set / present, this method is no-op.
- *
- * Dictionary data MUST be provided before BrotliGetDictionary is invoked.
- * This method is used ONLY in multi-client environment (e.g. C + Java),
- * to reduce storage by sharing single dictionary between implementations.
- */
 const minDictionaryWordLength = 4
 
 const maxDictionaryWordLength = 24

@@ -7,18 +7,7 @@ package brotli
 */
 
 /* Function to find backward reference copies. */
-/* Copyright 2013 Google Inc. All Rights Reserved.
 
-   Distributed under MIT license.
-   See file LICENSE for detail or copy at https://opensource.org/licenses/MIT
-*/
-
-/* Function to find backward reference copies. */
-
-/* "commands" points to the next output command to write to, "*num_commands" is
-   initially the total amount of commands output by previous
-   CreateBackwardReferences calls, and must be incremented by the amount written
-   by this call. */
 func computeDistanceCode(distance uint, max_distance uint, dist_cache []int) uint {
 	if distance <= max_distance {
 		var distance_plus_3 uint = distance + 3
@@ -42,6 +31,10 @@ func computeDistanceCode(distance uint, max_distance uint, dist_cache []int) uin
 	return distance + numDistanceShortCodes - 1
 }
 
+/* "commands" points to the next output command to write to, "*num_commands" is
+   initially the total amount of commands output by previous
+   CreateBackwardReferences calls, and must be incremented by the amount written
+   by this call. */
 func createBackwardReferences(num_bytes uint, position uint, ringbuffer []byte, ringbuffer_mask uint, params *encoderParams, hasher hasherHandle, dist_cache []int, last_insert_len *uint, commands []command, num_commands *uint, num_literals *uint) {
 	var max_backward_limit uint = maxBackwardLimit(params.lgwin)
 	var orig_commands []command = commands

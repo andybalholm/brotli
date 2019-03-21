@@ -2,12 +2,12 @@ package brotli
 
 import "math"
 
-/* NOLINT(build/header_guard) */
 /* Copyright 2013 Google Inc. All Rights Reserved.
 
    Distributed under MIT license.
    See file LICENSE for detail or copy at https://opensource.org/licenses/MIT
 */
+
 func initialEntropyCodesCommand(data []uint16, length uint, stride uint, num_histograms uint, histograms []histogramCommand) {
 	var seed uint32 = 7
 	var block_length uint = length / num_histograms

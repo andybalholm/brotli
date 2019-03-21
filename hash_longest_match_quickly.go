@@ -2,7 +2,6 @@ package brotli
 
 import "encoding/binary"
 
-/* NOLINT(build/header_guard) */
 /* Copyright 2010 Google Inc. All Rights Reserved.
 
    Distributed under MIT license.
@@ -12,6 +11,7 @@ import "encoding/binary"
 /* For BUCKET_SWEEP == 1, enabling the dictionary lookup makes compression
    a little faster (0.5% - 1%) and it compresses 0.15% better on small text
    and HTML inputs. */
+
 func (*hashLongestMatchQuickly) HashTypeLength() uint {
 	return 8
 }

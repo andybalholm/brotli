@@ -6,14 +6,8 @@ package brotli
    See file LICENSE for detail or copy at https://opensource.org/licenses/MIT
 */
 
-/* Block split point selection utilities. */
-/* Copyright 2013 Google Inc. All Rights Reserved.
-
-   Distributed under MIT license.
-   See file LICENSE for detail or copy at https://opensource.org/licenses/MIT
-*/
-
 /* Functions for clustering similar histograms together. */
+
 type histogramPair struct {
 	idx1       uint32
 	idx2       uint32
@@ -21,13 +15,6 @@ type histogramPair struct {
 	cost_diff  float64
 }
 
-/* Copyright 2013 Google Inc. All Rights Reserved.
-
-   Distributed under MIT license.
-   See file LICENSE for detail or copy at https://opensource.org/licenses/MIT
-*/
-
-/* Functions for clustering similar histograms together. */
 func histogramPairIsLess(p1 *histogramPair, p2 *histogramPair) bool {
 	if p1.cost_diff != p2.cost_diff {
 		return p1.cost_diff > p2.cost_diff

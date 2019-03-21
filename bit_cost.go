@@ -7,13 +7,6 @@ package brotli
 */
 
 /* Functions to estimate the bit cost of Huffman trees. */
-/* Copyright 2013 Google Inc. All Rights Reserved.
-
-   Distributed under MIT license.
-   See file LICENSE for detail or copy at https://opensource.org/licenses/MIT
-*/
-
-/* Functions to estimate the bit cost of Huffman trees. */
 func shannonEntropy(population []uint32, size uint, total *uint) float64 {
 	var sum uint = 0
 	var retval float64 = 0

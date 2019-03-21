@@ -9,13 +9,6 @@ import "math"
 */
 
 /* Entropy encoding (Huffman) utilities. */
-/* Copyright 2010 Google Inc. All Rights Reserved.
-
-   Distributed under MIT license.
-   See file LICENSE for detail or copy at https://opensource.org/licenses/MIT
-*/
-
-/* Entropy encoding (Huffman) utilities. */
 
 /* A node of a Huffman tree. */
 type huffmanTree struct {
@@ -29,35 +22,6 @@ func initHuffmanTree(self *huffmanTree, count uint32, left int16, right int16) {
 	self.index_left_ = left
 	self.index_right_or_value_ = right
 }
-
-/* Returns 1 is assignment of depths succeeded, otherwise 0. */
-
-/* This function will create a Huffman tree.
-
-   The (data,length) contains the population counts.
-   The tree_limit is the maximum bit depth of the Huffman codes.
-
-   The depth contains the tree, i.e., how many bits are used for
-   the symbol.
-
-   The actual Huffman tree is constructed in the tree[] array, which has to
-   be at least 2 * length + 1 long.
-
-   See http://en.wikipedia.org/wiki/Huffman_coding */
-
-/* Change the population counts in a way that the consequent
-   Huffman tree compression, especially its RLE-part will be more
-   likely to compress this data more efficiently.
-
-   length contains the size of the histogram.
-   counts contains the population counts.
-   good_for_rle is a buffer of at least length size */
-
-/* Write a Huffman tree from bit depths into the bit-stream representation
-   of a Huffman tree. The generated Huffman tree is to be compressed once
-   more using a Huffman tree */
-
-/* Get the actual bit values for a tree of bit depths. */
 
 /* Input size optimized Shell sort. */
 type huffmanTreeComparator func(*huffmanTree, *huffmanTree) bool
@@ -109,6 +73,7 @@ func sortHuffmanTreeItems(items []huffmanTree, n uint, comparator huffmanTreeCom
 	}
 }
 
+/* Returns 1 if assignment of depths succeeded, otherwise 0. */
 func setDepth(p0 int, pool []huffmanTree, depth []byte, max_depth int) bool {
 	var stack [16]int
 	var level int = 0
@@ -333,6 +298,13 @@ func writeHuffmanTreeRepetitionsZeros(repetitions uint, tree_size *uint, tree []
 	}
 }
 
+/* Change the population counts in a way that the consequent
+   Huffman tree compression, especially its RLE-part will be more
+   likely to compress this data more efficiently.
+
+   length contains the size of the histogram.
+   counts contains the population counts.
+   good_for_rle is a buffer of at least length size */
 func optimizeHuffmanCountsForRLE(length uint, counts []uint32, good_for_rle []byte) {
 	var nonzero_count uint = 0
 	var stride uint
@@ -510,6 +482,9 @@ func decideOverRLEUse(depth []byte, length uint, use_rle_for_non_zero *bool, use
 	*use_rle_for_zero = total_reps_zero > count_reps_zero*2
 }
 
+/* Write a Huffman tree from bit depths into the bit-stream representation
+   of a Huffman tree. The generated Huffman tree is to be compressed once
+   more using a Huffman tree */
 func writeHuffmanTree(depth []byte, length uint, tree_size *uint, tree []byte, extra_bits_data []byte) {
 	var previous_value byte = initialRepeatedCodeLength
 	var i uint
@@ -589,6 +564,7 @@ func reverseBits(num_bits uint, bits uint16) uint16 {
 /* 0..15 are values for bits */
 const maxHuffmanBits = 16
 
+/* Get the actual bit values for a tree of bit depths. */
 func convertBitDepthsToSymbols(depth []byte, len uint, bits []uint16) {
 	var bl_count = [maxHuffmanBits]uint16{0}
 	var next_code [maxHuffmanBits]uint16

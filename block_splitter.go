@@ -6,21 +6,8 @@ package brotli
    See file LICENSE for detail or copy at https://opensource.org/licenses/MIT
 */
 
-/* Build per-context histograms of literals, commands and distance codes. */
-/* Copyright 2013 Google Inc. All Rights Reserved.
-
-   Distributed under MIT license.
-   See file LICENSE for detail or copy at https://opensource.org/licenses/MIT
-*/
-
-/* Models the histograms of literals, commands and distance codes. */
-/* Copyright 2013 Google Inc. All Rights Reserved.
-
-   Distributed under MIT license.
-   See file LICENSE for detail or copy at https://opensource.org/licenses/MIT
-*/
-
 /* Block split point selection utilities. */
+
 type blockSplit struct {
 	num_types          uint
 	num_blocks         uint

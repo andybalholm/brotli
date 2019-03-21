@@ -9,6 +9,7 @@ import "encoding/binary"
 */
 
 /* Class to model the static dictionary. */
+
 const maxStaticDictionaryMatchLen = 37
 
 var kInvalidMatch uint32 = 0xFFFFFFF

@@ -15,41 +15,11 @@ import "encoding/binary"
 
    Adapted from the CompressFragment() function in
    https://github.com/google/snappy/blob/master/snappy.cc */
-/* Copyright 2015 Google Inc. All Rights Reserved.
 
-   Distributed under MIT license.
-   See file LICENSE for detail or copy at https://opensource.org/licenses/MIT
-*/
+const maxDistance_compress_fragment = 262128
 
-/* Function for fast encoding of an input fragment, independently from the input
-   history. This function uses one-pass processing: when we find a backward
-   match, we immediately emit the corresponding command and literal codes to
-   the bit stream. */
-
-/* Compresses "input" string to the "*storage" buffer as one or more complete
-   meta-blocks, and updates the "*storage_ix" bit position.
-
-   If "is_last" is 1, emits an additional empty last meta-block.
-
-   "cmd_depth" and "cmd_bits" contain the command and distance prefix codes
-   (see comment in encode.h) used for the encoding of this input fragment.
-   If "is_last" is 0, they are updated to reflect the statistics
-   of this input fragment, to be used for the encoding of the next fragment.
-
-   "*cmd_code_numbits" is the number of bits of the compressed representation
-   of the command and distance prefix codes, and "cmd_code" is an array of
-   at least "(*cmd_code_numbits + 7) >> 3" size that contains the compressed
-   command and distance prefix codes. If "is_last" is 0, these are also
-   updated to represent the updated "cmd_depth" and "cmd_bits".
-
-   REQUIRES: "input_size" is greater than zero, or "is_last" is 1.
-   REQUIRES: "input_size" is less or equal to maximal metablock size (1 << 24).
-   REQUIRES: All elements in "table[0..table_size-1]" are initialized to zero.
-   REQUIRES: "table_size" is an odd (9, 11, 13, 15) power of two
-   OUTPUT: maximal copy distance <= |input_size|
-   OUTPUT: maximal copy distance <= BROTLI_MAX_BACKWARD_LIMIT(18) */
 func hash5(p []byte, shift uint) uint32 {
-	var h uint64 = (binary.LittleEndian.Uint64(p) << 24) * uint64(kHashMul32_a)
+	var h uint64 = (binary.LittleEndian.Uint64(p) << 24) * uint64(kHashMul32)
 	return uint32(h >> shift)
 }
 
@@ -57,7 +27,7 @@ func hashBytesAtOffset5(v uint64, offset int, shift uint) uint32 {
 	assert(offset >= 0)
 	assert(offset <= 3)
 	{
-		var h uint64 = ((v >> uint(8*offset)) << 24) * uint64(kHashMul32_a)
+		var h uint64 = ((v >> uint(8*offset)) << 24) * uint64(kHashMul32)
 		return uint32(h >> shift)
 	}
 }
@@ -821,6 +791,28 @@ next_block:
 	}
 }
 
+/* Compresses "input" string to the "*storage" buffer as one or more complete
+   meta-blocks, and updates the "*storage_ix" bit position.
+
+   If "is_last" is 1, emits an additional empty last meta-block.
+
+   "cmd_depth" and "cmd_bits" contain the command and distance prefix codes
+   (see comment in encode.h) used for the encoding of this input fragment.
+   If "is_last" is 0, they are updated to reflect the statistics
+   of this input fragment, to be used for the encoding of the next fragment.
+
+   "*cmd_code_numbits" is the number of bits of the compressed representation
+   of the command and distance prefix codes, and "cmd_code" is an array of
+   at least "(*cmd_code_numbits + 7) >> 3" size that contains the compressed
+   command and distance prefix codes. If "is_last" is 0, these are also
+   updated to represent the updated "cmd_depth" and "cmd_bits".
+
+   REQUIRES: "input_size" is greater than zero, or "is_last" is 1.
+   REQUIRES: "input_size" is less or equal to maximal metablock size (1 << 24).
+   REQUIRES: All elements in "table[0..table_size-1]" are initialized to zero.
+   REQUIRES: "table_size" is an odd (9, 11, 13, 15) power of two
+   OUTPUT: maximal copy distance <= |input_size|
+   OUTPUT: maximal copy distance <= BROTLI_MAX_BACKWARD_LIMIT(18) */
 func compressFragmentFast(input []byte, input_size uint, is_last bool, table []int, table_size uint, cmd_depth []byte, cmd_bits []uint16, cmd_code_numbits *uint, cmd_code []byte, storage_ix *uint, storage []byte) {
 	var initial_storage_ix uint = *storage_ix
 	var table_bits uint = uint(log2FloorNonZero(table_size))

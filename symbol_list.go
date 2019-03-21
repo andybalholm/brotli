@@ -7,6 +7,7 @@ package brotli
 */
 
 /* Utilities for building Huffman decoding tables. */
+
 type symbolList struct {
 	storage []uint16
 	offset  int

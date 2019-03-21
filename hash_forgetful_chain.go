@@ -2,19 +2,12 @@ package brotli
 
 import "encoding/binary"
 
-/* NOLINT(build/header_guard) */
 /* Copyright 2016 Google Inc. All Rights Reserved.
 
    Distributed under MIT license.
    See file LICENSE for detail or copy at https://opensource.org/licenses/MIT
 */
 
-/* A (forgetful) hash table to the data seen by the compressor, to
-   help create backward references to previous data.
-
-   Hashes are stored in chains which are bucketed to groups. Group of chains
-   share a storage "bank". When more than "bank size" chain nodes are added,
-   oldest nodes are replaced; this way several chains may share a tail. */
 func (*hashForgetfulChain) HashTypeLength() uint {
 	return 4
 }
@@ -37,6 +30,12 @@ type slot struct {
 	next  uint16
 }
 
+/* A (forgetful) hash table to the data seen by the compressor, to
+   help create backward references to previous data.
+
+   Hashes are stored in chains which are bucketed to groups. Group of chains
+   share a storage "bank". When more than "bank size" chain nodes are added,
+   oldest nodes are replaced; this way several chains may share a tail. */
 type hashForgetfulChain struct {
 	hasherCommon
 

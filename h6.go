@@ -2,7 +2,6 @@ package brotli
 
 import "encoding/binary"
 
-/* NOLINT(build/header_guard) */
 /* Copyright 2010 Google Inc. All Rights Reserved.
 
    Distributed under MIT license.

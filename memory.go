@@ -6,8 +6,6 @@ package brotli
    See file LICENSE for detail or copy at https://opensource.org/licenses/MIT
 */
 
-/* Macros for memory management. */
-
 /*
 Dynamically grows array capacity to at least the requested size
 T: data type

@@ -5,24 +5,6 @@ import (
 	"fmt"
 )
 
-/* Matches data against static dictionary words, and for each length l,
-   for which a match is found, updates matches[l] to be the minimum possible
-     (distance << 5) + len_code.
-   Returns 1 if matches have been found, otherwise 0.
-   Prerequisites:
-     matches array is at least BROTLI_MAX_STATIC_DICTIONARY_MATCH_LEN + 1 long
-     all elements are initialized to kInvalidMatch */
-/* Pointer to hasher data.
- *
- * Excluding initialization and destruction, hasher can be passed as
- * HasherHandle by value.
- *
- * Typically hasher data consists of 3 sections:
- * * hasherCommon structure
- * * private structured hasher data, depending on hasher type
- * * private dynamic hasher data, depending on hasher type and parameters
- *
- */
 type hasherCommon struct {
 	params           hasherParams
 	is_prepared_     bool
@@ -68,11 +50,11 @@ type hasherSearchResult struct {
    * There is no effort to ensure that it is a prime, the oddity is enough
      for this use.
    * The number has been tuned heuristically against compression benchmarks. */
-var kHashMul32 uint32 = 0x1E35A7BD
+const kHashMul32 uint32 = 0x1E35A7BD
 
-var kHashMul64 uint64 = 0x1E35A7BD1E35A7BD
+const kHashMul64 uint64 = 0x1E35A7BD1E35A7BD
 
-var kHashMul64Long uint64 = 0x1FE35A7BD3579BD3
+const kHashMul64Long uint64 = 0x1FE35A7BD3579BD3
 
 func hash14(data []byte) uint32 {
 	var h uint32 = binary.LittleEndian.Uint32(data) * kHashMul32

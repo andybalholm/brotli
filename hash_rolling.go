@@ -1,16 +1,14 @@
 package brotli
 
-/* NOTE: this hasher does not search in the dictionary. It is used as
-   backup-hasher, the main hasher already searches in it. */
-/* NOLINT(build/header_guard) */
 /* Copyright 2018 Google Inc. All Rights Reserved.
 
    Distributed under MIT license.
    See file LICENSE for detail or copy at https://opensource.org/licenses/MIT
 */
 
-/* Rolling hash for long distance long string matches. Stores one position
-   per bucket, bucket key is computed over a long region. */
+/* NOTE: this hasher does not search in the dictionary. It is used as
+   backup-hasher, the main hasher already searches in it. */
+
 var kRollingHashMul32hashRolling uint32 = 69069
 
 var kInvalidPosHashRolling uint32 = 0xffffffff
@@ -40,6 +38,8 @@ func (h *hashRolling) HashRollingFunction(state uint32, add byte, rem byte, fact
 	return uint32(factor*state + h.HashByte(add) - factor_remove*h.HashByte(rem))
 }
 
+/* Rolling hash for long distance long string matches. Stores one position
+   per bucket, bucket key is computed over a long region. */
 type hashRolling struct {
 	hasherCommon
 

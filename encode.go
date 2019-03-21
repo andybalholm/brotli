@@ -11,19 +11,6 @@ import (
    See file LICENSE for detail or copy at https://opensource.org/licenses/MIT
 */
 
-/* Constants and formulas that affect speed-ratio trade-offs and thus define
-   quality levels. */
-/* Copyright 2013 Google Inc. All Rights Reserved.
-
-   Distributed under MIT license.
-   See file LICENSE for detail or copy at https://opensource.org/licenses/MIT
-*/
-
-/**
- * @file
- * API for Brotli compression.
- */
-
 /** Minimal value for ::BROTLI_PARAM_LGWIN parameter. */
 const minWindowBits = 10
 

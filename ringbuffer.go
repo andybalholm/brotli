@@ -6,15 +6,6 @@ package brotli
    See file LICENSE for detail or copy at https://opensource.org/licenses/MIT
 */
 
-/* Implementation of Brotli compressor. */
-/* Copyright 2013 Google Inc. All Rights Reserved.
-
-   Distributed under MIT license.
-   See file LICENSE for detail or copy at https://opensource.org/licenses/MIT
-*/
-
-/* Sliding window over the input data. */
-
 /* A ringBuffer(window_bits, tail_bits) contains `1 << window_bits' bytes of
    data in a circular manner: writing a byte writes it to:
      `position() % (1 << window_bits)'.

@@ -13,28 +13,18 @@ import "encoding/binary"
    the found backward matches and literal bytes into a buffer, and in the
    second pass we emit them into the bit stream using prefix codes built based
    on the actual command and literal byte histograms. */
-/* Copyright 2015 Google Inc. All Rights Reserved.
 
-   Distributed under MIT license.
-   See file LICENSE for detail or copy at https://opensource.org/licenses/MIT
-*/
-
-/* Function for fast encoding of an input fragment, independently from the input
-   history. This function uses two-pass processing: in the first pass we save
-   the found backward matches and literal bytes into a buffer, and in the
-   second pass we emit them into the bit stream using prefix codes built based
-   on the actual command and literal byte histograms. */
 var kCompressFragmentTwoPassBlockSize uint = 1 << 17
 
 func hash1(p []byte, shift uint, length uint) uint32 {
-	var h uint64 = (binary.LittleEndian.Uint64(p) << ((8 - length) * 8)) * uint64(kHashMul32_a)
+	var h uint64 = (binary.LittleEndian.Uint64(p) << ((8 - length) * 8)) * uint64(kHashMul32)
 	return uint32(h >> shift)
 }
 
 func hashBytesAtOffset(v uint64, offset uint, shift uint, length uint) uint32 {
 	assert(offset <= 8-length)
 	{
-		var h uint64 = ((v >> (8 * offset)) << ((8 - length) * 8)) * uint64(kHashMul32_a)
+		var h uint64 = ((v >> (8 * offset)) << ((8 - length) * 8)) * uint64(kHashMul32)
 		return uint32(h >> shift)
 	}
 }
@@ -721,6 +711,19 @@ func compressFragmentTwoPassImpl(input []byte, input_size uint, is_last bool, co
 	}
 }
 
+/* Compresses "input" string to the "*storage" buffer as one or more complete
+   meta-blocks, and updates the "*storage_ix" bit position.
+
+   If "is_last" is 1, emits an additional empty last meta-block.
+
+   REQUIRES: "input_size" is greater than zero, or "is_last" is 1.
+   REQUIRES: "input_size" is less or equal to maximal metablock size (1 << 24).
+   REQUIRES: "command_buf" and "literal_buf" point to at least
+              kCompressFragmentTwoPassBlockSize long arrays.
+   REQUIRES: All elements in "table[0..table_size-1]" are initialized to zero.
+   REQUIRES: "table_size" is a power of two
+   OUTPUT: maximal copy distance <= |input_size|
+   OUTPUT: maximal copy distance <= BROTLI_MAX_BACKWARD_LIMIT(18) */
 func compressFragmentTwoPass(input []byte, input_size uint, is_last bool, command_buf []uint32, literal_buf []byte, table []int, table_size uint, storage_ix *uint, storage []byte) {
 	var initial_storage_ix uint = *storage_ix
 	var table_bits uint = uint(log2FloorNonZero(table_size))

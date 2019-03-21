@@ -1,16 +1,11 @@
 package brotli
 
-/* NOTE: this hasher does not search in the dictionary. It is used as
-   backup-hasher, the main hasher already searches in it. */
-/* NOLINT(build/header_guard) */
 /* Copyright 2018 Google Inc. All Rights Reserved.
 
    Distributed under MIT license.
    See file LICENSE for detail or copy at https://opensource.org/licenses/MIT
 */
 
-/* Composite hasher: This hasher allows to combine two other hashers, HASHER_A
-   and HASHER_B. */
 func (h *hashComposite) HashTypeLength() uint {
 	var a uint = h.ha.HashTypeLength()
 	var b uint = h.hb.HashTypeLength()
@@ -31,6 +26,8 @@ func (h *hashComposite) StoreLookahead() uint {
 	}
 }
 
+/* Composite hasher: This hasher allows to combine two other hashers, HASHER_A
+   and HASHER_B. */
 type hashComposite struct {
 	hasherCommon
 	ha     hasherHandle

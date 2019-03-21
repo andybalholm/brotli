@@ -2,19 +2,12 @@ package brotli
 
 import "encoding/binary"
 
-/* NOLINT(build/header_guard) */
 /* Copyright 2016 Google Inc. All Rights Reserved.
 
    Distributed under MIT license.
    See file LICENSE for detail or copy at https://opensource.org/licenses/MIT
 */
 
-/* A (forgetful) hash table where each hash bucket contains a binary tree of
-   sequences whose first 4 bytes share the same hash code.
-   Each sequence is 128 long and is identified by its starting
-   position in the input data. The binary tree is sorted by the lexicographic
-   order of the sequences, and it is also a max-heap with respect to the
-   starting positions. */
 func (*h10) HashTypeLength() uint {
 	return 4
 }
@@ -31,6 +24,12 @@ func hashBytesH10(data []byte) uint32 {
 	return h >> (32 - 17)
 }
 
+/* A (forgetful) hash table where each hash bucket contains a binary tree of
+   sequences whose first 4 bytes share the same hash code.
+   Each sequence is 128 long and is identified by its starting
+   position in the input data. The binary tree is sorted by the lexicographic
+   order of the sequences, and it is also a max-heap with respect to the
+   starting positions. */
 type h10 struct {
 	hasherCommon
 	window_mask_ uint

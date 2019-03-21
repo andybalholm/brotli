@@ -1,6 +1,5 @@
 package brotli
 
-/* NOLINT(build/header_guard) */
 /* Copyright 2015 Google Inc. All Rights Reserved.
 
    Distributed under MIT license.

@@ -6,31 +6,9 @@ package brotli
    See file LICENSE for detail or copy at https://opensource.org/licenses/MIT
 */
 
-/* Brotli bit stream functions to support the low level format. There are no
-   compression algorithms here, just the right ordering of bits to match the
-   specs. */
-/* Copyright 2014 Google Inc. All Rights Reserved.
-
-   Distributed under MIT license.
-   See file LICENSE for detail or copy at https://opensource.org/licenses/MIT
-*/
-
-/* Functions to convert brotli-related data structures into the
-   brotli bit stream. The functions here operate under
-   assumption that there is enough space in the storage, i.e., there are
-   no out-of-range checks anywhere.
-
-   These functions do bit addressing into a byte array. The byte array
-   is called "storage" and the index to the bit is called storage_ix
-   in function arguments. */
-/* Copyright 2015 Google Inc. All Rights Reserved.
-
-   Distributed under MIT license.
-   See file LICENSE for detail or copy at https://opensource.org/licenses/MIT
-*/
-
 /* Algorithms for distributing the literals and commands of a metablock between
    block types and contexts. */
+
 type metaBlockSplit struct {
 	literal_split             blockSplit
 	command_split             blockSplit
@@ -74,14 +52,6 @@ func destroyMetaBlockSplit(mb *metaBlockSplit) {
 	mb.distance_histograms = nil
 }
 
-/* Copyright 2015 Google Inc. All Rights Reserved.
-
-   Distributed under MIT license.
-   See file LICENSE for detail or copy at https://opensource.org/licenses/MIT
-*/
-
-/* Algorithms for distributing the literals and commands of a metablock between
-   block types and contexts. */
 func initDistanceParams(params *encoderParams, npostfix uint32, ndirect uint32) {
 	var dist_params *distanceParams = &params.dist
 	var alphabet_size uint32
