@@ -278,7 +278,7 @@ func createCommands(input []byte, block_size uint, input_size uint, base_ip_ptr 
 
 				next_hash = hash1(input[next_ip:], shift, min_match)
 				candidate = ip - last_distance
-				if isMatch1(input[ip:], input[candidate:], min_match) {
+				if isMatch1(input[ip:], base_ip_ptr[candidate-base_ip:], min_match) {
 					if candidate < ip {
 						table[hash] = int(ip - base_ip)
 						break
@@ -290,7 +290,7 @@ func createCommands(input []byte, block_size uint, input_size uint, base_ip_ptr 
 				assert(candidate < ip)
 
 				table[hash] = int(ip - base_ip)
-				if !(!isMatch1(input[ip:], input[candidate:], min_match)) {
+				if isMatch1(input[ip:], base_ip_ptr[candidate-base_ip:], min_match) {
 					break
 				}
 			}
@@ -308,7 +308,7 @@ func createCommands(input []byte, block_size uint, input_size uint, base_ip_ptr 
 			{
 				var base int = ip
 				/* > 0 */
-				var matched uint = min_match + findMatchLengthWithLimit(input[uint(candidate)+min_match:], input[uint(ip)+min_match:], uint(ip_end-ip)-min_match)
+				var matched uint = min_match + findMatchLengthWithLimit(base_ip_ptr[uint(candidate-base_ip)+min_match:], input[uint(ip)+min_match:], uint(ip_end-ip)-min_match)
 				var distance int = int(base - candidate)
 				/* We have a 6-byte match at ip, and we need to emit bytes in
 				   [next_emit, ip). */
@@ -370,12 +370,12 @@ func createCommands(input []byte, block_size uint, input_size uint, base_ip_ptr 
 				}
 			}
 
-			for ip-candidate <= maxDistance_compress_fragment && isMatch1(input[ip:], input[candidate:], min_match) {
+			for ip-candidate <= maxDistance_compress_fragment && isMatch1(input[ip:], base_ip_ptr[candidate-base_ip:], min_match) {
 				var base int = ip
 				/* We have a 6-byte match at ip, and no need to emit any
 				   literal bytes prior to ip. */
 
-				var matched uint = min_match + findMatchLengthWithLimit(input[uint(candidate)+min_match:], input[uint(ip)+min_match:], uint(ip_end-ip)-min_match)
+				var matched uint = min_match + findMatchLengthWithLimit(base_ip_ptr[uint(candidate-base_ip)+min_match:], input[uint(ip)+min_match:], uint(ip_end-ip)-min_match)
 				ip += int(matched)
 				last_distance = int(base - candidate) /* > 0 */
 				emitCopyLen(matched, commands)
