@@ -543,7 +543,7 @@ func shiftTransform(word []byte, word_len int, parameter uint16) int {
 		if word_len < 3 {
 			return word_len
 		}
-		scalar += uint32(word[2]&0x3F | (word[1]&0x3F)<<6 | (word[0]&0x0F)<<12)
+		scalar += uint32(word[2])&0x3F | uint32(word[1]&0x3F)<<6 | uint32(word[0]&0x0F)<<12
 		word[0] = byte(0xE0 | (scalar>>12)&0x0F)
 		word[1] = byte(uint32(word[1]&0xC0) | (scalar>>6)&0x3F)
 		word[2] = byte(uint32(word[2]&0xC0) | scalar&0x3F)
@@ -553,7 +553,7 @@ func shiftTransform(word []byte, word_len int, parameter uint16) int {
 		if word_len < 4 {
 			return word_len
 		}
-		scalar += uint32(word[3]&0x3F | (word[2]&0x3F)<<6 | (word[1]&0x3F)<<12 | (word[0]&0x07)<<18)
+		scalar += uint32(word[3])&0x3F | uint32(word[2]&0x3F)<<6 | uint32(word[1]&0x3F)<<12 | uint32(word[0]&0x07)<<18
 		word[0] = byte(0xF0 | (scalar>>18)&0x07)
 		word[1] = byte(uint32(word[1]&0xC0) | (scalar>>12)&0x3F)
 		word[2] = byte(uint32(word[2]&0xC0) | (scalar>>6)&0x3F)
@@ -610,10 +610,10 @@ func transformDictionaryWord(dst []byte, word []byte, len int, trans *transforms
 				len -= step
 			}
 		} else if t == transformShiftFirst {
-			var param uint16 = uint16(trans.params[transform_idx*2] + (trans.params[transform_idx*2+1] << 8))
+			var param uint16 = uint16(trans.params[transform_idx*2]) + uint16(trans.params[transform_idx*2+1])<<8
 			shiftTransform(dst[idx-len:], int(len), param)
 		} else if t == transformShiftAll {
-			var param uint16 = uint16(trans.params[transform_idx*2] + (trans.params[transform_idx*2+1] << 8))
+			var param uint16 = uint16(trans.params[transform_idx*2]) + uint16(trans.params[transform_idx*2+1])<<8
 			var shift []byte = dst
 			shift = shift[idx-len:]
 			for len > 0 {

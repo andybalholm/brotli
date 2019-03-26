@@ -783,7 +783,6 @@ func readHuffmanCode(alphabet_size uint32, max_symbol uint32, table []huffmanCod
 			fallthrough
 
 			/* Read symbols, codes & code lengths directly. */
-		/* Fall through. */
 		case stateHuffmanSimpleSize:
 			if !safeReadBits(br, 2, &s.symbol) { /* num_symbols */
 				s.substate_huffman = stateHuffmanSimpleSize
@@ -792,7 +791,7 @@ func readHuffmanCode(alphabet_size uint32, max_symbol uint32, table []huffmanCod
 
 			s.sub_loop_counter = 0
 			fallthrough
-		/* Fall through. */
+
 		case stateHuffmanSimpleRead:
 			{
 				var result int = readSimpleHuffmanSymbols(alphabet_size, max_symbol, s)
@@ -802,29 +801,25 @@ func readHuffmanCode(alphabet_size uint32, max_symbol uint32, table []huffmanCod
 			}
 			fallthrough
 
-			/* Fall through. */
 		case stateHuffmanSimpleBuild:
-			{
-				var table_size uint32
-				if s.symbol == 3 {
-					var bits uint32
-					if !safeReadBits(br, 1, &bits) {
-						s.substate_huffman = stateHuffmanSimpleBuild
-						return decoderNeedsMoreInput
-					}
-
-					s.symbol += bits
+			var table_size uint32
+			if s.symbol == 3 {
+				var bits uint32
+				if !safeReadBits(br, 1, &bits) {
+					s.substate_huffman = stateHuffmanSimpleBuild
+					return decoderNeedsMoreInput
 				}
 
-				table_size = buildSimpleHuffmanTable(table, huffmanTableBits, s.symbols_lists_array[:], s.symbol)
-				if opt_table_size != nil {
-					*opt_table_size = table_size
-				}
-
-				s.substate_huffman = stateHuffmanNone
-				return decoderSuccess
+				s.symbol += bits
 			}
-			fallthrough
+
+			table_size = buildSimpleHuffmanTable(table, huffmanTableBits, s.symbols_lists_array[:], s.symbol)
+			if opt_table_size != nil {
+				*opt_table_size = table_size
+			}
+
+			s.substate_huffman = stateHuffmanNone
+			return decoderSuccess
 
 			/* Decode Huffman-coded code lengths. */
 		case stateHuffmanComplex:
@@ -854,32 +849,28 @@ func readHuffmanCode(alphabet_size uint32, max_symbol uint32, table []huffmanCod
 			}
 			fallthrough
 
-			/* Fall through. */
 		case stateHuffmanLengthSymbols:
-			{
-				var table_size uint32
-				var result int = readSymbolCodeLengths(max_symbol, s)
-				if result == decoderNeedsMoreInput {
-					result = safeReadSymbolCodeLengths(max_symbol, s)
-				}
-
-				if result != decoderSuccess {
-					return result
-				}
-
-				if s.space != 0 {
-					return decoderErrorFormatHuffmanSpace
-				}
-
-				table_size = buildHuffmanTable(table, huffmanTableBits, s.symbol_lists, s.code_length_histo[:])
-				if opt_table_size != nil {
-					*opt_table_size = table_size
-				}
-
-				s.substate_huffman = stateHuffmanNone
-				return decoderSuccess
+			var table_size uint32
+			var result int = readSymbolCodeLengths(max_symbol, s)
+			if result == decoderNeedsMoreInput {
+				result = safeReadSymbolCodeLengths(max_symbol, s)
 			}
-			fallthrough
+
+			if result != decoderSuccess {
+				return result
+			}
+
+			if s.space != 0 {
+				return decoderErrorFormatHuffmanSpace
+			}
+
+			table_size = buildHuffmanTable(table, huffmanTableBits, s.symbol_lists, s.code_length_histo[:])
+			if opt_table_size != nil {
+				*opt_table_size = table_size
+			}
+
+			s.substate_huffman = stateHuffmanNone
+			return decoderSuccess
 
 		default:
 			return decoderErrorUnreachable
@@ -1111,23 +1102,19 @@ func decodeContextMap(context_map_size uint32, num_htrees *uint32, context_map_a
 		}
 		fallthrough
 
-		/* Fall through. */
 	case stateContextMapTransform:
-		{
-			var bits uint32
-			if !safeReadBits(br, 1, &bits) {
-				s.substate_context_map = stateContextMapTransform
-				return decoderNeedsMoreInput
-			}
-
-			if bits != 0 {
-				inverseMoveToFrontTransform(*context_map_arg, context_map_size, s)
-			}
-
-			s.substate_context_map = stateContextMapNone
-			return decoderSuccess
+		var bits uint32
+		if !safeReadBits(br, 1, &bits) {
+			s.substate_context_map = stateContextMapTransform
+			return decoderNeedsMoreInput
 		}
-		fallthrough
+
+		if bits != 0 {
+			inverseMoveToFrontTransform(*context_map_arg, context_map_size, s)
+		}
+
+		s.substate_context_map = stateContextMapNone
+		return decoderSuccess
 
 	default:
 		return decoderErrorUnreachable
@@ -1423,7 +1410,6 @@ func copyUncompressedBlockToOutput(available_out *uint, next_out *[]byte, total_
 			}
 			fallthrough
 
-			/* Fall through. */
 		case stateUncompressedWrite:
 			{
 				var result int
@@ -1441,9 +1427,6 @@ func copyUncompressedBlockToOutput(available_out *uint, next_out *[]byte, total_
 			}
 		}
 	}
-
-	assert(false) /* Unreachable */
-	return 0
 }
 
 /* Calculates the smallest feasible ring buffer.
@@ -1484,8 +1467,6 @@ func calculateRingBufferSize(s *Reader) {
 	output_size += s.meta_block_remaining_len
 	if min_size < output_size {
 		min_size = output_size
-	} else {
-		min_size = min_size
 	}
 
 	if !(s.canny_ringbuffer_allocation == 0) {
@@ -2296,17 +2277,12 @@ func decoderDecompressStream(s *Reader, available_in *uint, next_in *[]byte, ava
 
 			s.loop_counter = 0
 			s.state = stateHuffmanCode0
-		case stateUncompressed:
-			{
-				result = copyUncompressedBlockToOutput(available_out, next_out, nil, s)
-				if result != decoderSuccess {
-					break
-				}
 
+		case stateUncompressed:
+			result = copyUncompressedBlockToOutput(available_out, next_out, nil, s)
+			if result == decoderSuccess {
 				s.state = stateMetablockDone
-				break
 			}
-			fallthrough
 
 		case stateMetadata:
 			for ; s.meta_block_remaining_len > 0; s.meta_block_remaining_len-- {
@@ -2344,7 +2320,7 @@ func decoderDecompressStream(s *Reader, available_in *uint, next_in *[]byte, ava
 
 			s.state = stateHuffmanCode1
 			fallthrough
-		/* Fall through. */
+
 		case stateHuffmanCode1:
 			{
 				var alphabet_size uint32 = s.num_block_types[s.loop_counter] + 2
@@ -2357,7 +2333,6 @@ func decoderDecompressStream(s *Reader, available_in *uint, next_in *[]byte, ava
 			}
 			fallthrough
 
-			/* Fall through. */
 		case stateHuffmanCode2:
 			{
 				var alphabet_size uint32 = numBlockLenSymbols
@@ -2370,20 +2345,16 @@ func decoderDecompressStream(s *Reader, available_in *uint, next_in *[]byte, ava
 			}
 			fallthrough
 
-			/* Fall through. */
 		case stateHuffmanCode3:
-			{
-				var tree_offset int = s.loop_counter * huffmanMaxSize26
-				if !safeReadBlockLength(s, &s.block_length[s.loop_counter], s.block_len_trees[tree_offset:], br) {
-					result = decoderNeedsMoreInput
-					break
-				}
-
-				s.loop_counter++
-				s.state = stateHuffmanCode0
+			var tree_offset int = s.loop_counter * huffmanMaxSize26
+			if !safeReadBlockLength(s, &s.block_length[s.loop_counter], s.block_len_trees[tree_offset:], br) {
+				result = decoderNeedsMoreInput
 				break
 			}
-			fallthrough
+
+			s.loop_counter++
+			s.state = stateHuffmanCode0
+
 		case stateMetablockHeader2:
 			{
 				var bits uint32
@@ -2407,7 +2378,6 @@ func decoderDecompressStream(s *Reader, available_in *uint, next_in *[]byte, ava
 			}
 			fallthrough
 
-			/* Fall through. */
 		case stateContextModes:
 			result = readContextModes(s)
 
@@ -2418,7 +2388,6 @@ func decoderDecompressStream(s *Reader, available_in *uint, next_in *[]byte, ava
 			s.state = stateContextMap1
 			fallthrough
 
-			/* Fall through. */
 		case stateContextMap1:
 			result = decodeContextMap(s.num_block_types[0]<<literalContextBits, &s.num_literal_htrees, &s.context_map, s)
 
@@ -2429,7 +2398,7 @@ func decoderDecompressStream(s *Reader, available_in *uint, next_in *[]byte, ava
 			detectTrivialLiteralBlockTypes(s)
 			s.state = stateContextMap2
 			fallthrough
-		/* Fall through. */
+
 		case stateContextMap2:
 			{
 				var num_direct_codes uint32 = s.num_direct_distance_codes - numDistanceShortCodes
@@ -2469,63 +2438,44 @@ func decoderDecompressStream(s *Reader, available_in *uint, next_in *[]byte, ava
 			}
 			fallthrough
 
-			/* Fall through. */
 		case stateTreeGroup:
-			{
-				var hgroup *huffmanTreeGroup = nil
-				switch s.loop_counter {
-				case 0:
-					hgroup = &s.literal_hgroup
-				case 1:
-					hgroup = &s.insert_copy_hgroup
-				case 2:
-					hgroup = &s.distance_hgroup
-				default:
-					return saveErrorCode(s, decoderErrorUnreachable)
-				}
+			var hgroup *huffmanTreeGroup = nil
+			switch s.loop_counter {
+			case 0:
+				hgroup = &s.literal_hgroup
+			case 1:
+				hgroup = &s.insert_copy_hgroup
+			case 2:
+				hgroup = &s.distance_hgroup
+			default:
+				return saveErrorCode(s, decoderErrorUnreachable)
+			}
 
-				result = huffmanTreeGroupDecode(hgroup, s)
-				if result != decoderSuccess {
-					break
-				}
-				s.loop_counter++
-				if s.loop_counter >= 3 {
-					prepareLiteralDecoding(s)
-					s.dist_context_map_slice = s.dist_context_map
-					s.htree_command = []huffmanCode(s.insert_copy_hgroup.htrees[0])
-					if !ensureRingBuffer(s) {
-						result = decoderErrorAllocRingBuffer2
-						break
-					}
-
-					s.state = stateCommandBegin
-				}
-
+			result = huffmanTreeGroupDecode(hgroup, s)
+			if result != decoderSuccess {
 				break
 			}
-			fallthrough
+			s.loop_counter++
+			if s.loop_counter >= 3 {
+				prepareLiteralDecoding(s)
+				s.dist_context_map_slice = s.dist_context_map
+				s.htree_command = []huffmanCode(s.insert_copy_hgroup.htrees[0])
+				if !ensureRingBuffer(s) {
+					result = decoderErrorAllocRingBuffer2
+					break
+				}
 
-		case stateCommandBegin,
-			/* Fall through. */
-			stateCommandInner,
+				s.state = stateCommandBegin
+			}
 
-			/* Fall through. */
-			stateCommandPostDecodeLiterals,
-
-			/* Fall through. */
-			stateCommandPostWrapCopy:
+		case stateCommandBegin, stateCommandInner, stateCommandPostDecodeLiterals, stateCommandPostWrapCopy:
 			result = processCommands(s)
 
 			if result == decoderNeedsMoreInput {
 				result = safeProcessCommands(s)
 			}
 
-		case stateCommandInnerWrite,
-			/* Fall through. */
-			stateCommandPostWrite1,
-
-			/* Fall through. */
-			stateCommandPostWrite2:
+		case stateCommandInnerWrite, stateCommandPostWrite1, stateCommandPostWrite2:
 			result = writeRingBuffer(s, available_out, next_out, nil, false)
 
 			if result != decoderSuccess {
@@ -2588,7 +2538,6 @@ func decoderDecompressStream(s *Reader, available_in *uint, next_in *[]byte, ava
 			s.state = stateDone
 			fallthrough
 
-			/* Fall through. */
 		case stateDone:
 			if s.ringbuffer != nil {
 				result = writeRingBuffer(s, available_out, next_out, nil, true)

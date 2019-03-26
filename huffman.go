@@ -606,47 +606,42 @@ func buildSimpleHuffmanTable(table []huffmanCode, root_bits int, val []uint16, n
 		}
 
 		table_size = 4
+
 	case 3:
-		{
-			var i int
-			var k int
-			for i = 0; i < 3; i++ {
-				for k = i + 1; k < 4; k++ {
-					if val[k] < val[i] {
-						var t uint16 = val[k]
-						val[k] = val[i]
-						val[i] = t
-					}
+		var i int
+		var k int
+		for i = 0; i < 3; i++ {
+			for k = i + 1; k < 4; k++ {
+				if val[k] < val[i] {
+					var t uint16 = val[k]
+					val[k] = val[i]
+					val[i] = t
 				}
 			}
-
-			table[0] = constructHuffmanCode(2, val[0])
-			table[2] = constructHuffmanCode(2, val[1])
-			table[1] = constructHuffmanCode(2, val[2])
-			table[3] = constructHuffmanCode(2, val[3])
-			table_size = 4
-			break
 		}
-		fallthrough
+
+		table[0] = constructHuffmanCode(2, val[0])
+		table[2] = constructHuffmanCode(2, val[1])
+		table[1] = constructHuffmanCode(2, val[2])
+		table[3] = constructHuffmanCode(2, val[3])
+		table_size = 4
+
 	case 4:
-		{
-			if val[3] < val[2] {
-				var t uint16 = val[3]
-				val[3] = val[2]
-				val[2] = t
-			}
-
-			table[0] = constructHuffmanCode(1, val[0])
-			table[1] = constructHuffmanCode(2, val[1])
-			table[2] = constructHuffmanCode(1, val[0])
-			table[3] = constructHuffmanCode(3, val[2])
-			table[4] = constructHuffmanCode(1, val[0])
-			table[5] = constructHuffmanCode(2, val[1])
-			table[6] = constructHuffmanCode(1, val[0])
-			table[7] = constructHuffmanCode(3, val[3])
-			table_size = 8
-			break
+		if val[3] < val[2] {
+			var t uint16 = val[3]
+			val[3] = val[2]
+			val[2] = t
 		}
+
+		table[0] = constructHuffmanCode(1, val[0])
+		table[1] = constructHuffmanCode(2, val[1])
+		table[2] = constructHuffmanCode(1, val[0])
+		table[3] = constructHuffmanCode(3, val[2])
+		table[4] = constructHuffmanCode(1, val[0])
+		table[5] = constructHuffmanCode(2, val[1])
+		table[6] = constructHuffmanCode(1, val[0])
+		table[7] = constructHuffmanCode(3, val[3])
+		table_size = 8
 	}
 
 	for table_size != goal_size {

@@ -957,7 +957,7 @@ func writeMetaBlockInternal(data []byte, mask uint, last_flush_pos uint64, bytes
 	}
 
 	assert(*storage_ix <= 14)
-	last_bytes = uint16(storage[1]<<8 | storage[0])
+	last_bytes = uint16(storage[1])<<8 | uint16(storage[0])
 	last_bytes_bits = byte(*storage_ix)
 	if params.quality <= maxQualityForStaticEntropyCodes {
 		storeMetaBlockFast(data, uint(wrapped_last_flush_pos), bytes, mask, is_last, params, commands, num_commands, storage_ix, storage)
