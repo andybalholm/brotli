@@ -57,11 +57,12 @@ func createBackwardReferences(num_bytes uint, position uint, ringbuffer []byte, 
 
 	/* Minimum score to accept a backward reference. */
 	hasher.PrepareDistanceCache(dist_cache)
+	var sr2 hasherSearchResult				
+		var sr hasherSearchResult
 
 	for position+hasher.HashTypeLength() < pos_end {
 		var max_length uint = pos_end - position
 		var max_distance uint = brotli_min_size_t(position, max_backward_limit)
-		var sr hasherSearchResult
 		sr.len = 0
 		sr.len_code_delta = 0
 		sr.distance = 0
@@ -73,7 +74,6 @@ func createBackwardReferences(num_bytes uint, position uint, ringbuffer []byte, 
 			max_length--
 			for ; ; max_length-- {
 				var cost_diff_lazy uint = 175
-				var sr2 hasherSearchResult
 				if params.quality < minQualityForExtensiveReferenceSearch {
 					sr2.len = brotli_min_size_t(sr.len-1, max_length)
 				} else {
