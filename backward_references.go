@@ -57,8 +57,8 @@ func createBackwardReferences(num_bytes uint, position uint, ringbuffer []byte, 
 
 	/* Minimum score to accept a backward reference. */
 	hasher.PrepareDistanceCache(dist_cache)
-	var sr2 hasherSearchResult				
-		var sr hasherSearchResult
+	var sr2 hasherSearchResult
+	var sr hasherSearchResult
 
 	for position+hasher.HashTypeLength() < pos_end {
 		var max_length uint = pos_end - position
