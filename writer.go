@@ -23,12 +23,8 @@ var (
 // NewWriter initializes new Writer instance.
 func NewWriter(dst io.Writer, options WriterOptions) *Writer {
 	w := new(Writer)
-	encoderInitState(w)
-	w.params.quality = options.Quality
-	if options.LGWin > 0 {
-		w.params.lgwin = uint(options.LGWin)
-	}
-	w.dst = dst
+	w.options = options
+	w.Reset(dst)
 	return w
 }
 
@@ -83,4 +79,14 @@ func (w *Writer) Close() error {
 // encoded bytes are actually flushed to the underlying Writer.
 func (w *Writer) Write(p []byte) (n int, err error) {
 	return w.writeChunk(p, operationProcess)
+}
+
+// Reset initializes writer for reuse.
+func (w *Writer) Reset(dst io.Writer) {
+	encoderInitState(w)
+	w.params.quality = w.options.Quality
+	if w.options.LGWin > 0 {
+		w.params.lgwin = uint(w.options.LGWin)
+	}
+	w.dst = dst
 }
