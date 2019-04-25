@@ -20,13 +20,22 @@ var errReaderClosed = errors.New("brotli: Reader is closed")
 // It is arbitrarily chosen to be equal to the constant used in io.Copy.
 const readBufSize = 32 * 1024
 
-// NewReader initializes new Reader instance.
+// NewReader creates a new Reader reading the given reader.
 func NewReader(src io.Reader) *Reader {
 	r := new(Reader)
+	r.Reset(src)
+	return r
+}
+
+// Reset discards the Reader's state and makes it equivalent to the result of
+// its original state from NewReader, but writing to src instead.
+// This permits reusing a Reader rather than allocating a new one.
+// Error is always nil
+func (r *Reader) Reset(src io.Reader) error {
 	decoderStateInit(r)
 	r.src = src
 	r.buf = make([]byte, readBufSize)
-	return r
+	return nil
 }
 
 func (r *Reader) Read(p []byte) (n int, err error) {
