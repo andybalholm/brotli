@@ -5,6 +5,12 @@ import (
 	"io"
 )
 
+const (
+	BestSpeed          = 0
+	BestCompression    = 11
+	DefaultCompression = 6
+)
+
 // WriterOptions configures Writer.
 type WriterOptions struct {
 	// Quality controls the compression-speed vs compression-density trade-offs.
@@ -20,16 +26,40 @@ var (
 	errWriterClosed = errors.New("brotli: Writer is closed")
 )
 
-// NewWriter initializes new Writer instance.
-func NewWriter(dst io.Writer, options WriterOptions) *Writer {
+// Writes to the returned writer are compressed and written to dst.
+// It is the caller's responsibility to call Close on the Writer when done.
+// Writes may be buffered and not flushed until Close.
+func NewWriter(dst io.Writer) *Writer {
+	return NewWriterLevel(dst, DefaultCompression)
+}
+
+// NewWriterLevel is like NewWriter but specifies the compression level instead
+// of assuming DefaultCompression.
+// The compression level can be DefaultCompression or any integer value between
+// BestSpeed and BestCompression inclusive.
+func NewWriterLevel(dst io.Writer, level int) *Writer {
+	return NewWriterOptions(dst, WriterOptions{
+		Quality: level,
+	})
+}
+
+// NewWriterOptions is like NewWriter but specifies WriterOptions
+func NewWriterOptions(dst io.Writer, options WriterOptions) *Writer {
 	w := new(Writer)
-	encoderInitState(w)
+	w.Reset(dst)
 	w.params.quality = options.Quality
 	if options.LGWin > 0 {
 		w.params.lgwin = uint(options.LGWin)
 	}
-	w.dst = dst
 	return w
+}
+
+// Reset discards the Writer's state and makes it equivalent to the result of
+// its original state from NewWriter or NewWriterLevel, but writing to dst
+// instead. This permits reusing a Writer rather than allocating a new one.
+func (w *Writer) Reset(dst io.Writer) {
+	encoderInitState(w)
+	w.dst = dst
 }
 
 func (w *Writer) writeChunk(p []byte, op int) (n int, err error) {
