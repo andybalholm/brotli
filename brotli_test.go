@@ -44,7 +44,7 @@ func checkCompressedData(compressedData, wantOriginalData []byte) error {
 
 func TestEncoderNoWrite(t *testing.T) {
 	out := bytes.Buffer{}
-	e := NewWriter(&out, WriterOptions{Quality: 5})
+	e := NewWriterOptions(&out, WriterOptions{Quality: 5})
 	if err := e.Close(); err != nil {
 		t.Errorf("Close()=%v, want nil", err)
 	}
@@ -56,7 +56,7 @@ func TestEncoderNoWrite(t *testing.T) {
 
 func TestEncoderEmptyWrite(t *testing.T) {
 	out := bytes.Buffer{}
-	e := NewWriter(&out, WriterOptions{Quality: 5})
+	e := NewWriterOptions(&out, WriterOptions{Quality: 5})
 	n, err := e.Write([]byte(""))
 	if n != 0 || err != nil {
 		t.Errorf("Write()=%v,%v, want 0, nil", n, err)
@@ -70,7 +70,7 @@ func TestWriter(t *testing.T) {
 	// Test basic encoder usage.
 	input := []byte("<html><body><H1>Hello world</H1></body></html>")
 	out := bytes.Buffer{}
-	e := NewWriter(&out, WriterOptions{Quality: 1})
+	e := NewWriterOptions(&out, WriterOptions{Quality: 1})
 	in := bytes.NewReader([]byte(input))
 	n, err := io.Copy(e, in)
 	if err != nil {
@@ -96,7 +96,7 @@ func TestEncoderStreams(t *testing.T) {
 	input := make([]byte, 8*windowSize)
 	rand.Read(input)
 	out := bytes.Buffer{}
-	e := NewWriter(&out, WriterOptions{Quality: 11, LGWin: lgWin})
+	e := NewWriterOptions(&out, WriterOptions{Quality: 11, LGWin: lgWin})
 	halfInput := input[:len(input)/2]
 	in := bytes.NewReader(halfInput)
 
@@ -122,7 +122,7 @@ func TestEncoderLargeInput(t *testing.T) {
 	input := make([]byte, 1000000)
 	rand.Read(input)
 	out := bytes.Buffer{}
-	e := NewWriter(&out, WriterOptions{Quality: 5})
+	e := NewWriterOptions(&out, WriterOptions{Quality: 5})
 	in := bytes.NewReader(input)
 
 	n, err := io.Copy(e, in)
@@ -144,7 +144,7 @@ func TestEncoderFlush(t *testing.T) {
 	input := make([]byte, 1000)
 	rand.Read(input)
 	out := bytes.Buffer{}
-	e := NewWriter(&out, WriterOptions{Quality: 5})
+	e := NewWriterOptions(&out, WriterOptions{Quality: 5})
 	in := bytes.NewReader(input)
 	_, err := io.Copy(e, in)
 	if err != nil {
@@ -198,7 +198,7 @@ func (r readerWithTimeout) Read(p []byte) (int, error) {
 
 func TestDecoderStreaming(t *testing.T) {
 	pr, pw := io.Pipe()
-	writer := NewWriter(pw, WriterOptions{Quality: 5, LGWin: 20})
+	writer := NewWriterOptions(pw, WriterOptions{Quality: 5, LGWin: 20})
 	reader := readerWithTimeout{NewReader(pr)}
 	defer func() {
 		go ioutil.ReadAll(pr) // swallow the "EOF" token from writer.Close
@@ -381,7 +381,7 @@ func TestEncodeDecode(t *testing.T) {
 // Encode returns content encoded with Brotli.
 func Encode(content []byte, options WriterOptions) ([]byte, error) {
 	var buf bytes.Buffer
-	writer := NewWriter(&buf, options)
+	writer := NewWriterOptions(&buf, options)
 	_, err := writer.Write(content)
 	if closeErr := writer.Close(); err == nil {
 		err = closeErr
