@@ -50,11 +50,8 @@ func NewWriterLevel(dst io.Writer, level int) *Writer {
 // NewWriterOptions is like NewWriter but specifies WriterOptions
 func NewWriterOptions(dst io.Writer, options WriterOptions) *Writer {
 	w := new(Writer)
+	w.options = options
 	w.Reset(dst)
-	w.params.quality = options.Quality
-	if options.LGWin > 0 {
-		w.params.lgwin = uint(options.LGWin)
-	}
 	return w
 }
 
@@ -63,6 +60,10 @@ func NewWriterOptions(dst io.Writer, options WriterOptions) *Writer {
 // instead. This permits reusing a Writer rather than allocating a new one.
 func (w *Writer) Reset(dst io.Writer) {
 	encoderInitState(w)
+	w.params.quality = w.options.Quality
+	if w.options.LGWin > 0 {
+		w.params.lgwin = uint(w.options.LGWin)
+	}
 	w.dst = dst
 }
 
