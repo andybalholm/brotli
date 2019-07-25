@@ -308,7 +308,7 @@ func TestQuality(t *testing.T) {
 func TestDecodeFuzz(t *testing.T) {
 	// Test that the decoder terminates with corrupted input.
 	content := bytes.Repeat([]byte("hello world!"), 100)
-	src := rand.NewSource(0)
+	rnd := rand.New(rand.NewSource(0))
 	encoded, err := Encode(content, WriterOptions{Quality: 5})
 	if err != nil {
 		t.Fatalf("Encode(<%d bytes>, _) = _, %s", len(content), err)
@@ -319,7 +319,7 @@ func TestDecodeFuzz(t *testing.T) {
 	for i := 0; i < 100; i++ {
 		enc := append([]byte{}, encoded...)
 		for j := 0; j < 5; j++ {
-			enc[int(src.Int63())%len(enc)] = byte(src.Int63() % 256)
+			enc[rnd.Intn(len(enc))] = byte(rnd.Intn(256))
 		}
 		Decode(enc)
 	}
