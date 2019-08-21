@@ -1,12 +1,8 @@
 package brotli
 
 import (
-	"compress/gzip"
 	"errors"
 	"io"
-	"net/http"
-
-	"github.com/golang/gddo/httputil"
 )
 
 const (
@@ -125,32 +121,3 @@ type nopCloser struct {
 }
 
 func (nopCloser) Close() error { return nil }
-
-// HTTPCompressor chooses a compression method (brotli, gzip, or none) based on
-// the Accept-Encoding header, sets the Content-Encoding header, and returns a
-// WriteCloser that implements that compression. The Close method must be called
-// before the current HTTP handler returns.
-//
-// Due to https://github.com/golang/go/issues/31753, the response will not be
-// compressed unless you set a Content-Type header before you call
-// HTTPCompressor.
-func HTTPCompressor(w http.ResponseWriter, r *http.Request) io.WriteCloser {
-	if w.Header().Get("Content-Type") == "" {
-		return nopCloser{w}
-	}
-
-	if w.Header().Get("Vary") == "" {
-		w.Header().Set("Vary", "Accept-Encoding")
-	}
-
-	encoding := httputil.NegotiateContentEncoding(r, []string{"br", "gzip"})
-	switch encoding {
-	case "br":
-		w.Header().Set("Content-Encoding", "br")
-		return NewWriter(w)
-	case "gzip":
-		w.Header().Set("Content-Encoding", "gzip")
-		return gzip.NewWriter(w)
-	}
-	return nopCloser{w}
-}
