@@ -502,7 +502,9 @@ func updateNodes(num_bytes uint, block_start uint, pos uint, ringbuffer []byte, 
 					var cost float32 = dist_cost + float32(getCopyExtra(copycode)) + zopfliCostModelGetCommandCost(model, cmdcode)
 					if cost < nodes[pos+len].u.cost {
 						updateZopfliNode(nodes, pos, start, uint(len), len_code, dist, 0, cost)
-						result = brotli_max_size_t(result, uint(len))
+						if len > result {
+							result = len
+						}
 					}
 				}
 			}
