@@ -411,7 +411,7 @@ func buildAndStoreHuffmanTree(histogram []uint32, histogram_length uint, alphabe
 	}
 }
 
-func sortHuffmanTree1(v0 *huffmanTree, v1 *huffmanTree) bool {
+func sortHuffmanTree1(v0 huffmanTree, v1 huffmanTree) bool {
 	return v0.total_count_ < v1.total_count_
 }
 
