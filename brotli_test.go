@@ -430,3 +430,67 @@ func Decode(encodedData []byte) ([]byte, error) {
 	r := NewReader(bytes.NewReader(encodedData))
 	return ioutil.ReadAll(r)
 }
+
+func BenchmarkEncodeLevels(b *testing.B) {
+	opticks, err := ioutil.ReadFile("testdata/Isaac.Newton-Opticks.txt")
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	for level := BestSpeed; level <= BestCompression; level++ {
+		b.Run(fmt.Sprintf("%d", level), func(b *testing.B) {
+			b.ReportAllocs()
+			b.SetBytes(int64(len(opticks)))
+			for i := 0; i < b.N; i++ {
+				w := NewWriterLevel(ioutil.Discard, level)
+				w.Write(opticks)
+				w.Close()
+			}
+		})
+	}
+}
+
+func BenchmarkEncodeLevelsReset(b *testing.B) {
+	opticks, err := ioutil.ReadFile("testdata/Isaac.Newton-Opticks.txt")
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	for level := BestSpeed; level <= BestCompression; level++ {
+		buf := new(bytes.Buffer)
+		w := NewWriterLevel(buf, level)
+		w.Write(opticks)
+		w.Close()
+		b.Run(fmt.Sprintf("%d(%.1f%%)", level, float64(buf.Len())/float64(len(opticks))*100), func(b *testing.B) {
+			b.ReportAllocs()
+			b.SetBytes(int64(len(opticks)))
+			for i := 0; i < b.N; i++ {
+				w.Reset(ioutil.Discard)
+				w.Write(opticks)
+				w.Close()
+			}
+		})
+	}
+}
+
+func BenchmarkDecodeLevels(b *testing.B) {
+	opticks, err := ioutil.ReadFile("testdata/Isaac.Newton-Opticks.txt")
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	for level := BestSpeed; level <= BestCompression; level++ {
+		buf := new(bytes.Buffer)
+		w := NewWriterLevel(buf, level)
+		w.Write(opticks)
+		w.Close()
+		compressed := buf.Bytes()
+		b.Run(fmt.Sprintf("%d", level), func(b *testing.B) {
+			b.ReportAllocs()
+			b.SetBytes(int64(len(opticks)))
+			for i := 0; i < b.N; i++ {
+				io.Copy(ioutil.Discard, NewReader(bytes.NewReader(compressed)))
+			}
+		})
+	}
+}
