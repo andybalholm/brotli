@@ -1088,14 +1088,10 @@ func encoderInitState(s *Writer) {
 	s.last_processed_pos_ = 0
 	s.prev_byte_ = 0
 	s.prev_byte2_ = 0
-	s.storage_size_ = 0
-	s.storage_ = nil
-	s.hasher_ = nil
-	s.large_table_ = nil
-	s.large_table_size_ = 0
+	if s.hasher_ != nil {
+		s.hasher_.Common().is_prepared_ = false
+	}
 	s.cmd_code_numbits_ = 0
-	s.command_buf_ = nil
-	s.literal_buf_ = nil
 	s.next_out_ = nil
 	s.available_out_ = 0
 	s.total_out_ = 0

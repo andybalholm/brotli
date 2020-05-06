@@ -67,23 +67,41 @@ func TestEncoderEmptyWrite(t *testing.T) {
 }
 
 func TestWriter(t *testing.T) {
-	// Test basic encoder usage.
-	input := []byte("<html><body><H1>Hello world</H1></body></html>")
-	out := bytes.Buffer{}
-	e := NewWriterOptions(&out, WriterOptions{Quality: 1})
-	in := bytes.NewReader([]byte(input))
-	n, err := io.Copy(e, in)
-	if err != nil {
-		t.Errorf("Copy Error: %v", err)
-	}
-	if int(n) != len(input) {
-		t.Errorf("Copy() n=%v, want %v", n, len(input))
-	}
-	if err := e.Close(); err != nil {
-		t.Errorf("Close Error after copied %d bytes: %v", n, err)
-	}
-	if err := checkCompressedData(out.Bytes(), input); err != nil {
-		t.Error(err)
+	for level := BestSpeed; level <= BestCompression; level++ {
+		// Test basic encoder usage.
+		input := []byte("<html><body><H1>Hello world</H1></body></html>")
+		out := bytes.Buffer{}
+		e := NewWriterOptions(&out, WriterOptions{Quality: level})
+		in := bytes.NewReader([]byte(input))
+		n, err := io.Copy(e, in)
+		if err != nil {
+			t.Errorf("Copy Error: %v", err)
+		}
+		if int(n) != len(input) {
+			t.Errorf("Copy() n=%v, want %v", n, len(input))
+		}
+		if err := e.Close(); err != nil {
+			t.Errorf("Close Error after copied %d bytes: %v", n, err)
+		}
+		if err := checkCompressedData(out.Bytes(), input); err != nil {
+			t.Error(err)
+		}
+
+		out2 := bytes.Buffer{}
+		e.Reset(&out2)
+		n2, err := e.Write(input)
+		if err != nil {
+			t.Errorf("Write error after Reset: %v", err)
+		}
+		if n2 != len(input) {
+			t.Errorf("Write() after Reset n=%d, want %d", n2, len(input))
+		}
+		if err := e.Close(); err != nil {
+			t.Errorf("Close error after Reset (copied %d) bytes: %v", n2, err)
+		}
+		if !bytes.Equal(out.Bytes(), out2.Bytes()) {
+			t.Error("Compressed data after Reset doesn't equal first time")
+		}
 	}
 }
 
@@ -119,24 +137,42 @@ func TestEncoderStreams(t *testing.T) {
 }
 
 func TestEncoderLargeInput(t *testing.T) {
-	input := make([]byte, 1000000)
-	rand.Read(input)
-	out := bytes.Buffer{}
-	e := NewWriterOptions(&out, WriterOptions{Quality: 5})
-	in := bytes.NewReader(input)
+	for level := BestSpeed; level <= BestCompression; level++ {
+		input := make([]byte, 1000000)
+		rand.Read(input)
+		out := bytes.Buffer{}
+		e := NewWriterOptions(&out, WriterOptions{Quality: level})
+		in := bytes.NewReader(input)
 
-	n, err := io.Copy(e, in)
-	if err != nil {
-		t.Errorf("Copy Error: %v", err)
-	}
-	if int(n) != len(input) {
-		t.Errorf("Copy() n=%v, want %v", n, len(input))
-	}
-	if err := e.Close(); err != nil {
-		t.Errorf("Close Error after copied %d bytes: %v", n, err)
-	}
-	if err := checkCompressedData(out.Bytes(), input); err != nil {
-		t.Error(err)
+		n, err := io.Copy(e, in)
+		if err != nil {
+			t.Errorf("Copy Error: %v", err)
+		}
+		if int(n) != len(input) {
+			t.Errorf("Copy() n=%v, want %v", n, len(input))
+		}
+		if err := e.Close(); err != nil {
+			t.Errorf("Close Error after copied %d bytes: %v", n, err)
+		}
+		if err := checkCompressedData(out.Bytes(), input); err != nil {
+			t.Error(err)
+		}
+
+		out2 := bytes.Buffer{}
+		e.Reset(&out2)
+		n2, err := e.Write(input)
+		if err != nil {
+			t.Errorf("Write error after Reset: %v", err)
+		}
+		if n2 != len(input) {
+			t.Errorf("Write() after Reset n=%d, want %d", n2, len(input))
+		}
+		if err := e.Close(); err != nil {
+			t.Errorf("Close error after Reset (copied %d) bytes: %v", n2, err)
+		}
+		if !bytes.Equal(out.Bytes(), out2.Bytes()) {
+			t.Error("Compressed data after Reset doesn't equal first time")
+		}
 	}
 }
 

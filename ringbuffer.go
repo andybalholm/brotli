@@ -27,10 +27,7 @@ type ringBuffer struct {
 }
 
 func ringBufferInit(rb *ringBuffer) {
-	rb.cur_size_ = 0
 	rb.pos_ = 0
-	rb.data_ = nil
-	rb.buffer_ = nil
 }
 
 func ringBufferSetup(params *encoderParams, rb *ringBuffer) {
