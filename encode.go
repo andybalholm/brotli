@@ -1101,9 +1101,6 @@ func encoderInitState(s *Writer) {
 
 	ringBufferInit(&s.ringbuffer_)
 
-	s.commands_ = nil
-	s.cmd_alloc_size_ = 0
-
 	/* Initialize distance cache. */
 	s.dist_cache_[0] = 4
 
