@@ -1212,10 +1212,10 @@ func extendLastCommand(s *Writer, bytes *uint32, wrapped_last_processed_pos *uin
 }
 
 /*
-   Processes the accumulated input data and sets |*out_size| to the length of
+   Processes the accumulated input data and sets |s.available_out_| to the length of
    the new output meta-block, or to zero if no new output meta-block has been
    created (in this case the processed input data is buffered internally).
-   If |*out_size| is positive, |*output| points to the start of the output
+   If |s.available_out_| is positive, |s.next_out_| points to the start of the output
    data. If |is_last| or |force_flush| is true, an output meta-block is
    always created. However, until |is_last| is true encoder may retain up
    to 7 bits of the last byte of output. To force encoder to dump the remaining
@@ -1223,7 +1223,7 @@ func extendLastCommand(s *Writer, bytes *uint32, wrapped_last_processed_pos *uin
    Returns false if the size of the input data is larger than
    input_block_size().
 */
-func encodeData(s *Writer, is_last bool, force_flush bool, out_size *uint, output *[]byte) bool {
+func encodeData(s *Writer, is_last bool, force_flush bool) bool {
 	var delta uint64 = unprocessedInputSize(s)
 	var bytes uint32 = uint32(delta)
 	var wrapped_last_processed_pos uint32 = wrapPosition(s.last_processed_pos_)
@@ -1260,8 +1260,7 @@ func encodeData(s *Writer, is_last bool, force_flush bool, out_size *uint, outpu
 		if delta == 0 && !is_last {
 			/* We have no new input data and we don't have to finish the stream, so
 			   nothing to do. */
-			*out_size = 0
-
+			s.available_out_ = 0
 			return true
 		}
 
@@ -1278,8 +1277,8 @@ func encodeData(s *Writer, is_last bool, force_flush bool, out_size *uint, outpu
 		s.last_bytes_ = uint16(storage[storage_ix>>3])
 		s.last_bytes_bits_ = byte(storage_ix & 7)
 		updateLastProcessedPos(s)
-		*output = storage[0:]
-		*out_size = storage_ix >> 3
+		s.next_out_ = storage[0:]
+		s.available_out_ = storage_ix >> 3
 		return true
 	}
 	{
@@ -1338,7 +1337,7 @@ func encodeData(s *Writer, is_last bool, force_flush bool, out_size *uint, outpu
 				hasherReset(s.hasher_)
 			}
 
-			*out_size = 0
+			s.available_out_ = 0
 			return true
 		}
 	}
@@ -1354,7 +1353,7 @@ func encodeData(s *Writer, is_last bool, force_flush bool, out_size *uint, outpu
 	if !is_last && s.input_pos_ == s.last_flush_pos_ {
 		/* We have no new input data and we don't have to finish the stream, so
 		   nothing to do. */
-		*out_size = 0
+		s.available_out_ = 0
 
 		return true
 	}
@@ -1391,8 +1390,8 @@ func encodeData(s *Writer, is_last bool, force_flush bool, out_size *uint, outpu
 		   emitting an uncompressed block. */
 		copy(s.saved_dist_cache_[:], s.dist_cache_[:])
 
-		*output = storage[0:]
-		*out_size = storage_ix >> 3
+		s.next_out_ = storage[0:]
+		s.available_out_ = storage_ix >> 3
 		return true
 	}
 }
@@ -1584,7 +1583,7 @@ func processMetadata(s *Writer, available_in *uint, next_in *[]byte) bool {
 		}
 
 		if s.input_pos_ != s.last_flush_pos_ {
-			var result bool = encodeData(s, false, true, &s.available_out_, &s.next_out_)
+			var result bool = encodeData(s, false, true)
 			if !result {
 				return false
 			}
@@ -1693,7 +1692,7 @@ func encoderCompressStream(s *Writer, op int, available_in *uint, next_in *[]byt
 				var force_flush bool = ((*available_in == 0) && op == int(operationFlush))
 				var result bool
 				updateSizeHint(s, *available_in)
-				result = encodeData(s, is_last, force_flush, &s.available_out_, &s.next_out_)
+				result = encodeData(s, is_last, force_flush)
 				if !result {
 					return false
 				}
