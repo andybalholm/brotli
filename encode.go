@@ -92,8 +92,7 @@ type Writer struct {
 	last_bytes_bits_    byte
 	prev_byte_          byte
 	prev_byte2_         byte
-	storage_size_       uint
-	storage_            []byte
+	storage             []byte
 	small_table_        [1 << 10]int
 	large_table_        []int
 	large_table_size_   uint
@@ -146,14 +145,12 @@ func wrapPosition(position uint64) uint32 {
 	return result
 }
 
-func getBrotliStorage(s *Writer, size uint) []byte {
-	if s.storage_size_ < size {
-		s.storage_ = nil
-		s.storage_ = make([]byte, size)
-		s.storage_size_ = size
+func getBrotliStorage(s *Writer, size int) []byte {
+	if len(s.storage) < size {
+		s.storage = make([]byte, size)
 	}
 
-	return s.storage_
+	return s.storage
 }
 
 func hashTableSize(max_table_size uint, input_size uint) uint {
@@ -1264,7 +1261,7 @@ func encodeData(s *Writer, is_last bool, force_flush bool) bool {
 			return true
 		}
 
-		storage = getBrotliStorage(s, uint(2*bytes+503))
+		storage = getBrotliStorage(s, int(2*bytes+503))
 		storage[0] = byte(s.last_bytes_)
 		storage[1] = byte(s.last_bytes_ >> 8)
 		table = getHashTable(s, s.params.quality, uint(bytes), &table_size)
@@ -1363,7 +1360,7 @@ func encodeData(s *Writer, is_last bool, force_flush bool) bool {
 	assert(s.input_pos_-s.last_flush_pos_ <= 1<<24)
 	{
 		var metablock_size uint32 = uint32(s.input_pos_ - s.last_flush_pos_)
-		var storage []byte = getBrotliStorage(s, uint(2*metablock_size+503))
+		var storage []byte = getBrotliStorage(s, int(2*metablock_size+503))
 		var storage_ix uint = uint(s.last_bytes_bits_)
 		storage[0] = byte(s.last_bytes_)
 		storage[1] = byte(s.last_bytes_ >> 8)
@@ -1518,7 +1515,7 @@ func encoderCompressStreamFast(s *Writer, op int, available_in *uint, next_in *[
 				continue
 			}
 
-			storage = getBrotliStorage(s, max_out_size)
+			storage = getBrotliStorage(s, int(max_out_size))
 
 			storage[0] = byte(s.last_bytes_)
 			storage[1] = byte(s.last_bytes_ >> 8)
