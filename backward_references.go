@@ -31,13 +31,8 @@ func computeDistanceCode(distance uint, max_distance uint, dist_cache []int) uin
 	return distance + numDistanceShortCodes - 1
 }
 
-/* "commands" points to the next output command to write to, "*num_commands" is
-   initially the total amount of commands output by previous
-   CreateBackwardReferences calls, and must be incremented by the amount written
-   by this call. */
-func createBackwardReferences(num_bytes uint, position uint, ringbuffer []byte, ringbuffer_mask uint, params *encoderParams, hasher hasherHandle, dist_cache []int, last_insert_len *uint, commands []command, num_commands *uint, num_literals *uint) {
+func createBackwardReferences(num_bytes uint, position uint, ringbuffer []byte, ringbuffer_mask uint, params *encoderParams, hasher hasherHandle, dist_cache []int, last_insert_len *uint, commands *[]command, num_literals *uint) {
 	var max_backward_limit uint = maxBackwardLimit(params.lgwin)
-	var orig_commands []command = commands
 	var insert_length uint = *last_insert_len
 	var pos_end uint = position + num_bytes
 	var store_end uint
@@ -114,8 +109,7 @@ func createBackwardReferences(num_bytes uint, position uint, ringbuffer []byte, 
 					hasher.PrepareDistanceCache(dist_cache)
 				}
 
-				initCommand(&commands[0], &params.dist, insert_length, sr.len, sr.len_code_delta, distance_code)
-				commands = commands[1:]
+				*commands = append(*commands, makeCommand(&params.dist, insert_length, sr.len, sr.len_code_delta, distance_code))
 			}
 
 			*num_literals += insert_length
@@ -173,5 +167,4 @@ func createBackwardReferences(num_bytes uint, position uint, ringbuffer []byte, 
 
 	insert_length += pos_end - position
 	*last_insert_len = insert_length
-	*num_commands += uint(-cap(commands) + cap(orig_commands))
 }

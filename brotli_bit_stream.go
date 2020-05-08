@@ -990,7 +990,7 @@ func jumpToByteBoundary(storage_ix *uint, storage []byte) {
 	storage[*storage_ix>>3] = 0
 }
 
-func storeMetaBlock(input []byte, start_pos uint, length uint, mask uint, prev_byte byte, prev_byte2 byte, is_last bool, params *encoderParams, literal_context_mode int, commands []command, n_commands uint, mb *metaBlockSplit, storage_ix *uint, storage []byte) {
+func storeMetaBlock(input []byte, start_pos uint, length uint, mask uint, prev_byte byte, prev_byte2 byte, is_last bool, params *encoderParams, literal_context_mode int, commands []command, mb *metaBlockSplit, storage_ix *uint, storage []byte) {
 	var pos uint = start_pos
 	var i uint
 	var num_distance_symbols uint32 = params.dist.alphabet_size
@@ -1039,8 +1039,7 @@ func storeMetaBlock(input []byte, start_pos uint, length uint, mask uint, prev_b
 	buildAndStoreEntropyCodesDistance(&distance_enc, mb.distance_histograms, mb.distance_histograms_size, uint(num_distance_symbols), tree, storage_ix, storage)
 	tree = nil
 
-	for i = 0; i < n_commands; i++ {
-		var cmd command = commands[i]
+	for _, cmd := range commands {
 		var cmd_code uint = uint(cmd.cmd_prefix_)
 		storeSymbol(&command_enc, cmd_code, storage_ix, storage)
 		storeCommandExtra(&cmd, storage_ix, storage)
@@ -1090,11 +1089,9 @@ func storeMetaBlock(input []byte, start_pos uint, length uint, mask uint, prev_b
 	}
 }
 
-func buildHistograms(input []byte, start_pos uint, mask uint, commands []command, n_commands uint, lit_histo *histogramLiteral, cmd_histo *histogramCommand, dist_histo *histogramDistance) {
+func buildHistograms(input []byte, start_pos uint, mask uint, commands []command, lit_histo *histogramLiteral, cmd_histo *histogramCommand, dist_histo *histogramDistance) {
 	var pos uint = start_pos
-	var i uint
-	for i = 0; i < n_commands; i++ {
-		var cmd command = commands[i]
+	for _, cmd := range commands {
 		var j uint
 		histogramAddCommand(cmd_histo, uint(cmd.cmd_prefix_))
 		for j = uint(cmd.insert_len_); j != 0; j-- {
@@ -1109,11 +1106,9 @@ func buildHistograms(input []byte, start_pos uint, mask uint, commands []command
 	}
 }
 
-func storeDataWithHuffmanCodes(input []byte, start_pos uint, mask uint, commands []command, n_commands uint, lit_depth []byte, lit_bits []uint16, cmd_depth []byte, cmd_bits []uint16, dist_depth []byte, dist_bits []uint16, storage_ix *uint, storage []byte) {
+func storeDataWithHuffmanCodes(input []byte, start_pos uint, mask uint, commands []command, lit_depth []byte, lit_bits []uint16, cmd_depth []byte, cmd_bits []uint16, dist_depth []byte, dist_bits []uint16, storage_ix *uint, storage []byte) {
 	var pos uint = start_pos
-	var i uint
-	for i = 0; i < n_commands; i++ {
-		var cmd command = commands[i]
+	for _, cmd := range commands {
 		var cmd_code uint = uint(cmd.cmd_prefix_)
 		var j uint
 		writeBits(uint(cmd_depth[cmd_code]), uint64(cmd_bits[cmd_code]), storage_ix, storage)
@@ -1135,7 +1130,7 @@ func storeDataWithHuffmanCodes(input []byte, start_pos uint, mask uint, commands
 	}
 }
 
-func storeMetaBlockTrivial(input []byte, start_pos uint, length uint, mask uint, is_last bool, params *encoderParams, commands []command, n_commands uint, storage_ix *uint, storage []byte) {
+func storeMetaBlockTrivial(input []byte, start_pos uint, length uint, mask uint, is_last bool, params *encoderParams, commands []command, storage_ix *uint, storage []byte) {
 	var lit_histo histogramLiteral
 	var cmd_histo histogramCommand
 	var dist_histo histogramDistance
@@ -1154,7 +1149,7 @@ func storeMetaBlockTrivial(input []byte, start_pos uint, length uint, mask uint,
 	histogramClearCommand(&cmd_histo)
 	histogramClearDistance(&dist_histo)
 
-	buildHistograms(input, start_pos, mask, commands, n_commands, &lit_histo, &cmd_histo, &dist_histo)
+	buildHistograms(input, start_pos, mask, commands, &lit_histo, &cmd_histo, &dist_histo)
 
 	writeBits(13, 0, storage_ix, storage)
 
@@ -1163,13 +1158,13 @@ func storeMetaBlockTrivial(input []byte, start_pos uint, length uint, mask uint,
 	buildAndStoreHuffmanTree(cmd_histo.data_[:], numCommandSymbols, numCommandSymbols, tree, cmd_depth[:], cmd_bits[:], storage_ix, storage)
 	buildAndStoreHuffmanTree(dist_histo.data_[:], maxSimpleDistanceAlphabetSize, uint(num_distance_symbols), tree, dist_depth[:], dist_bits[:], storage_ix, storage)
 	tree = nil
-	storeDataWithHuffmanCodes(input, start_pos, mask, commands, n_commands, lit_depth[:], lit_bits[:], cmd_depth[:], cmd_bits[:], dist_depth[:], dist_bits[:], storage_ix, storage)
+	storeDataWithHuffmanCodes(input, start_pos, mask, commands, lit_depth[:], lit_bits[:], cmd_depth[:], cmd_bits[:], dist_depth[:], dist_bits[:], storage_ix, storage)
 	if is_last {
 		jumpToByteBoundary(storage_ix, storage)
 	}
 }
 
-func storeMetaBlockFast(input []byte, start_pos uint, length uint, mask uint, is_last bool, params *encoderParams, commands []command, n_commands uint, storage_ix *uint, storage []byte) {
+func storeMetaBlockFast(input []byte, start_pos uint, length uint, mask uint, is_last bool, params *encoderParams, commands []command, storage_ix *uint, storage []byte) {
 	var num_distance_symbols uint32 = params.dist.alphabet_size
 	var distance_alphabet_bits uint32 = log2FloorNonZero(uint(num_distance_symbols-1)) + 1
 
@@ -1177,15 +1172,13 @@ func storeMetaBlockFast(input []byte, start_pos uint, length uint, mask uint, is
 
 	writeBits(13, 0, storage_ix, storage)
 
-	if n_commands <= 128 {
+	if len(commands) <= 128 {
 		var histogram = [numLiteralSymbols]uint32{0}
 		var pos uint = start_pos
 		var num_literals uint = 0
-		var i uint
 		var lit_depth [numLiteralSymbols]byte
 		var lit_bits [numLiteralSymbols]uint16
-		for i = 0; i < n_commands; i++ {
-			var cmd command = commands[i]
+		for _, cmd := range commands {
 			var j uint
 			for j = uint(cmd.insert_len_); j != 0; j-- {
 				histogram[input[pos&mask]]++
@@ -1201,7 +1194,7 @@ func storeMetaBlockFast(input []byte, start_pos uint, length uint, mask uint, is
 
 		storeStaticCommandHuffmanTree(storage_ix, storage)
 		storeStaticDistanceHuffmanTree(storage_ix, storage)
-		storeDataWithHuffmanCodes(input, start_pos, mask, commands, n_commands, lit_depth[:], lit_bits[:], kStaticCommandCodeDepth[:], kStaticCommandCodeBits[:], kStaticDistanceCodeDepth[:], kStaticDistanceCodeBits[:], storage_ix, storage)
+		storeDataWithHuffmanCodes(input, start_pos, mask, commands, lit_depth[:], lit_bits[:], kStaticCommandCodeDepth[:], kStaticCommandCodeBits[:], kStaticDistanceCodeDepth[:], kStaticDistanceCodeBits[:], storage_ix, storage)
 	} else {
 		var lit_histo histogramLiteral
 		var cmd_histo histogramCommand
@@ -1215,7 +1208,7 @@ func storeMetaBlockFast(input []byte, start_pos uint, length uint, mask uint, is
 		histogramClearLiteral(&lit_histo)
 		histogramClearCommand(&cmd_histo)
 		histogramClearDistance(&dist_histo)
-		buildHistograms(input, start_pos, mask, commands, n_commands, &lit_histo, &cmd_histo, &dist_histo)
+		buildHistograms(input, start_pos, mask, commands, &lit_histo, &cmd_histo, &dist_histo)
 		buildAndStoreHuffmanTreeFast(lit_histo.data_[:], lit_histo.total_count_, /* max_bits = */
 			8, lit_depth[:], lit_bits[:], storage_ix, storage)
 
@@ -1225,7 +1218,7 @@ func storeMetaBlockFast(input []byte, start_pos uint, length uint, mask uint, is
 		buildAndStoreHuffmanTreeFast(dist_histo.data_[:], dist_histo.total_count_, /* max_bits = */
 			uint(distance_alphabet_bits), dist_depth[:], dist_bits[:], storage_ix, storage)
 
-		storeDataWithHuffmanCodes(input, start_pos, mask, commands, n_commands, lit_depth[:], lit_bits[:], cmd_depth[:], cmd_bits[:], dist_depth[:], dist_bits[:], storage_ix, storage)
+		storeDataWithHuffmanCodes(input, start_pos, mask, commands, lit_depth[:], lit_bits[:], cmd_depth[:], cmd_bits[:], dist_depth[:], dist_bits[:], storage_ix, storage)
 	}
 
 	if is_last {

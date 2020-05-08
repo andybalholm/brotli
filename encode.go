@@ -80,9 +80,7 @@ type Writer struct {
 	hasher_             hasherHandle
 	input_pos_          uint64
 	ringbuffer_         ringBuffer
-	cmd_alloc_size_     uint
-	commands_           []command
-	num_commands_       uint
+	commands            []command
 	num_literals_       uint
 	last_insert_len_    uint
 	last_flush_pos_     uint64
@@ -434,7 +432,7 @@ func chooseContextMode(params *encoderParams, data []byte, pos uint, mask uint, 
 	return contextUTF8
 }
 
-func writeMetaBlockInternal(data []byte, mask uint, last_flush_pos uint64, bytes uint, is_last bool, literal_context_mode int, params *encoderParams, prev_byte byte, prev_byte2 byte, num_literals uint, num_commands uint, commands []command, saved_dist_cache []int, dist_cache []int, storage_ix *uint, storage []byte) {
+func writeMetaBlockInternal(data []byte, mask uint, last_flush_pos uint64, bytes uint, is_last bool, literal_context_mode int, params *encoderParams, prev_byte byte, prev_byte2 byte, num_literals uint, commands []command, saved_dist_cache []int, dist_cache []int, storage_ix *uint, storage []byte) {
 	var wrapped_last_flush_pos uint32 = wrapPosition(last_flush_pos)
 	var last_bytes uint16
 	var last_bytes_bits byte
@@ -449,7 +447,7 @@ func writeMetaBlockInternal(data []byte, mask uint, last_flush_pos uint64, bytes
 		return
 	}
 
-	if !shouldCompress_encode(data, mask, last_flush_pos, bytes, num_literals, num_commands) {
+	if !shouldCompress_encode(data, mask, last_flush_pos, bytes, num_literals, uint(len(commands))) {
 		/* Restore the distance cache, as its last update by
 		   CreateBackwardReferences is now unused. */
 		copy(dist_cache, saved_dist_cache[:4])
@@ -462,9 +460,9 @@ func writeMetaBlockInternal(data []byte, mask uint, last_flush_pos uint64, bytes
 	last_bytes = uint16(storage[1])<<8 | uint16(storage[0])
 	last_bytes_bits = byte(*storage_ix)
 	if params.quality <= maxQualityForStaticEntropyCodes {
-		storeMetaBlockFast(data, uint(wrapped_last_flush_pos), bytes, mask, is_last, params, commands, num_commands, storage_ix, storage)
+		storeMetaBlockFast(data, uint(wrapped_last_flush_pos), bytes, mask, is_last, params, commands, storage_ix, storage)
 	} else if params.quality < minQualityForBlockSplit {
-		storeMetaBlockTrivial(data, uint(wrapped_last_flush_pos), bytes, mask, is_last, params, commands, num_commands, storage_ix, storage)
+		storeMetaBlockTrivial(data, uint(wrapped_last_flush_pos), bytes, mask, is_last, params, commands, storage_ix, storage)
 	} else {
 		var mb metaBlockSplit
 		initMetaBlockSplit(&mb)
@@ -475,9 +473,9 @@ func writeMetaBlockInternal(data []byte, mask uint, last_flush_pos uint64, bytes
 				decideOverLiteralContextModeling(data, uint(wrapped_last_flush_pos), bytes, mask, params.quality, params.size_hint, &num_literal_contexts, &literal_context_map)
 			}
 
-			buildMetaBlockGreedy(data, uint(wrapped_last_flush_pos), mask, prev_byte, prev_byte2, literal_context_lut, num_literal_contexts, literal_context_map, commands, num_commands, &mb)
+			buildMetaBlockGreedy(data, uint(wrapped_last_flush_pos), mask, prev_byte, prev_byte2, literal_context_lut, num_literal_contexts, literal_context_map, commands, &mb)
 		} else {
-			buildMetaBlock(data, uint(wrapped_last_flush_pos), mask, &block_params, prev_byte, prev_byte2, commands, num_commands, literal_context_mode, &mb)
+			buildMetaBlock(data, uint(wrapped_last_flush_pos), mask, &block_params, prev_byte, prev_byte2, commands, literal_context_mode, &mb)
 		}
 
 		if params.quality >= minQualityForOptimizeHistograms {
@@ -492,7 +490,7 @@ func writeMetaBlockInternal(data []byte, mask uint, last_flush_pos uint64, bytes
 			optimizeHistograms(num_effective_dist_codes, &mb)
 		}
 
-		storeMetaBlock(data, uint(wrapped_last_flush_pos), bytes, mask, prev_byte, prev_byte2, is_last, &block_params, literal_context_mode, commands, num_commands, &mb, storage_ix, storage)
+		storeMetaBlock(data, uint(wrapped_last_flush_pos), bytes, mask, prev_byte, prev_byte2, is_last, &block_params, literal_context_mode, commands, &mb, storage_ix, storage)
 		destroyMetaBlockSplit(&mb)
 	}
 
@@ -613,7 +611,7 @@ func encoderInitParams(params *encoderParams) {
 func encoderInitState(s *Writer) {
 	encoderInitParams(&s.params)
 	s.input_pos_ = 0
-	s.num_commands_ = 0
+	s.commands = s.commands[:0]
 	s.num_literals_ = 0
 	s.last_insert_len_ = 0
 	s.last_flush_pos_ = 0
@@ -712,7 +710,7 @@ func updateLastProcessedPos(s *Writer) bool {
 }
 
 func extendLastCommand(s *Writer, bytes *uint32, wrapped_last_processed_pos *uint32) {
-	var last_command *command = &s.commands_[s.num_commands_-1]
+	var last_command *command = &s.commands[len(s.commands)-1]
 	var data []byte = s.ringbuffer_.buffer_
 	var mask uint32 = s.ringbuffer_.mask_
 	var max_backward_distance uint64 = ((uint64(1)) << s.params.lgwin) - windowGap
@@ -809,22 +807,18 @@ func encodeData(s *Writer, is_last bool, force_flush bool) bool {
 	}
 	{
 		/* Theoretical max number of commands is 1 per 2 bytes. */
-		var newsize uint = uint(uint32(s.num_commands_) + bytes/2 + 1)
-		if newsize > s.cmd_alloc_size_ {
-			var new_commands []command
-
+		newsize := len(s.commands) + int(bytes)/2 + 1
+		if newsize > cap(s.commands) {
 			/* Reserve a bit more memory to allow merging with a next block
 			   without reallocation: that would impact speed. */
-			newsize += uint((bytes / 4) + 16)
+			newsize += int(bytes/4) + 16
 
-			s.cmd_alloc_size_ = newsize
-			new_commands = make([]command, newsize)
-			if s.commands_ != nil {
-				copy(new_commands, s.commands_[:s.num_commands_])
-				s.commands_ = nil
+			new_commands := make([]command, len(s.commands), newsize)
+			if s.commands != nil {
+				copy(new_commands, s.commands)
 			}
 
-			s.commands_ = new_commands
+			s.commands = new_commands
 		}
 	}
 
@@ -832,32 +826,32 @@ func encodeData(s *Writer, is_last bool, force_flush bool) bool {
 
 	literal_context_mode = chooseContextMode(&s.params, data, uint(wrapPosition(s.last_flush_pos_)), uint(mask), uint(s.input_pos_-s.last_flush_pos_))
 
-	if s.num_commands_ != 0 && s.last_insert_len_ == 0 {
+	if len(s.commands) != 0 && s.last_insert_len_ == 0 {
 		extendLastCommand(s, &bytes, &wrapped_last_processed_pos)
 	}
 
 	if s.params.quality == zopflificationQuality {
 		assert(s.params.hasher.type_ == 10)
-		createZopfliBackwardReferences(uint(bytes), uint(wrapped_last_processed_pos), data, uint(mask), &s.params, s.hasher_.(*h10), s.dist_cache_[:], &s.last_insert_len_, s.commands_[s.num_commands_:], &s.num_commands_, &s.num_literals_)
+		createZopfliBackwardReferences(uint(bytes), uint(wrapped_last_processed_pos), data, uint(mask), &s.params, s.hasher_.(*h10), s.dist_cache_[:], &s.last_insert_len_, &s.commands, &s.num_literals_)
 	} else if s.params.quality == hqZopflificationQuality {
 		assert(s.params.hasher.type_ == 10)
-		createHqZopfliBackwardReferences(uint(bytes), uint(wrapped_last_processed_pos), data, uint(mask), &s.params, s.hasher_, s.dist_cache_[:], &s.last_insert_len_, s.commands_[s.num_commands_:], &s.num_commands_, &s.num_literals_)
+		createHqZopfliBackwardReferences(uint(bytes), uint(wrapped_last_processed_pos), data, uint(mask), &s.params, s.hasher_, s.dist_cache_[:], &s.last_insert_len_, &s.commands, &s.num_literals_)
 	} else {
-		createBackwardReferences(uint(bytes), uint(wrapped_last_processed_pos), data, uint(mask), &s.params, s.hasher_, s.dist_cache_[:], &s.last_insert_len_, s.commands_[s.num_commands_:], &s.num_commands_, &s.num_literals_)
+		createBackwardReferences(uint(bytes), uint(wrapped_last_processed_pos), data, uint(mask), &s.params, s.hasher_, s.dist_cache_[:], &s.last_insert_len_, &s.commands, &s.num_literals_)
 	}
 	{
 		var max_length uint = maxMetablockSize(&s.params)
 		var max_literals uint = max_length / 8
-		var max_commands uint = max_length / 8
+		max_commands := int(max_length / 8)
 		var processed_bytes uint = uint(s.input_pos_ - s.last_flush_pos_)
 		var next_input_fits_metablock bool = (processed_bytes+inputBlockSize(s) <= max_length)
-		var should_flush bool = (s.params.quality < minQualityForBlockSplit && s.num_literals_+s.num_commands_ >= maxNumDelayedSymbols)
+		var should_flush bool = (s.params.quality < minQualityForBlockSplit && s.num_literals_+uint(len(s.commands)) >= maxNumDelayedSymbols)
 		/* If maximal possible additional block doesn't fit metablock, flush now. */
 		/* TODO: Postpone decision until next block arrives? */
 
 		/* If block splitting is not used, then flush as soon as there is some
 		   amount of commands / literals produced. */
-		if !is_last && !force_flush && !should_flush && next_input_fits_metablock && s.num_literals_ < max_literals && s.num_commands_ < max_commands {
+		if !is_last && !force_flush && !should_flush && next_input_fits_metablock && s.num_literals_ < max_literals && len(s.commands) < max_commands {
 			/* Merge with next input block. Everything will happen later. */
 			if updateLastProcessedPos(s) {
 				hasherReset(s.hasher_)
@@ -869,8 +863,7 @@ func encodeData(s *Writer, is_last bool, force_flush bool) bool {
 
 	/* Create the last insert-only command. */
 	if s.last_insert_len_ > 0 {
-		initInsertCommand(&s.commands_[s.num_commands_], s.last_insert_len_)
-		s.num_commands_++
+		s.commands = append(s.commands, makeInsertCommand(s.last_insert_len_))
 		s.num_literals_ += s.last_insert_len_
 		s.last_insert_len_ = 0
 	}
@@ -890,7 +883,7 @@ func encodeData(s *Writer, is_last bool, force_flush bool) bool {
 		var storage_ix uint = uint(s.last_bytes_bits_)
 		storage[0] = byte(s.last_bytes_)
 		storage[1] = byte(s.last_bytes_ >> 8)
-		writeMetaBlockInternal(data, uint(mask), s.last_flush_pos_, uint(metablock_size), is_last, literal_context_mode, &s.params, s.prev_byte_, s.prev_byte2_, s.num_literals_, s.num_commands_, s.commands_, s.saved_dist_cache_[:], s.dist_cache_[:], &storage_ix, storage)
+		writeMetaBlockInternal(data, uint(mask), s.last_flush_pos_, uint(metablock_size), is_last, literal_context_mode, &s.params, s.prev_byte_, s.prev_byte2_, s.num_literals_, s.commands, s.saved_dist_cache_[:], s.dist_cache_[:], &storage_ix, storage)
 		s.last_bytes_ = uint16(storage[storage_ix>>3])
 		s.last_bytes_bits_ = byte(storage_ix & 7)
 		s.last_flush_pos_ = s.input_pos_
@@ -906,7 +899,7 @@ func encodeData(s *Writer, is_last bool, force_flush bool) bool {
 			s.prev_byte2_ = data[uint32(s.last_flush_pos_-2)&mask]
 		}
 
-		s.num_commands_ = 0
+		s.commands = s.commands[:0]
 		s.num_literals_ = 0
 
 		/* Save the state of the distance cache in case we need to restore it for

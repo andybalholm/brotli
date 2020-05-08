@@ -84,14 +84,12 @@ func initDistanceParams(params *encoderParams, npostfix uint32, ndirect uint32) 
 	dist_params.max_distance = uint(max_distance)
 }
 
-func recomputeDistancePrefixes(cmds []command, num_commands uint, orig_params *distanceParams, new_params *distanceParams) {
-	var i uint
-
+func recomputeDistancePrefixes(cmds []command, orig_params *distanceParams, new_params *distanceParams) {
 	if orig_params.distance_postfix_bits == new_params.distance_postfix_bits && orig_params.num_direct_distance_codes == new_params.num_direct_distance_codes {
 		return
 	}
 
-	for i = 0; i < num_commands; i++ {
+	for i := range cmds {
 		var cmd *command = &cmds[i]
 		if commandCopyLen(cmd) != 0 && cmd.cmd_prefix_ >= 128 {
 			prefixEncodeCopyDistance(uint(commandRestoreDistanceCode(cmd, orig_params)), uint(new_params.num_direct_distance_codes), uint(new_params.distance_postfix_bits), &cmd.dist_prefix_, &cmd.dist_extra_)
@@ -99,8 +97,7 @@ func recomputeDistancePrefixes(cmds []command, num_commands uint, orig_params *d
 	}
 }
 
-func computeDistanceCost(cmds []command, num_commands uint, orig_params *distanceParams, new_params *distanceParams, cost *float64) bool {
-	var i uint
+func computeDistanceCost(cmds []command, orig_params *distanceParams, new_params *distanceParams, cost *float64) bool {
 	var equal_params bool = false
 	var dist_prefix uint16
 	var dist_extra uint32
@@ -112,8 +109,8 @@ func computeDistanceCost(cmds []command, num_commands uint, orig_params *distanc
 		equal_params = true
 	}
 
-	for i = 0; i < num_commands; i++ {
-		var cmd *command = &cmds[i]
+	for i := range cmds {
+		cmd := &cmds[i]
 		if commandCopyLen(cmd) != 0 && cmd.cmd_prefix_ >= 128 {
 			if equal_params {
 				dist_prefix = cmd.dist_prefix_
@@ -137,7 +134,7 @@ func computeDistanceCost(cmds []command, num_commands uint, orig_params *distanc
 
 var buildMetaBlock_kMaxNumberOfHistograms uint = 256
 
-func buildMetaBlock(ringbuffer []byte, pos uint, mask uint, params *encoderParams, prev_byte byte, prev_byte2 byte, cmds []command, num_commands uint, literal_context_mode int, mb *metaBlockSplit) {
+func buildMetaBlock(ringbuffer []byte, pos uint, mask uint, params *encoderParams, prev_byte byte, prev_byte2 byte, cmds []command, literal_context_mode int, mb *metaBlockSplit) {
 	var distance_histograms []histogramDistance
 	var literal_histograms []histogramLiteral
 	var literal_context_modes []int = nil
@@ -164,7 +161,7 @@ func buildMetaBlock(ringbuffer []byte, pos uint, mask uint, params *encoderParam
 				check_orig = false
 			}
 
-			skip = !computeDistanceCost(cmds, num_commands, &orig_params.dist, &new_params.dist, &dist_cost)
+			skip = !computeDistanceCost(cmds, &orig_params.dist, &new_params.dist, &dist_cost)
 			if skip || (dist_cost > best_dist_cost) {
 				break
 			}
@@ -181,7 +178,7 @@ func buildMetaBlock(ringbuffer []byte, pos uint, mask uint, params *encoderParam
 
 	if check_orig {
 		var dist_cost float64
-		computeDistanceCost(cmds, num_commands, &orig_params.dist, &orig_params.dist, &dist_cost)
+		computeDistanceCost(cmds, &orig_params.dist, &orig_params.dist, &dist_cost)
 		if dist_cost < best_dist_cost {
 			/* NB: currently unused; uncomment when more param tuning is added. */
 			/* best_dist_cost = dist_cost; */
@@ -189,9 +186,9 @@ func buildMetaBlock(ringbuffer []byte, pos uint, mask uint, params *encoderParam
 		}
 	}
 
-	recomputeDistancePrefixes(cmds, num_commands, &orig_params.dist, &params.dist)
+	recomputeDistancePrefixes(cmds, &orig_params.dist, &params.dist)
 
-	splitBlock(cmds, num_commands, ringbuffer, pos, mask, params, &mb.literal_split, &mb.command_split, &mb.distance_split)
+	splitBlock(cmds, ringbuffer, pos, mask, params, &mb.literal_split, &mb.command_split, &mb.distance_split)
 
 	if !params.disable_literal_context_modeling {
 		literal_context_multiplier = 1 << literalContextBits
@@ -214,7 +211,7 @@ func buildMetaBlock(ringbuffer []byte, pos uint, mask uint, params *encoderParam
 	mb.command_histograms = make([]histogramCommand, (mb.command_histograms_size))
 	clearHistogramsCommand(mb.command_histograms, mb.command_histograms_size)
 
-	buildHistogramsWithContext(cmds, num_commands, &mb.literal_split, &mb.command_split, &mb.distance_split, ringbuffer, pos, mask, prev_byte, prev_byte2, literal_context_modes, literal_histograms, mb.command_histograms, distance_histograms)
+	buildHistogramsWithContext(cmds, &mb.literal_split, &mb.command_split, &mb.distance_split, ringbuffer, pos, mask, prev_byte, prev_byte2, literal_context_modes, literal_histograms, mb.command_histograms, distance_histograms)
 	literal_context_modes = nil
 
 	assert(mb.literal_context_map == nil)
@@ -466,7 +463,7 @@ func mapStaticContexts(num_contexts uint, static_context_map []uint32, mb *metaB
 	}
 }
 
-func buildMetaBlockGreedyInternal(ringbuffer []byte, pos uint, mask uint, prev_byte byte, prev_byte2 byte, literal_context_lut contextLUT, num_contexts uint, static_context_map []uint32, commands []command, n_commands uint, mb *metaBlockSplit) {
+func buildMetaBlockGreedyInternal(ringbuffer []byte, pos uint, mask uint, prev_byte byte, prev_byte2 byte, literal_context_lut contextLUT, num_contexts uint, static_context_map []uint32, commands []command, mb *metaBlockSplit) {
 	var lit_blocks struct {
 		plain blockSplitterLiteral
 		ctx   contextBlockSplitter
@@ -474,8 +471,7 @@ func buildMetaBlockGreedyInternal(ringbuffer []byte, pos uint, mask uint, prev_b
 	var cmd_blocks blockSplitterCommand
 	var dist_blocks blockSplitterDistance
 	var num_literals uint = 0
-	var i uint
-	for i = 0; i < n_commands; i++ {
+	for i := range commands {
 		num_literals += uint(commands[i].insert_len_)
 	}
 
@@ -485,11 +481,10 @@ func buildMetaBlockGreedyInternal(ringbuffer []byte, pos uint, mask uint, prev_b
 		initContextBlockSplitter(&lit_blocks.ctx, 256, num_contexts, 512, 400.0, num_literals, &mb.literal_split, &mb.literal_histograms, &mb.literal_histograms_size)
 	}
 
-	initBlockSplitterCommand(&cmd_blocks, numCommandSymbols, 1024, 500.0, n_commands, &mb.command_split, &mb.command_histograms, &mb.command_histograms_size)
-	initBlockSplitterDistance(&dist_blocks, 64, 512, 100.0, n_commands, &mb.distance_split, &mb.distance_histograms, &mb.distance_histograms_size)
+	initBlockSplitterCommand(&cmd_blocks, numCommandSymbols, 1024, 500.0, uint(len(commands)), &mb.command_split, &mb.command_histograms, &mb.command_histograms_size)
+	initBlockSplitterDistance(&dist_blocks, 64, 512, 100.0, uint(len(commands)), &mb.distance_split, &mb.distance_histograms, &mb.distance_histograms_size)
 
-	for i = 0; i < n_commands; i++ {
-		var cmd command = commands[i]
+	for _, cmd := range commands {
 		var j uint
 		blockSplitterAddSymbolCommand(&cmd_blocks, uint(cmd.cmd_prefix_))
 		for j = uint(cmd.insert_len_); j != 0; j-- {
@@ -530,11 +525,11 @@ func buildMetaBlockGreedyInternal(ringbuffer []byte, pos uint, mask uint, prev_b
 	}
 }
 
-func buildMetaBlockGreedy(ringbuffer []byte, pos uint, mask uint, prev_byte byte, prev_byte2 byte, literal_context_lut contextLUT, num_contexts uint, static_context_map []uint32, commands []command, n_commands uint, mb *metaBlockSplit) {
+func buildMetaBlockGreedy(ringbuffer []byte, pos uint, mask uint, prev_byte byte, prev_byte2 byte, literal_context_lut contextLUT, num_contexts uint, static_context_map []uint32, commands []command, mb *metaBlockSplit) {
 	if num_contexts == 1 {
-		buildMetaBlockGreedyInternal(ringbuffer, pos, mask, prev_byte, prev_byte2, literal_context_lut, 1, nil, commands, n_commands, mb)
+		buildMetaBlockGreedyInternal(ringbuffer, pos, mask, prev_byte, prev_byte2, literal_context_lut, 1, nil, commands, mb)
 	} else {
-		buildMetaBlockGreedyInternal(ringbuffer, pos, mask, prev_byte, prev_byte2, literal_context_lut, num_contexts, static_context_map, commands, n_commands, mb)
+		buildMetaBlockGreedyInternal(ringbuffer, pos, mask, prev_byte, prev_byte2, literal_context_lut, num_contexts, static_context_map, commands, mb)
 	}
 }
 
