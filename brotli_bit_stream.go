@@ -1,9 +1,6 @@
 package brotli
 
-import (
-	"math"
-	"sort"
-)
+import "math"
 
 const maxHuffmanTreeSize = (2*numCommandSymbols + 1)
 
@@ -414,6 +411,10 @@ func buildAndStoreHuffmanTree(histogram []uint32, histogram_length uint, alphabe
 	}
 }
 
+func sortHuffmanTree1(v0 huffmanTree, v1 huffmanTree) bool {
+	return v0.total_count_ < v1.total_count_
+}
+
 func buildAndStoreHuffmanTreeFast(histogram []uint32, histogram_total uint, max_bits uint, depth []byte, bits []uint16, storage_ix *uint, storage []byte) {
 	var count uint = 0
 	var symbols = [4]uint{0}
@@ -470,7 +471,7 @@ func buildAndStoreHuffmanTreeFast(histogram []uint32, histogram_total uint, max_
 				var j int = n + 1
 				var k int
 
-				sort.Sort(sortHuffmanTree(tree[:n]))
+				sortHuffmanTreeItems(tree, uint(n), huffmanTreeComparator(sortHuffmanTree1))
 
 				/* The nodes are:
 				   [0, n): the sorted leaf nodes that we start with.

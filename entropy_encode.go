@@ -1,9 +1,6 @@
 package brotli
 
-import (
-	"math"
-	"sort"
-)
+import "math"
 
 /* Copyright 2010 Google Inc. All Rights Reserved.
 
@@ -24,6 +21,55 @@ func initHuffmanTree(self *huffmanTree, count uint32, left int16, right int16) {
 	self.total_count_ = count
 	self.index_left_ = left
 	self.index_right_or_value_ = right
+}
+
+/* Input size optimized Shell sort. */
+type huffmanTreeComparator func(huffmanTree, huffmanTree) bool
+
+var sortHuffmanTreeItems_gaps = []uint{132, 57, 23, 10, 4, 1}
+
+func sortHuffmanTreeItems(items []huffmanTree, n uint, comparator huffmanTreeComparator) {
+	if n < 13 {
+		/* Insertion sort. */
+		var i uint
+		for i = 1; i < n; i++ {
+			var tmp huffmanTree = items[i]
+			var k uint = i
+			var j uint = i - 1
+			for comparator(tmp, items[j]) {
+				items[k] = items[j]
+				k = j
+				if j == 0 {
+					break
+				}
+				j--
+			}
+
+			items[k] = tmp
+		}
+
+		return
+	} else {
+		var g int
+		if n < 57 {
+			g = 2
+		} else {
+			g = 0
+		}
+		for ; g < 6; g++ {
+			var gap uint = sortHuffmanTreeItems_gaps[g]
+			var i uint
+			for i = gap; i < n; i++ {
+				var j uint = i
+				var tmp huffmanTree = items[i]
+				for ; j >= gap && comparator(tmp, items[j-gap]); j -= gap {
+					items[j] = items[j-gap]
+				}
+
+				items[j] = tmp
+			}
+		}
+	}
 }
 
 /* Returns 1 if assignment of depths succeeded, otherwise 0. */
@@ -58,17 +104,12 @@ func setDepth(p0 int, pool []huffmanTree, depth []byte, max_depth int) bool {
 }
 
 /* Sort the root nodes, least popular first. */
-type sortHuffmanTree []huffmanTree
-
-func (s sortHuffmanTree) Len() int      { return len(s) }
-func (s sortHuffmanTree) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
-
-func (s sortHuffmanTree) Less(i, j int) bool {
-	if s[i].total_count_ != s[j].total_count_ {
-		return s[i].total_count_ < s[j].total_count_
+func sortHuffmanTree(v0 huffmanTree, v1 huffmanTree) bool {
+	if v0.total_count_ != v1.total_count_ {
+		return v0.total_count_ < v1.total_count_
 	}
 
-	return s[i].index_right_or_value_ > s[j].index_right_or_value_
+	return v0.index_right_or_value_ > v1.index_right_or_value_
 }
 
 /* This function will create a Huffman tree.
@@ -114,7 +155,7 @@ func createHuffmanTree(data []uint32, length uint, tree_limit int, tree []huffma
 			break
 		}
 
-		sort.Sort(sortHuffmanTree(tree[:n]))
+		sortHuffmanTreeItems(tree, n, huffmanTreeComparator(sortHuffmanTree))
 
 		/* The nodes are:
 		   [0, n): the sorted leaf nodes that we start with.
