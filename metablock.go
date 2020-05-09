@@ -1,5 +1,9 @@
 package brotli
 
+import (
+	"sync"
+)
+
 /* Copyright 2014 Google Inc. All Rights Reserved.
 
    Distributed under MIT license.
@@ -25,31 +29,30 @@ type metaBlockSplit struct {
 	distance_histograms_size  uint
 }
 
-func initMetaBlockSplit(mb *metaBlockSplit) {
-	initBlockSplit(&mb.literal_split)
-	initBlockSplit(&mb.command_split)
-	initBlockSplit(&mb.distance_split)
-	mb.literal_context_map = nil
-	mb.literal_context_map_size = 0
-	mb.distance_context_map = nil
-	mb.distance_context_map_size = 0
-	mb.literal_histograms = nil
-	mb.literal_histograms_size = 0
-	mb.command_histograms = nil
-	mb.command_histograms_size = 0
-	mb.distance_histograms = nil
-	mb.distance_histograms_size = 0
+var metaBlockPool sync.Pool
+
+func getMetaBlockSplit() *metaBlockSplit {
+	mb, _ := metaBlockPool.Get().(*metaBlockSplit)
+
+	if mb == nil {
+		mb = &metaBlockSplit{}
+	} else {
+		initBlockSplit(&mb.literal_split)
+		initBlockSplit(&mb.command_split)
+		initBlockSplit(&mb.distance_split)
+		mb.literal_context_map = mb.literal_context_map[:0]
+		mb.literal_context_map_size = 0
+		mb.distance_context_map = mb.distance_context_map[:0]
+		mb.distance_context_map_size = 0
+		mb.literal_histograms = mb.literal_histograms[:0]
+		mb.command_histograms = mb.command_histograms[:0]
+		mb.distance_histograms = mb.distance_histograms[:0]
+	}
+	return mb
 }
 
-func destroyMetaBlockSplit(mb *metaBlockSplit) {
-	destroyBlockSplit(&mb.literal_split)
-	destroyBlockSplit(&mb.command_split)
-	destroyBlockSplit(&mb.distance_split)
-	mb.literal_context_map = nil
-	mb.distance_context_map = nil
-	mb.literal_histograms = nil
-	mb.command_histograms = nil
-	mb.distance_histograms = nil
+func freeMetaBlockSplit(mb *metaBlockSplit) {
+	metaBlockPool.Put(mb)
 }
 
 func initDistanceParams(params *encoderParams, npostfix uint32, ndirect uint32) {
@@ -206,21 +209,30 @@ func buildMetaBlock(ringbuffer []byte, pos uint, mask uint, params *encoderParam
 	distance_histograms = make([]histogramDistance, distance_histograms_size)
 	clearHistogramsDistance(distance_histograms, distance_histograms_size)
 
-	assert(mb.command_histograms == nil)
 	mb.command_histograms_size = mb.command_split.num_types
-	mb.command_histograms = make([]histogramCommand, (mb.command_histograms_size))
+	if cap(mb.command_histograms) < int(mb.command_histograms_size) {
+		mb.command_histograms = make([]histogramCommand, (mb.command_histograms_size))
+	} else {
+		mb.command_histograms = mb.command_histograms[:mb.command_histograms_size]
+	}
 	clearHistogramsCommand(mb.command_histograms, mb.command_histograms_size)
 
 	buildHistogramsWithContext(cmds, &mb.literal_split, &mb.command_split, &mb.distance_split, ringbuffer, pos, mask, prev_byte, prev_byte2, literal_context_modes, literal_histograms, mb.command_histograms, distance_histograms)
 	literal_context_modes = nil
 
-	assert(mb.literal_context_map == nil)
 	mb.literal_context_map_size = mb.literal_split.num_types << literalContextBits
-	mb.literal_context_map = make([]uint32, (mb.literal_context_map_size))
+	if cap(mb.literal_context_map) < int(mb.literal_context_map_size) {
+		mb.literal_context_map = make([]uint32, (mb.literal_context_map_size))
+	} else {
+		mb.literal_context_map = mb.literal_context_map[:mb.literal_context_map_size]
+	}
 
-	assert(mb.literal_histograms == nil)
 	mb.literal_histograms_size = mb.literal_context_map_size
-	mb.literal_histograms = make([]histogramLiteral, (mb.literal_histograms_size))
+	if cap(mb.literal_histograms) < int(mb.literal_histograms_size) {
+		mb.literal_histograms = make([]histogramLiteral, (mb.literal_histograms_size))
+	} else {
+		mb.literal_histograms = mb.literal_histograms[:mb.literal_histograms_size]
+	}
 
 	clusterHistogramsLiteral(literal_histograms, literal_histograms_size, buildMetaBlock_kMaxNumberOfHistograms, mb.literal_histograms, &mb.literal_histograms_size, mb.literal_context_map)
 	literal_histograms = nil
@@ -236,13 +248,19 @@ func buildMetaBlock(ringbuffer []byte, pos uint, mask uint, params *encoderParam
 		}
 	}
 
-	assert(mb.distance_context_map == nil)
 	mb.distance_context_map_size = mb.distance_split.num_types << distanceContextBits
-	mb.distance_context_map = make([]uint32, (mb.distance_context_map_size))
+	if cap(mb.distance_context_map) < int(mb.distance_context_map_size) {
+		mb.distance_context_map = make([]uint32, (mb.distance_context_map_size))
+	} else {
+		mb.distance_context_map = mb.distance_context_map[:mb.distance_context_map_size]
+	}
 
-	assert(mb.distance_histograms == nil)
 	mb.distance_histograms_size = mb.distance_context_map_size
-	mb.distance_histograms = make([]histogramDistance, (mb.distance_histograms_size))
+	if cap(mb.distance_histograms) < int(mb.distance_histograms_size) {
+		mb.distance_histograms = make([]histogramDistance, (mb.distance_histograms_size))
+	} else {
+		mb.distance_histograms = mb.distance_histograms[:mb.distance_histograms_size]
+	}
 
 	clusterHistogramsDistance(distance_histograms, mb.distance_context_map_size, buildMetaBlock_kMaxNumberOfHistograms, mb.distance_histograms, &mb.distance_histograms_size, mb.distance_context_map)
 	distance_histograms = nil
@@ -295,9 +313,12 @@ func initContextBlockSplitter(self *contextBlockSplitter, alphabet_size uint, nu
 	brotli_ensure_capacity_uint8_t(&split.types, &split.types_alloc_size, max_num_blocks)
 	brotli_ensure_capacity_uint32_t(&split.lengths, &split.lengths_alloc_size, max_num_blocks)
 	split.num_blocks = max_num_blocks
-	assert(*histograms == nil)
 	*histograms_size = max_num_types * num_contexts
-	*histograms = make([]histogramLiteral, (*histograms_size))
+	if histograms == nil || cap(*histograms) < int(*histograms_size) {
+		*histograms = make([]histogramLiteral, (*histograms_size))
+	} else {
+		*histograms = (*histograms)[:*histograms_size]
+	}
 	self.histograms_ = *histograms
 
 	/* Clear only current histogram. */
@@ -450,9 +471,12 @@ func contextBlockSplitterAddSymbol(self *contextBlockSplitter, symbol uint, cont
 
 func mapStaticContexts(num_contexts uint, static_context_map []uint32, mb *metaBlockSplit) {
 	var i uint
-	assert(mb.literal_context_map == nil)
 	mb.literal_context_map_size = mb.literal_split.num_types << literalContextBits
-	mb.literal_context_map = make([]uint32, (mb.literal_context_map_size))
+	if cap(mb.literal_context_map) < int(mb.literal_context_map_size) {
+		mb.literal_context_map = make([]uint32, (mb.literal_context_map_size))
+	} else {
+		mb.literal_context_map = mb.literal_context_map[:mb.literal_context_map_size]
+	}
 
 	for i = 0; i < mb.literal_split.num_types; i++ {
 		var offset uint32 = uint32(i * num_contexts)

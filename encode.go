@@ -464,8 +464,7 @@ func writeMetaBlockInternal(data []byte, mask uint, last_flush_pos uint64, bytes
 	} else if params.quality < minQualityForBlockSplit {
 		storeMetaBlockTrivial(data, uint(wrapped_last_flush_pos), bytes, mask, is_last, params, commands, storage_ix, storage)
 	} else {
-		var mb metaBlockSplit
-		initMetaBlockSplit(&mb)
+		mb := getMetaBlockSplit()
 		if params.quality < minQualityForHqBlockSplitting {
 			var num_literal_contexts uint = 1
 			var literal_context_map []uint32 = nil
@@ -473,9 +472,9 @@ func writeMetaBlockInternal(data []byte, mask uint, last_flush_pos uint64, bytes
 				decideOverLiteralContextModeling(data, uint(wrapped_last_flush_pos), bytes, mask, params.quality, params.size_hint, &num_literal_contexts, &literal_context_map)
 			}
 
-			buildMetaBlockGreedy(data, uint(wrapped_last_flush_pos), mask, prev_byte, prev_byte2, literal_context_lut, num_literal_contexts, literal_context_map, commands, &mb)
+			buildMetaBlockGreedy(data, uint(wrapped_last_flush_pos), mask, prev_byte, prev_byte2, literal_context_lut, num_literal_contexts, literal_context_map, commands, mb)
 		} else {
-			buildMetaBlock(data, uint(wrapped_last_flush_pos), mask, &block_params, prev_byte, prev_byte2, commands, literal_context_mode, &mb)
+			buildMetaBlock(data, uint(wrapped_last_flush_pos), mask, &block_params, prev_byte, prev_byte2, commands, literal_context_mode, mb)
 		}
 
 		if params.quality >= minQualityForOptimizeHistograms {
@@ -487,11 +486,11 @@ func writeMetaBlockInternal(data []byte, mask uint, last_flush_pos uint64, bytes
 				num_effective_dist_codes = numHistogramDistanceSymbols
 			}
 
-			optimizeHistograms(num_effective_dist_codes, &mb)
+			optimizeHistograms(num_effective_dist_codes, mb)
 		}
 
-		storeMetaBlock(data, uint(wrapped_last_flush_pos), bytes, mask, prev_byte, prev_byte2, is_last, &block_params, literal_context_mode, commands, &mb, storage_ix, storage)
-		destroyMetaBlockSplit(&mb)
+		storeMetaBlock(data, uint(wrapped_last_flush_pos), bytes, mask, prev_byte, prev_byte2, is_last, &block_params, literal_context_mode, commands, mb, storage_ix, storage)
+		freeMetaBlockSplit(mb)
 	}
 
 	if bytes+4 < *storage_ix>>3 {
@@ -772,9 +771,14 @@ func encodeData(s *Writer, is_last bool, force_flush bool) bool {
 		return false
 	}
 
-	if s.params.quality == fastTwoPassCompressionQuality && s.command_buf_ == nil {
-		s.command_buf_ = make([]uint32, kCompressFragmentTwoPassBlockSize)
-		s.literal_buf_ = make([]byte, kCompressFragmentTwoPassBlockSize)
+	if s.params.quality == fastTwoPassCompressionQuality {
+		if s.command_buf_ == nil || cap(s.command_buf_) < int(kCompressFragmentTwoPassBlockSize) {
+			s.command_buf_ = make([]uint32, kCompressFragmentTwoPassBlockSize)
+			s.literal_buf_ = make([]byte, kCompressFragmentTwoPassBlockSize)
+		} else {
+			s.command_buf_ = s.command_buf_[:kCompressFragmentTwoPassBlockSize]
+			s.literal_buf_ = s.literal_buf_[:kCompressFragmentTwoPassBlockSize]
+		}
 	}
 
 	if s.params.quality == fastOnePassCompressionQuality || s.params.quality == fastTwoPassCompressionQuality {
@@ -975,29 +979,23 @@ func checkFlushComplete(s *Writer) {
 func encoderCompressStreamFast(s *Writer, op int, available_in *uint, next_in *[]byte) bool {
 	var block_size_limit uint = uint(1) << s.params.lgwin
 	var buf_size uint = brotli_min_size_t(kCompressFragmentTwoPassBlockSize, brotli_min_size_t(*available_in, block_size_limit))
-	var tmp_command_buf []uint32 = nil
 	var command_buf []uint32 = nil
-	var tmp_literal_buf []byte = nil
 	var literal_buf []byte = nil
 	if s.params.quality != fastOnePassCompressionQuality && s.params.quality != fastTwoPassCompressionQuality {
 		return false
 	}
 
 	if s.params.quality == fastTwoPassCompressionQuality {
-		if s.command_buf_ == nil && buf_size == kCompressFragmentTwoPassBlockSize {
-			s.command_buf_ = make([]uint32, kCompressFragmentTwoPassBlockSize)
-			s.literal_buf_ = make([]byte, kCompressFragmentTwoPassBlockSize)
+		if s.command_buf_ == nil || cap(s.command_buf_) < int(buf_size) {
+			s.command_buf_ = make([]uint32, buf_size)
+			s.literal_buf_ = make([]byte, buf_size)
+		} else {
+			s.command_buf_ = s.command_buf_[:buf_size]
+			s.literal_buf_ = s.literal_buf_[:buf_size]
 		}
 
-		if s.command_buf_ != nil {
-			command_buf = s.command_buf_
-			literal_buf = s.literal_buf_
-		} else {
-			tmp_command_buf = make([]uint32, buf_size)
-			tmp_literal_buf = make([]byte, buf_size)
-			command_buf = tmp_command_buf
-			literal_buf = tmp_literal_buf
-		}
+		command_buf = s.command_buf_
+		literal_buf = s.literal_buf_
 	}
 
 	for {
@@ -1056,8 +1054,6 @@ func encoderCompressStreamFast(s *Writer, op int, available_in *uint, next_in *[
 		break
 	}
 
-	tmp_command_buf = nil
-	tmp_literal_buf = nil
 	checkFlushComplete(s)
 	return true
 }

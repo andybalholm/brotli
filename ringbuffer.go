@@ -44,11 +44,16 @@ const kSlackForEightByteHashingEverywhere uint = 7
 /* Allocates or re-allocates data_ to the given length + plus some slack
    region before and after. Fills the slack regions with zeros. */
 func ringBufferInitBuffer(buflen uint32, rb *ringBuffer) {
-	var new_data []byte = make([]byte, (2 + uint(buflen) + kSlackForEightByteHashingEverywhere))
+	var new_data []byte
 	var i uint
+	size := 2 + int(buflen) + int(kSlackForEightByteHashingEverywhere)
+	if cap(rb.data_) < size {
+		new_data = make([]byte, size)
+	} else {
+		new_data = rb.data_[:size]
+	}
 	if rb.data_ != nil {
 		copy(new_data, rb.data_[:2+rb.cur_size_+uint32(kSlackForEightByteHashingEverywhere)])
-		rb.data_ = nil
 	}
 
 	rb.data_ = new_data

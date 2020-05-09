@@ -88,15 +88,10 @@ const clustersPerBatch = 16
 func initBlockSplit(self *blockSplit) {
 	self.num_types = 0
 	self.num_blocks = 0
-	self.types = nil
-	self.lengths = nil
+	self.types = self.types[:0]
+	self.lengths = self.lengths[:0]
 	self.types_alloc_size = 0
 	self.lengths_alloc_size = 0
-}
-
-func destroyBlockSplit(self *blockSplit) {
-	self.types = nil
-	self.lengths = nil
 }
 
 func splitBlock(cmds []command, data []byte, pos uint, mask uint, params *encoderParams, literal_split *blockSplit, insert_and_copy_split *blockSplit, dist_split *blockSplit) {
