@@ -594,6 +594,15 @@ func ensureInitialized(s *Writer) bool {
 
 func encoderInitParams(params *encoderParams) {
 	params.mode = defaultMode
+	params.quality = defaultQuality
+	params.lgwin = defaultWindow
+	initEncoderDictionary(&params.dictionary)
+	params.dist.alphabet_size = uint32(distanceAlphabetSize(0, 0, maxDistanceBits))
+	params.dist.max_distance = maxDistance
+}
+
+func encoderResetParams(params *encoderParams) {
+	params.mode = defaultMode
 	params.large_window = false
 	params.quality = defaultQuality
 	params.lgwin = defaultWindow
@@ -609,6 +618,28 @@ func encoderInitParams(params *encoderParams) {
 
 func encoderInitState(s *Writer) {
 	encoderInitParams(&s.params)
+	s.commands = s.commands[:0]
+	if s.hasher_ != nil {
+		s.hasher_.Common().is_prepared_ = false
+	}
+	s.stream_state_ = streamProcessing
+
+	ringBufferInit(&s.ringbuffer_)
+
+	/* Initialize distance cache. */
+	s.dist_cache_[0] = 4
+
+	s.dist_cache_[1] = 11
+	s.dist_cache_[2] = 15
+	s.dist_cache_[3] = 16
+
+	/* Save the state of the distance cache in case we need to restore it for
+	   emitting an uncompressed block. */
+	copy(s.saved_dist_cache_[:], s.dist_cache_[:])
+}
+
+func encoderResetState(s *Writer) {
+	encoderResetParams(&s.params)
 	s.input_pos_ = 0
 	s.commands = s.commands[:0]
 	s.num_literals_ = 0
