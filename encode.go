@@ -594,26 +594,18 @@ func ensureInitialized(s *Writer) bool {
 
 func encoderInitParams(params *encoderParams) {
 	params.mode = defaultMode
-	params.quality = defaultQuality
-	params.lgwin = defaultWindow
 	initEncoderDictionary(&params.dictionary)
 	params.dist.alphabet_size = uint32(distanceAlphabetSize(0, 0, maxDistanceBits))
 	params.dist.max_distance = maxDistance
 }
 
 func encoderResetParams(params *encoderParams) {
-	params.mode = defaultMode
 	params.large_window = false
-	params.quality = defaultQuality
-	params.lgwin = defaultWindow
 	params.lgblock = 0
 	params.size_hint = 0
 	params.disable_literal_context_modeling = false
-	initEncoderDictionary(&params.dictionary)
 	params.dist.distance_postfix_bits = 0
 	params.dist.num_direct_distance_codes = 0
-	params.dist.alphabet_size = uint32(distanceAlphabetSize(0, 0, maxDistanceBits))
-	params.dist.max_distance = maxDistance
 }
 
 func encoderInitState(s *Writer) {
@@ -639,35 +631,18 @@ func encoderInitState(s *Writer) {
 }
 
 func encoderResetState(s *Writer) {
+	encoderInitState(s)
 	encoderResetParams(&s.params)
 	s.input_pos_ = 0
-	s.commands = s.commands[:0]
 	s.num_literals_ = 0
 	s.last_insert_len_ = 0
 	s.last_flush_pos_ = 0
 	s.last_processed_pos_ = 0
 	s.prev_byte_ = 0
 	s.prev_byte2_ = 0
-	if s.hasher_ != nil {
-		s.hasher_.Common().is_prepared_ = false
-	}
 	s.cmd_code_numbits_ = 0
-	s.stream_state_ = streamProcessing
 	s.is_last_block_emitted_ = false
 	s.is_initialized_ = false
-
-	ringBufferInit(&s.ringbuffer_)
-
-	/* Initialize distance cache. */
-	s.dist_cache_[0] = 4
-
-	s.dist_cache_[1] = 11
-	s.dist_cache_[2] = 15
-	s.dist_cache_[3] = 16
-
-	/* Save the state of the distance cache in case we need to restore it for
-	   emitting an uncompressed block. */
-	copy(s.saved_dist_cache_[:], s.dist_cache_[:])
 }
 
 /*
