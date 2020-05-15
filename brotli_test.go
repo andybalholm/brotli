@@ -461,8 +461,9 @@ func BenchmarkEncodeLevelsReset(b *testing.B) {
 		w := NewWriterLevel(buf, level)
 		w.Write(opticks)
 		w.Close()
-		b.Run(fmt.Sprintf("%d(%.1f%%)", level, float64(buf.Len())/float64(len(opticks))*100), func(b *testing.B) {
+		b.Run(fmt.Sprintf("%d", level), func(b *testing.B) {
 			b.ReportAllocs()
+			b.ReportMetric(float64(len(opticks))/float64(buf.Len()), "ratio")
 			b.SetBytes(int64(len(opticks)))
 			for i := 0; i < b.N; i++ {
 				w.Reset(ioutil.Discard)
