@@ -163,7 +163,7 @@ func initBlockSplitIterator(self *blockSplitIterator, split *blockSplit) {
 	self.split_ = split
 	self.idx_ = 0
 	self.type_ = 0
-	if split.lengths != nil {
+	if len(split.lengths) > 0 {
 		self.length_ = uint(split.lengths[0])
 	} else {
 		self.length_ = 0
