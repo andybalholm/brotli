@@ -33,6 +33,9 @@ func NewReader(src io.Reader) *Reader {
 func (r *Reader) Reset(src io.Reader) error {
 	decoderStateInit(r)
 	r.src = src
+	if r.buf != nil {
+		return nil
+	}
 	r.buf = make([]byte, readBufSize)
 	return nil
 }
