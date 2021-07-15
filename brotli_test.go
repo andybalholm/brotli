@@ -7,11 +7,13 @@ package brotli
 
 import (
 	"bytes"
+	"compress/gzip"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"math"
 	"math/rand"
+	"os"
 	"testing"
 	"time"
 )
@@ -101,6 +103,46 @@ func TestWriter(t *testing.T) {
 		}
 		if !bytes.Equal(out.Bytes(), out2.Bytes()) {
 			t.Error("Compressed data after Reset doesn't equal first time")
+		}
+	}
+}
+
+func TestIssue22(t *testing.T) {
+	f, err := os.Open("testdata/issue22.gz")
+	if err != nil {
+		t.Fatalf("Error opening test data file: %v", err)
+	}
+	defer f.Close()
+
+	zr, err := gzip.NewReader(f)
+	if err != nil {
+		t.Fatalf("Error creating gzip reader: %v", err)
+	}
+
+	data, err := io.ReadAll(zr)
+	if err != nil {
+		t.Fatalf("Error reading test data: %v", err)
+	}
+
+	if len(data) != 2851073 {
+		t.Fatalf("Wrong length for test data: got %d, want 2851073", len(data))
+	}
+
+	for level := BestSpeed; level <= BestCompression; level++ {
+		out := bytes.Buffer{}
+		e := NewWriterOptions(&out, WriterOptions{Quality: level})
+		n, err := e.Write(data)
+		if err != nil {
+			t.Errorf("Error compressing data: %v", err)
+		}
+		if int(n) != len(data) {
+			t.Errorf("Write() n=%v, want %v", n, len(data))
+		}
+		if err := e.Close(); err != nil {
+			t.Errorf("Close Error after writing %d bytes: %v", n, err)
+		}
+		if err := checkCompressedData(out.Bytes(), data); err != nil {
+			t.Errorf("Error decompressing data at level %d: %v", level, err)
 		}
 	}
 }
