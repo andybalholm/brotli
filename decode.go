@@ -50,15 +50,6 @@ const (
 	decoderErrorUnreachable                 = -31
 )
 
-/**
- * The value of the last error code, negative integer.
- *
- * All other error code values are in the range from ::lastErrorCode
- * to @c -1. There are also 4 other possible non-error codes @c 0 .. @c 3 in
- * ::BrotliDecoderErrorCode enumeration.
- */
-const lastErrorCode = decoderErrorUnreachable
-
 /** Options to be used with ::BrotliDecoderSetParameter. */
 const (
 	decoderParamDisableRingBufferReallocation = 0
@@ -80,28 +71,6 @@ var kCodeLengthCodeOrder = [codeLengthCodes]byte{1, 2, 3, 4, 0, 5, 17, 6, 16, 7,
 var kCodeLengthPrefixLength = [16]byte{2, 2, 2, 3, 2, 2, 2, 4, 2, 2, 2, 3, 2, 2, 2, 4}
 
 var kCodeLengthPrefixValue = [16]byte{0, 4, 3, 2, 0, 4, 3, 1, 0, 4, 3, 2, 0, 4, 3, 5}
-
-func decoderSetParameter(state *Reader, p int, value uint32) bool {
-	if state.state != stateUninited {
-		return false
-	}
-	switch p {
-	case decoderParamDisableRingBufferReallocation:
-		if !(value == 0) {
-			state.canny_ringbuffer_allocation = 0
-		} else {
-			state.canny_ringbuffer_allocation = 1
-		}
-		return true
-
-	case decoderParamLargeWindow:
-		state.large_window = (!(value == 0))
-		return true
-
-	default:
-		return false
-	}
-}
 
 /* Saves error code and converts it to BrotliDecoderResult. */
 func saveErrorCode(s *Reader, e int) int {
