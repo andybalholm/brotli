@@ -2,6 +2,7 @@ package brotli
 
 import (
 	"errors"
+	"fmt"
 	"io"
 )
 
@@ -30,17 +31,21 @@ var (
 // It is the caller's responsibility to call Close on the Writer when done.
 // Writes may be buffered and not flushed until Close.
 func NewWriter(dst io.Writer) *Writer {
-	return NewWriterLevel(dst, DefaultCompression)
+	b, _ := NewWriterLevel(dst, DefaultCompression)
+	return b
 }
 
 // NewWriterLevel is like NewWriter but specifies the compression level instead
 // of assuming DefaultCompression.
 // The compression level can be DefaultCompression or any integer value between
 // BestSpeed and BestCompression inclusive.
-func NewWriterLevel(dst io.Writer, level int) *Writer {
+func NewWriterLevel(dst io.Writer, level int) (*Writer, error) {
+	if level < BestSpeed || level > BestCompression {
+		return nil, fmt.Errorf("brotli: invalid compression level: %d", level)
+	}
 	return NewWriterOptions(dst, WriterOptions{
 		Quality: level,
-	})
+	}), nil
 }
 
 // NewWriterOptions is like NewWriter but specifies WriterOptions

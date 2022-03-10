@@ -484,7 +484,7 @@ func BenchmarkEncodeLevels(b *testing.B) {
 			b.ReportAllocs()
 			b.SetBytes(int64(len(opticks)))
 			for i := 0; i < b.N; i++ {
-				w := NewWriterLevel(ioutil.Discard, level)
+				w, _ := NewWriterLevel(ioutil.Discard, level)
 				w.Write(opticks)
 				w.Close()
 			}
@@ -500,7 +500,7 @@ func BenchmarkEncodeLevelsReset(b *testing.B) {
 
 	for level := BestSpeed; level <= BestCompression; level++ {
 		buf := new(bytes.Buffer)
-		w := NewWriterLevel(buf, level)
+		w, _ := NewWriterLevel(buf, level)
 		w.Write(opticks)
 		w.Close()
 		b.Run(fmt.Sprintf("%d", level), func(b *testing.B) {
@@ -524,7 +524,7 @@ func BenchmarkDecodeLevels(b *testing.B) {
 
 	for level := BestSpeed; level <= BestCompression; level++ {
 		buf := new(bytes.Buffer)
-		w := NewWriterLevel(buf, level)
+		w, _ := NewWriterLevel(buf, level)
 		w.Write(opticks)
 		w.Close()
 		compressed := buf.Bytes()
