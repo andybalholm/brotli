@@ -27,7 +27,7 @@ func NewReader(src io.Reader) *Reader {
 }
 
 // Reset discards the Reader's state and makes it equivalent to the result of
-// its original state from NewReader, but writing to src instead.
+// its original state from NewReader, but reading from src instead.
 // This permits reusing a Reader rather than allocating a new one.
 // Error is always nil
 func (r *Reader) Reset(src io.Reader) error {
