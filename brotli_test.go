@@ -345,6 +345,22 @@ func TestReader(t *testing.T) {
 			"<%d bytes>",
 			got, len(content))
 	}
+
+	r.Reset(bytes.NewReader(encoded))
+	decodedOutput.Reset()
+	n, err = io.Copy(&decodedOutput, r)
+	if err != nil {
+		t.Fatalf("After Reset: Copy(): n=%v, err=%v", n, err)
+	}
+	if got := decodedOutput.Bytes(); !bytes.Equal(got, content) {
+		t.Errorf("After Reset: "+
+			"Reader output:\n"+
+			"%q\n"+
+			"want:\n"+
+			"<%d bytes>",
+			got, len(content))
+	}
+
 }
 
 func TestDecode(t *testing.T) {
