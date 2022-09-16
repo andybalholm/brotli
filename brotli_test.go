@@ -472,6 +472,48 @@ func TestEncodeDecode(t *testing.T) {
 	}
 }
 
+func TestErrorReset(t *testing.T) {
+	compress := func(input []byte) []byte {
+		var buf bytes.Buffer
+		writer := new(Writer)
+		writer.Reset(&buf)
+		writer.Write(input)
+		writer.Close()
+
+		return buf.Bytes()
+	}
+
+	corruptReader := func(reader *Reader) {
+		buf := bytes.NewBuffer([]byte("shit"))
+		reader.Reset(buf)
+		_, err := io.ReadAll(reader)
+		if err == nil {
+			t.Fatalf("successively decompressed invalid input")
+		}
+	}
+
+	decompress := func(input []byte, reader *Reader) []byte {
+		buf := bytes.NewBuffer(input)
+		reader.Reset(buf)
+		output, err := io.ReadAll(reader)
+		if err != nil {
+			t.Fatalf("failed to decompress data %s", err.Error())
+		}
+
+		return output
+	}
+
+	source := []byte("text")
+
+	compressed := compress(source)
+	reader := new(Reader)
+	corruptReader(reader)
+	decompressed := decompress(compressed, reader)
+	if string(source) != string(decompressed) {
+		t.Fatalf("decompressed data does not match original state")
+	}
+}
+
 // Encode returns content encoded with Brotli.
 func Encode(content []byte, options WriterOptions) ([]byte, error) {
 	var buf bytes.Buffer

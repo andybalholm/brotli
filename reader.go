@@ -31,6 +31,10 @@ func NewReader(src io.Reader) *Reader {
 // This permits reusing a Reader rather than allocating a new one.
 // Error is always nil
 func (r *Reader) Reset(src io.Reader) error {
+	oldBuf := r.buf
+	*r = Reader{}
+	r.buf = oldBuf
+
 	decoderStateInit(r)
 	r.src = src
 	if r.buf == nil {
