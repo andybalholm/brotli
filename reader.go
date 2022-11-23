@@ -106,3 +106,11 @@ func (r *Reader) Read(p []byte) (n int, err error) {
 		r.in = r.buf[:encN]
 	}
 }
+
+// Close implement of io.Closer
+// Compatible with gzip.Reader
+// Error is always nil
+func (r *Reader) Close(src io.Reader) error {
+	// do nothing
+	return nil
+}
