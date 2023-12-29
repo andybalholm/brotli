@@ -49,7 +49,7 @@ func (q *M4) FindMatches(dst []Match, src []byte) []Match {
 	if q.HashLen == 0 {
 		q.HashLen = 6
 	}
-	var nextEmit int
+	e := matchEmitter{Dst: dst}
 
 	if len(q.history) > q.MaxDistance*2 {
 		// Trim down the history buffer.
@@ -67,14 +67,14 @@ func (q *M4) FindMatches(dst []Match, src []byte) []Match {
 	}
 
 	// Append src to the history buffer.
-	nextEmit = len(q.history)
+	e.NextEmit = len(q.history)
 	q.history = append(q.history, src...)
 	src = q.history
 
 	// matches stores the matches that have been found but not emitted,
 	// in reverse order. (matches[0] is the most recent one.)
 	var matches [3]absoluteMatch
-	for i := nextEmit; i < len(src)-7; i++ {
+	for i := e.NextEmit; i < len(src)-7; i++ {
 		if matches[0] != (absoluteMatch{}) && i >= matches[0].End {
 			// We have found some matches, and we're far enough along that we probably
 			// won't find overlapping matches, so we might as well emit them.
@@ -83,20 +83,10 @@ func (q *M4) FindMatches(dst []Match, src []byte) []Match {
 					matches[1].End = matches[0].Start
 				}
 				if matches[1].End-matches[1].Start >= q.MinLength {
-					dst = append(dst, Match{
-						Unmatched: matches[1].Start - nextEmit,
-						Length:    matches[1].End - matches[1].Start,
-						Distance:  matches[1].Start - matches[1].Match,
-					})
-					nextEmit = matches[1].End
+					e.emit(matches[1])
 				}
 			}
-			dst = append(dst, Match{
-				Unmatched: matches[0].Start - nextEmit,
-				Length:    matches[0].End - matches[0].Start,
-				Distance:  matches[0].Start - matches[0].Match,
-			})
-			nextEmit = matches[0].End
+			e.emit(matches[0])
 			matches = [3]absoluteMatch{}
 		}
 
@@ -117,7 +107,7 @@ func (q *M4) FindMatches(dst []Match, src []byte) []Match {
 		start := i
 		match := candidate
 		end := extendMatch(src, match+4, start+4)
-		for start > nextEmit && match > 0 && src[start-1] == src[match-1] {
+		for start > e.NextEmit && match > 0 && src[start-1] == src[match-1] {
 			start--
 			match--
 		}
@@ -152,12 +142,7 @@ func (q *M4) FindMatches(dst []Match, src []byte) []Match {
 		case matches[0].Start < matches[2].End+q.MinLength:
 			// The first and third matches don't overlap, but there's no room for
 			// another match between them. Emit the first match and discard the second.
-			dst = append(dst, Match{
-				Unmatched: matches[2].Start - nextEmit,
-				Length:    matches[2].End - matches[2].Start,
-				Distance:  matches[2].Start - matches[2].Match,
-			})
-			nextEmit = matches[2].End
+			e.emit(matches[2])
 			matches = [3]absoluteMatch{
 				matches[0],
 				absoluteMatch{},
@@ -170,12 +155,7 @@ func (q *M4) FindMatches(dst []Match, src []byte) []Match {
 				matches[2].End = matches[1].Start
 			}
 			if matches[2].End-matches[2].Start >= q.MinLength {
-				dst = append(dst, Match{
-					Unmatched: matches[2].Start - nextEmit,
-					Length:    matches[2].End - matches[2].Start,
-					Distance:  matches[2].Start - matches[2].Match,
-				})
-				nextEmit = matches[2].End
+				e.emit(matches[2])
 			}
 			matches[2] = absoluteMatch{}
 		}
@@ -187,26 +167,17 @@ func (q *M4) FindMatches(dst []Match, src []byte) []Match {
 			matches[1].End = matches[0].Start
 		}
 		if matches[1].End-matches[1].Start >= q.MinLength {
-			dst = append(dst, Match{
-				Unmatched: matches[1].Start - nextEmit,
-				Length:    matches[1].End - matches[1].Start,
-				Distance:  matches[1].Start - matches[1].Match,
-			})
-			nextEmit = matches[1].End
+			e.emit(matches[1])
 		}
 	}
 	if matches[0] != (absoluteMatch{}) {
-		dst = append(dst, Match{
-			Unmatched: matches[0].Start - nextEmit,
-			Length:    matches[0].End - matches[0].Start,
-			Distance:  matches[0].Start - matches[0].Match,
-		})
-		nextEmit = matches[0].End
+		e.emit(matches[0])
 	}
 
-	if nextEmit < len(src) {
+	dst = e.Dst
+	if e.NextEmit < len(src) {
 		dst = append(dst, Match{
-			Unmatched: len(src) - nextEmit,
+			Unmatched: len(src) - e.NextEmit,
 		})
 	}
 
@@ -214,21 +185,6 @@ func (q *M4) FindMatches(dst []Match, src []byte) []Match {
 }
 
 const hashMul64 = 0x1E35A7BD1E35A7BD
-
-// An absoluteMatch is like a Match, but it stores indexes into the byte
-// stream instead of lengths.
-type absoluteMatch struct {
-	// Start is the index of the first byte.
-	Start int
-
-	// End is the index of the byte after the last byte
-	// (so that End - Start = Length).
-	End int
-
-	// Match is the index of the previous data that matches
-	// (Start - Match = Distance).
-	Match int
-}
 
 // extendMatch returns the largest k such that k <= len(src) and that
 // src[i:i+k-j] and src[j:k] have the same contents.
