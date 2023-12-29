@@ -16,6 +16,8 @@ import (
 	"os"
 	"testing"
 	"time"
+
+	"github.com/andybalholm/brotli/matchfinder"
 )
 
 func checkCompressedData(compressedData, wantOriginalData []byte) error {
@@ -594,4 +596,64 @@ func BenchmarkDecodeLevels(b *testing.B) {
 			}
 		})
 	}
+}
+
+func test(t *testing.T, filename string, m matchfinder.MatchFinder, blockSize int) {
+	data, err := ioutil.ReadFile(filename)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b := new(bytes.Buffer)
+	w := &matchfinder.Writer{
+		Dest:        b,
+		MatchFinder: m,
+		Encoder:     &Encoder{},
+		BlockSize:   blockSize,
+	}
+	w.Write(data)
+	w.Close()
+	compressed := b.Bytes()
+	sr := NewReader(bytes.NewReader(compressed))
+	decompressed, err := ioutil.ReadAll(sr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(decompressed, data) {
+		t.Fatal("decompressed output doesn't match")
+	}
+}
+
+func benchmark(b *testing.B, filename string, m matchfinder.MatchFinder, blockSize int) {
+	b.StopTimer()
+	b.ReportAllocs()
+	data, err := ioutil.ReadFile(filename)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	b.SetBytes(int64(len(data)))
+	buf := new(bytes.Buffer)
+	w := &matchfinder.Writer{
+		Dest:        buf,
+		MatchFinder: m,
+		Encoder:     &Encoder{},
+		BlockSize:   blockSize,
+	}
+	w.Write(data)
+	w.Close()
+	b.ReportMetric(float64(len(data))/float64(buf.Len()), "ratio")
+	b.StartTimer()
+	for i := 0; i < b.N; i++ {
+		w.Reset(ioutil.Discard)
+		w.Write(data)
+		w.Close()
+	}
+}
+
+func TestEncodeM4(t *testing.T) {
+	test(t, "testdata/Isaac.Newton-Opticks.txt", &matchfinder.M4{MaxDistance: 1 << 18}, 1<<16)
+}
+
+func BenchmarkEncodeM4(b *testing.B) {
+	benchmark(b, "testdata/Isaac.Newton-Opticks.txt", &matchfinder.M4{MaxDistance: 1 << 20}, 1<<16)
 }
