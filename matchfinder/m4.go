@@ -6,11 +6,6 @@ import (
 	"runtime"
 )
 
-const (
-	ssapBits = 17
-	ssapMask = (1 << ssapBits) - 1
-)
-
 // M4 is an implementation of the MatchFinder
 // interface that uses a simple hash table to find matches,
 // but the advanced parsing technique from
@@ -29,13 +24,19 @@ type M4 struct {
 	// The maximum is 8 and the default is 6.
 	HashLen int
 
-	table [1 << ssapBits]uint32
+	// TableBits is the number of bits in the hash table indexes.
+	// The default is 17 (128K entries).
+	TableBits int
+
+	table []uint32
 
 	history []byte
 }
 
 func (q *M4) Reset() {
-	q.table = [1 << ssapBits]uint32{}
+	for i := range q.table {
+		q.table[i] = 0
+	}
 	q.history = q.history[:0]
 }
 
@@ -48,6 +49,12 @@ func (q *M4) FindMatches(dst []Match, src []byte) []Match {
 	}
 	if q.HashLen == 0 {
 		q.HashLen = 6
+	}
+	if q.TableBits == 0 {
+		q.TableBits = 17
+	}
+	if len(q.table) < 1<<q.TableBits {
+		q.table = make([]uint32, 1<<q.TableBits)
 	}
 	e := matchEmitter{Dst: dst}
 
@@ -79,21 +86,16 @@ func (q *M4) FindMatches(dst []Match, src []byte) []Match {
 			// We have found some matches, and we're far enough along that we probably
 			// won't find overlapping matches, so we might as well emit them.
 			if matches[1] != (absoluteMatch{}) {
-				if matches[1].End > matches[0].Start {
-					matches[1].End = matches[0].Start
-				}
-				if matches[1].End-matches[1].Start >= q.MinLength {
-					e.emit(matches[1])
-				}
+				e.trim(matches[1], matches[0].Start, q.MinLength)
 			}
 			e.emit(matches[0])
 			matches = [3]absoluteMatch{}
 		}
 
 		// Now look for a match.
-		h := ((binary.LittleEndian.Uint64(src[i:]) & (1<<(8*q.HashLen) - 1)) * hashMul64) >> (64 - ssapBits)
-		candidate := int(q.table[h&ssapMask])
-		q.table[h&ssapMask] = uint32(i)
+		h := ((binary.LittleEndian.Uint64(src[i:]) & (1<<(8*q.HashLen) - 1)) * hashMul64) >> (64 - q.TableBits)
+		candidate := int(q.table[h])
+		q.table[h] = uint32(i)
 
 		if candidate == 0 || i-candidate > q.MaxDistance || i-candidate == matches[0].Start-matches[0].Match {
 			continue
@@ -151,24 +153,14 @@ func (q *M4) FindMatches(dst []Match, src []byte) []Match {
 
 		default:
 			// Emit the first match, shortening it if necessary to avoid overlap with the second.
-			if matches[2].End > matches[1].Start {
-				matches[2].End = matches[1].Start
-			}
-			if matches[2].End-matches[2].Start >= q.MinLength {
-				e.emit(matches[2])
-			}
+			e.trim(matches[2], matches[1].Start, q.MinLength)
 			matches[2] = absoluteMatch{}
 		}
 	}
 
 	// We've found all the matches now; emit the remaining ones.
 	if matches[1] != (absoluteMatch{}) {
-		if matches[1].End > matches[0].Start {
-			matches[1].End = matches[0].Start
-		}
-		if matches[1].End-matches[1].Start >= q.MinLength {
-			e.emit(matches[1])
-		}
+		e.trim(matches[1], matches[0].Start, q.MinLength)
 	}
 	if matches[0] != (absoluteMatch{}) {
 		e.emit(matches[0])
