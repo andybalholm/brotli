@@ -10,7 +10,7 @@ import (
 // interface that uses a simple hash table to find matches,
 // but the advanced parsing technique from
 // https://fastcompression.blogspot.com/2011/12/advanced-parsing-strategies.html,
-// except that it looks for matches at every input position.
+// except that it normally looks for matches at every input position.
 type M4 struct {
 	// MaxDistance is the maximum distance (in bytes) to look back for
 	// a match. The default is 65535.
@@ -27,6 +27,11 @@ type M4 struct {
 	// TableBits is the number of bits in the hash table indexes.
 	// The default is 17 (128K entries).
 	TableBits int
+
+	// When LimitedSearch is true, it only looks for matches at certain
+	// points in the input rather than at every bite.
+	// (This makes compression faster, but hurts the compression ratio.)
+	LimitedSearch bool
 
 	table []uint32
 
@@ -96,6 +101,10 @@ func (q *M4) FindMatches(dst []Match, src []byte) []Match {
 		h := ((binary.LittleEndian.Uint64(src[i:]) & (1<<(8*q.HashLen) - 1)) * hashMul64) >> (64 - q.TableBits)
 		candidate := int(q.table[h])
 		q.table[h] = uint32(i)
+
+		if q.LimitedSearch && i < matches[0].End && i != matches[0].End+2-q.HashLen {
+			continue
+		}
 
 		if candidate == 0 || i-candidate > q.MaxDistance || i-candidate == matches[0].Start-matches[0].Match {
 			continue

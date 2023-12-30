@@ -657,3 +657,11 @@ func TestEncodeM4(t *testing.T) {
 func BenchmarkEncodeM4(b *testing.B) {
 	benchmark(b, "testdata/Isaac.Newton-Opticks.txt", &matchfinder.M4{MaxDistance: 1 << 20}, 1<<16)
 }
+
+func TestEncodeM4Limited(t *testing.T) {
+	test(t, "testdata/Isaac.Newton-Opticks.txt", &matchfinder.M4{MaxDistance: 1 << 18, LimitedSearch: true}, 1<<16)
+}
+
+func BenchmarkEncodeM4Limited(b *testing.B) {
+	benchmark(b, "testdata/Isaac.Newton-Opticks.txt", &matchfinder.M4{MaxDistance: 1 << 20, LimitedSearch: true}, 1<<16)
+}
