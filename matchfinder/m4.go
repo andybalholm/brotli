@@ -113,25 +113,13 @@ func (q *M4) FindMatches(dst []Match, src []byte) []Match {
 			continue
 		}
 
-		// We have a 4-byte match now.
-
-		start := i
-		match := candidate
-		end := extendMatch(src, match+4, start+4)
-		for start > e.NextEmit && match > 0 && src[start-1] == src[match-1] {
-			start--
-			match--
-		}
-		if end-start <= matches[0].End-matches[0].Start {
+		m := extendMatch2(src, i, candidate, e.NextEmit)
+		if m.End-m.Start <= matches[0].End-matches[0].Start {
 			continue
 		}
 
 		matches = [3]absoluteMatch{
-			absoluteMatch{
-				Start: start,
-				End:   end,
-				Match: match,
-			},
+			m,
 			matches[0],
 			matches[1],
 		}
@@ -224,4 +212,19 @@ func extendMatch(src []byte, i, j int) int {
 	for ; j < len(src) && src[i] == src[j]; i, j = i+1, j+1 {
 	}
 	return j
+}
+
+// Given a 4-byte match at src[start] and src[candidate], extendMatch2 extends it
+// upward as far as possible, and downward no farther than to min.
+func extendMatch2(src []byte, start, candidate, min int) absoluteMatch {
+	end := extendMatch(src, candidate+4, start+4)
+	for start > min && candidate > 0 && src[start-1] == src[candidate-1] {
+		start--
+		candidate--
+	}
+	return absoluteMatch{
+		Start: start,
+		End:   end,
+		Match: candidate,
+	}
 }
