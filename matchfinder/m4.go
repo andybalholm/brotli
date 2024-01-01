@@ -29,7 +29,7 @@ type M4 struct {
 	TableBits int
 
 	// When LimitedSearch is true, it only looks for matches at certain
-	// points in the input rather than at every bite.
+	// points in the input rather than at every byte.
 	// (This makes compression faster, but hurts the compression ratio.)
 	LimitedSearch bool
 
