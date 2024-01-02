@@ -7,10 +7,10 @@ import (
 )
 
 // M4 is an implementation of the MatchFinder
-// interface that uses a simple hash table to find matches,
-// but the advanced parsing technique from
-// https://fastcompression.blogspot.com/2011/12/advanced-parsing-strategies.html,
-// except that it normally looks for matches at every input position.
+// interface that uses a hash table to find matches,
+// optional match chains,
+// and the advanced parsing technique from
+// https://fastcompression.blogspot.com/2011/12/advanced-parsing-strategies.html.
 type M4 struct {
 	// MaxDistance is the maximum distance (in bytes) to look back for
 	// a match. The default is 65535.
@@ -28,12 +28,12 @@ type M4 struct {
 	// The default is 17 (128K entries).
 	TableBits int
 
-	// When LimitedSearch is true, it only looks for matches at certain
-	// points in the input rather than at every byte.
-	// (This makes compression faster, but hurts the compression ratio.)
-	LimitedSearch bool
+	// ChainLength is how many entries to search on the "match chain" of older
+	// locations with the same hash as the current location.
+	ChainLength int
 
 	table []uint32
+	chain []uint16
 
 	history []byte
 }
@@ -43,6 +43,7 @@ func (q *M4) Reset() {
 		q.table[i] = 0
 	}
 	q.history = q.history[:0]
+	q.chain = q.chain[:0]
 }
 
 func (q *M4) FindMatches(dst []Match, src []byte) []Match {
@@ -68,6 +69,9 @@ func (q *M4) FindMatches(dst []Match, src []byte) []Match {
 		delta := len(q.history) - q.MaxDistance
 		copy(q.history, q.history[delta:])
 		q.history = q.history[:q.MaxDistance]
+		if q.ChainLength > 0 {
+			q.chain = q.chain[:q.MaxDistance]
+		}
 
 		for i, v := range q.table {
 			newV := int(v) - delta
@@ -81,6 +85,9 @@ func (q *M4) FindMatches(dst []Match, src []byte) []Match {
 	// Append src to the history buffer.
 	e.NextEmit = len(q.history)
 	q.history = append(q.history, src...)
+	if q.ChainLength > 0 {
+		q.chain = append(q.chain, make([]uint16, len(src))...)
+	}
 	src = q.history
 
 	// matches stores the matches that have been found but not emitted,
@@ -97,29 +104,61 @@ func (q *M4) FindMatches(dst []Match, src []byte) []Match {
 			matches = [3]absoluteMatch{}
 		}
 
-		// Now look for a match.
+		// Calculate and store the hash.
 		h := ((binary.LittleEndian.Uint64(src[i:]) & (1<<(8*q.HashLen) - 1)) * hashMul64) >> (64 - q.TableBits)
 		candidate := int(q.table[h])
 		q.table[h] = uint32(i)
+		if q.ChainLength > 0 && candidate != 0 {
+			delta := i - candidate
+			if delta < 1<<16 {
+				q.chain[i] = uint16(delta)
+			}
+		}
 
-		if q.LimitedSearch && i < matches[0].End && i != matches[0].End+2-q.HashLen {
+		if i < matches[0].End && i != matches[0].End+2-q.HashLen {
+			continue
+		}
+		if candidate == 0 || i-candidate > q.MaxDistance {
 			continue
 		}
 
-		if candidate == 0 || i-candidate > q.MaxDistance || i-candidate == matches[0].Start-matches[0].Match {
-			continue
-		}
-		if binary.LittleEndian.Uint32(src[candidate:]) != binary.LittleEndian.Uint32(src[i:]) {
-			continue
+		// Look for a match.
+		var currentMatch absoluteMatch
+
+		if i-candidate != matches[0].Start-matches[0].Match {
+			if binary.LittleEndian.Uint32(src[candidate:]) == binary.LittleEndian.Uint32(src[i:]) {
+				m := extendMatch2(src, i, candidate, e.NextEmit)
+				if m.End-m.Start > q.MinLength {
+					currentMatch = m
+				}
+			}
 		}
 
-		m := extendMatch2(src, i, candidate, e.NextEmit)
-		if m.End-m.Start <= matches[0].End-matches[0].Start {
+		for j := 0; j < q.ChainLength; j++ {
+			delta := q.chain[candidate]
+			if delta == 0 {
+				break
+			}
+			candidate -= int(delta)
+			if candidate <= 0 || i-candidate > q.MaxDistance {
+				break
+			}
+			if i-candidate != matches[0].Start-matches[0].Match {
+				if binary.LittleEndian.Uint32(src[candidate:]) == binary.LittleEndian.Uint32(src[i:]) {
+					m := extendMatch2(src, i, candidate, e.NextEmit)
+					if m.End-m.Start > q.MinLength && m.End-m.Start > currentMatch.End-currentMatch.Start {
+						currentMatch = m
+					}
+				}
+			}
+		}
+
+		if currentMatch.End-currentMatch.Start <= matches[0].End-matches[0].Start {
 			continue
 		}
 
 		matches = [3]absoluteMatch{
-			m,
+			currentMatch,
 			matches[0],
 			matches[1],
 		}
