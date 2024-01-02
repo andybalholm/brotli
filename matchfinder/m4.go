@@ -32,6 +32,10 @@ type M4 struct {
 	// locations with the same hash as the current location.
 	ChainLength int
 
+	// Score is the rating function used to choose the best match.
+	// The default is the length of the match.
+	Score func(AbsoluteMatch) int
+
 	table []uint32
 	chain []uint16
 
@@ -62,6 +66,12 @@ func (q *M4) FindMatches(dst []Match, src []byte) []Match {
 	if len(q.table) < 1<<q.TableBits {
 		q.table = make([]uint32, 1<<q.TableBits)
 	}
+	if q.Score == nil {
+		q.Score = func(m AbsoluteMatch) int {
+			return m.End - m.Start
+		}
+	}
+
 	e := matchEmitter{Dst: dst}
 
 	if len(q.history) > q.MaxDistance*2 {
@@ -92,16 +102,16 @@ func (q *M4) FindMatches(dst []Match, src []byte) []Match {
 
 	// matches stores the matches that have been found but not emitted,
 	// in reverse order. (matches[0] is the most recent one.)
-	var matches [3]absoluteMatch
+	var matches [3]AbsoluteMatch
 	for i := e.NextEmit; i < len(src)-7; i++ {
-		if matches[0] != (absoluteMatch{}) && i >= matches[0].End {
+		if matches[0] != (AbsoluteMatch{}) && i >= matches[0].End {
 			// We have found some matches, and we're far enough along that we probably
 			// won't find overlapping matches, so we might as well emit them.
-			if matches[1] != (absoluteMatch{}) {
+			if matches[1] != (AbsoluteMatch{}) {
 				e.trim(matches[1], matches[0].Start, q.MinLength)
 			}
 			e.emit(matches[0])
-			matches = [3]absoluteMatch{}
+			matches = [3]AbsoluteMatch{}
 		}
 
 		// Calculate and store the hash.
@@ -123,7 +133,7 @@ func (q *M4) FindMatches(dst []Match, src []byte) []Match {
 		}
 
 		// Look for a match.
-		var currentMatch absoluteMatch
+		var currentMatch AbsoluteMatch
 
 		if i-candidate != matches[0].Start-matches[0].Match {
 			if binary.LittleEndian.Uint32(src[candidate:]) == binary.LittleEndian.Uint32(src[i:]) {
@@ -146,24 +156,24 @@ func (q *M4) FindMatches(dst []Match, src []byte) []Match {
 			if i-candidate != matches[0].Start-matches[0].Match {
 				if binary.LittleEndian.Uint32(src[candidate:]) == binary.LittleEndian.Uint32(src[i:]) {
 					m := extendMatch2(src, i, candidate, e.NextEmit)
-					if m.End-m.Start > q.MinLength && m.End-m.Start > currentMatch.End-currentMatch.Start {
+					if m.End-m.Start > q.MinLength && q.Score(m) > q.Score(currentMatch) {
 						currentMatch = m
 					}
 				}
 			}
 		}
 
-		if currentMatch.End-currentMatch.Start <= matches[0].End-matches[0].Start {
+		if q.Score(currentMatch) <= q.Score(matches[0]) {
 			continue
 		}
 
-		matches = [3]absoluteMatch{
+		matches = [3]AbsoluteMatch{
 			currentMatch,
 			matches[0],
 			matches[1],
 		}
 
-		if matches[2] == (absoluteMatch{}) {
+		if matches[2] == (AbsoluteMatch{}) {
 			continue
 		}
 
@@ -171,34 +181,34 @@ func (q *M4) FindMatches(dst []Match, src []byte) []Match {
 		switch {
 		case matches[0].Start < matches[2].End:
 			// The first and third matches overlap; discard the one in between.
-			matches = [3]absoluteMatch{
+			matches = [3]AbsoluteMatch{
 				matches[0],
 				matches[2],
-				absoluteMatch{},
+				AbsoluteMatch{},
 			}
 
 		case matches[0].Start < matches[2].End+q.MinLength:
 			// The first and third matches don't overlap, but there's no room for
 			// another match between them. Emit the first match and discard the second.
 			e.emit(matches[2])
-			matches = [3]absoluteMatch{
+			matches = [3]AbsoluteMatch{
 				matches[0],
-				absoluteMatch{},
-				absoluteMatch{},
+				AbsoluteMatch{},
+				AbsoluteMatch{},
 			}
 
 		default:
 			// Emit the first match, shortening it if necessary to avoid overlap with the second.
 			e.trim(matches[2], matches[1].Start, q.MinLength)
-			matches[2] = absoluteMatch{}
+			matches[2] = AbsoluteMatch{}
 		}
 	}
 
 	// We've found all the matches now; emit the remaining ones.
-	if matches[1] != (absoluteMatch{}) {
+	if matches[1] != (AbsoluteMatch{}) {
 		e.trim(matches[1], matches[0].Start, q.MinLength)
 	}
-	if matches[0] != (absoluteMatch{}) {
+	if matches[0] != (AbsoluteMatch{}) {
 		e.emit(matches[0])
 	}
 
@@ -255,13 +265,13 @@ func extendMatch(src []byte, i, j int) int {
 
 // Given a 4-byte match at src[start] and src[candidate], extendMatch2 extends it
 // upward as far as possible, and downward no farther than to min.
-func extendMatch2(src []byte, start, candidate, min int) absoluteMatch {
+func extendMatch2(src []byte, start, candidate, min int) AbsoluteMatch {
 	end := extendMatch(src, candidate+4, start+4)
 	for start > min && candidate > 0 && src[start-1] == src[candidate-1] {
 		start--
 		candidate--
 	}
-	return absoluteMatch{
+	return AbsoluteMatch{
 		Start: start,
 		End:   end,
 		Match: candidate,

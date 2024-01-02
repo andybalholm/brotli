@@ -1,8 +1,8 @@
 package matchfinder
 
-// An absoluteMatch is like a Match, but it stores indexes into the byte
+// An AbsoluteMatch is like a Match, but it stores indexes into the byte
 // stream instead of lengths.
-type absoluteMatch struct {
+type AbsoluteMatch struct {
 	// Start is the index of the first byte.
 	Start int
 
@@ -24,7 +24,7 @@ type matchEmitter struct {
 	NextEmit int
 }
 
-func (e *matchEmitter) emit(m absoluteMatch) {
+func (e *matchEmitter) emit(m AbsoluteMatch) {
 	e.Dst = append(e.Dst, Match{
 		Unmatched: m.Start - e.NextEmit,
 		Length:    m.End - m.Start,
@@ -35,7 +35,7 @@ func (e *matchEmitter) emit(m absoluteMatch) {
 
 // trim shortens m if it extends past maxEnd. Then if the length is at least
 // minLength, the match is emitted.
-func (e *matchEmitter) trim(m absoluteMatch, maxEnd int, minLength int) {
+func (e *matchEmitter) trim(m AbsoluteMatch, maxEnd int, minLength int) {
 	if m.End > maxEnd {
 		m.End = maxEnd
 	}

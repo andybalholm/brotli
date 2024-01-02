@@ -651,45 +651,45 @@ func benchmark(b *testing.B, filename string, m matchfinder.MatchFinder, blockSi
 }
 
 func TestEncodeM4(t *testing.T) {
-	test(t, "testdata/Isaac.Newton-Opticks.txt", &matchfinder.M4{MaxDistance: 1 << 18}, 1<<16)
+	test(t, "testdata/Isaac.Newton-Opticks.txt", &matchfinder.M4{MaxDistance: 1 << 18, Score: matchScore}, 1<<16)
 }
 
 func BenchmarkEncodeM4(b *testing.B) {
-	benchmark(b, "testdata/Isaac.Newton-Opticks.txt", &matchfinder.M4{MaxDistance: 1 << 20}, 1<<16)
+	benchmark(b, "testdata/Isaac.Newton-Opticks.txt", &matchfinder.M4{MaxDistance: 1 << 20, Score: matchScore}, 1<<16)
 }
 
 func TestEncodeM4Chain1(t *testing.T) {
-	test(t, "testdata/Isaac.Newton-Opticks.txt", &matchfinder.M4{MaxDistance: 1 << 18, ChainLength: 1}, 1<<16)
+	test(t, "testdata/Isaac.Newton-Opticks.txt", &matchfinder.M4{MaxDistance: 1 << 18, ChainLength: 1, Score: matchScore}, 1<<16)
 }
 
 func BenchmarkEncodeM4Chain1(b *testing.B) {
-	benchmark(b, "testdata/Isaac.Newton-Opticks.txt", &matchfinder.M4{MaxDistance: 1 << 20, ChainLength: 1}, 1<<16)
+	benchmark(b, "testdata/Isaac.Newton-Opticks.txt", &matchfinder.M4{MaxDistance: 1 << 20, ChainLength: 1, Score: matchScore}, 1<<16)
 }
 
 func BenchmarkEncodeM4Chain2(b *testing.B) {
-	benchmark(b, "testdata/Isaac.Newton-Opticks.txt", &matchfinder.M4{MaxDistance: 1 << 20, ChainLength: 2}, 1<<16)
+	benchmark(b, "testdata/Isaac.Newton-Opticks.txt", &matchfinder.M4{MaxDistance: 1 << 20, ChainLength: 2, Score: matchScore}, 1<<16)
 }
 
 func BenchmarkEncodeM4Chain4(b *testing.B) {
-	benchmark(b, "testdata/Isaac.Newton-Opticks.txt", &matchfinder.M4{MaxDistance: 1 << 20, ChainLength: 4}, 1<<16)
+	benchmark(b, "testdata/Isaac.Newton-Opticks.txt", &matchfinder.M4{MaxDistance: 1 << 20, ChainLength: 4, Score: matchScore}, 1<<16)
 }
 
 func BenchmarkEncodeM4Chain8(b *testing.B) {
-	benchmark(b, "testdata/Isaac.Newton-Opticks.txt", &matchfinder.M4{MaxDistance: 1 << 20, ChainLength: 8}, 1<<16)
+	benchmark(b, "testdata/Isaac.Newton-Opticks.txt", &matchfinder.M4{MaxDistance: 1 << 20, ChainLength: 8, HashLen: 5, Score: matchScore}, 1<<16)
 }
 
 func BenchmarkEncodeM4Chain16(b *testing.B) {
-	benchmark(b, "testdata/Isaac.Newton-Opticks.txt", &matchfinder.M4{MaxDistance: 1 << 20, ChainLength: 16}, 1<<16)
+	benchmark(b, "testdata/Isaac.Newton-Opticks.txt", &matchfinder.M4{MaxDistance: 1 << 20, ChainLength: 16, HashLen: 5, Score: matchScore}, 1<<16)
 }
 
 func BenchmarkEncodeM4Chain32(b *testing.B) {
-	benchmark(b, "testdata/Isaac.Newton-Opticks.txt", &matchfinder.M4{MaxDistance: 1 << 20, ChainLength: 32}, 1<<16)
+	benchmark(b, "testdata/Isaac.Newton-Opticks.txt", &matchfinder.M4{MaxDistance: 1 << 20, ChainLength: 32, HashLen: 5, Score: matchScore}, 1<<16)
 }
 
 func BenchmarkEncodeM4Chain64(b *testing.B) {
-	benchmark(b, "testdata/Isaac.Newton-Opticks.txt", &matchfinder.M4{MaxDistance: 1 << 20, ChainLength: 64}, 1<<16)
+	benchmark(b, "testdata/Isaac.Newton-Opticks.txt", &matchfinder.M4{MaxDistance: 1 << 20, ChainLength: 64, HashLen: 5, Score: matchScore}, 1<<16)
 }
 
 func BenchmarkEncodeM4Chain128(b *testing.B) {
-	benchmark(b, "testdata/Isaac.Newton-Opticks.txt", &matchfinder.M4{MaxDistance: 1 << 20, ChainLength: 128}, 1<<16)
+	benchmark(b, "testdata/Isaac.Newton-Opticks.txt", &matchfinder.M4{MaxDistance: 1 << 20, ChainLength: 128, HashLen: 5, Score: matchScore}, 1<<16)
 }
