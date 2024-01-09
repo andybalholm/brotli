@@ -172,7 +172,21 @@ func (q *MultiHash) FindMatches(dst []Match, src []byte) []Match {
 			}
 		}
 
-		if currentMatch == (absoluteMatch{}) || q.score(currentMatch) <= q.score(matches[0]) {
+		if currentMatch.End-currentMatch.Start < q.MinLength {
+			continue
+		}
+
+		overlapPenalty := 0
+		if matches[0] != (absoluteMatch{}) {
+			overlapPenalty = 275
+			if currentMatch.Start <= matches[1].End {
+				// This match would completely replace the previous match,
+				// so there is no penalty for overlap.
+				overlapPenalty = 0
+			}
+		}
+
+		if q.score(currentMatch) <= q.score(matches[0])+overlapPenalty {
 			continue
 		}
 
