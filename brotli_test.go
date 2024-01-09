@@ -693,27 +693,3 @@ func BenchmarkEncodeM4Chain64(b *testing.B) {
 func BenchmarkEncodeM4Chain128(b *testing.B) {
 	benchmark(b, "testdata/Isaac.Newton-Opticks.txt", &matchfinder.M4{MaxDistance: 1 << 20, ChainLength: 128, HashLen: 5, DistanceBitCost: 57}, 1<<16)
 }
-
-func TestEncodeMultiHash6(t *testing.T) {
-	test(t, "testdata/Isaac.Newton-Opticks.txt", &matchfinder.MultiHash{MaxDistance: 1 << 18, DistanceBitCost: 57, HashLengths: []int{6}}, 1<<16)
-}
-
-func TestEncodeMultiHash6_8(t *testing.T) {
-	test(t, "testdata/Isaac.Newton-Opticks.txt", &matchfinder.MultiHash{MaxDistance: 1 << 18, DistanceBitCost: 57, HashLengths: []int{6, 8}}, 1<<16)
-}
-
-func BenchmarkEncodeMultiHash6(b *testing.B) {
-	benchmark(b, "testdata/Isaac.Newton-Opticks.txt", &matchfinder.MultiHash{MaxDistance: 1 << 20, DistanceBitCost: 57, HashLengths: []int{6}}, 1<<16)
-}
-
-func BenchmarkEncodeMultiHash5_8(b *testing.B) {
-	benchmark(b, "testdata/Isaac.Newton-Opticks.txt", &matchfinder.MultiHash{MaxDistance: 1 << 20, DistanceBitCost: 57, HashLengths: []int{5, 8}}, 1<<16)
-}
-
-func BenchmarkEncodeMultiHash5_7_9(b *testing.B) {
-	benchmark(b, "testdata/Isaac.Newton-Opticks.txt", &matchfinder.MultiHash{MaxDistance: 1 << 20, DistanceBitCost: 57, HashLengths: []int{5, 7, 9}}, 1<<16)
-}
-
-func BenchmarkEncodeMultiHash5_6_7_9(b *testing.B) {
-	benchmark(b, "testdata/Isaac.Newton-Opticks.txt", &matchfinder.MultiHash{MaxDistance: 1 << 20, DistanceBitCost: 57, HashLengths: []int{5, 6, 7, 9}}, 1<<16)
-}
