@@ -1,7 +1,5 @@
 package brotli
 
-import "github.com/andybalholm/brotli/matchfinder"
-
 /* Copyright 2010 Google Inc. All Rights Reserved.
 
    Distributed under MIT license.
@@ -55,8 +53,4 @@ func (w *bitWriter) jumpToByteBoundary() {
 	}
 	w.bits = 0
 	w.dst = dst
-}
-
-func matchScore(m matchfinder.AbsoluteMatch) int {
-	return int(backwardReferenceScore(uint(m.End-m.Start), uint(m.Start-m.Match)))
 }

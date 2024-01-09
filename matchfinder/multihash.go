@@ -2,6 +2,7 @@ package matchfinder
 
 import (
 	"encoding/binary"
+	"math/bits"
 	"sort"
 )
 
@@ -26,9 +27,14 @@ type MultiHash struct {
 	// The default is 17 (128K entries).
 	TableBits int
 
-	// Score is the rating function used to choose the best match.
-	// The default is the length of the match.
-	Score func(AbsoluteMatch) int
+	// DistanceBitCost is used when comparing two matches to see
+	// which is better. The comparison is primarily based on the length
+	// of the matches, but it can also take the distance into account,
+	// in terms of the number of bits needed to represent the distance.
+	// One byte of length is given a score of 256, so 32 (256/8) would
+	// be a reasonable first guess for the value of one bit.
+	// (The default is 0, which bases the comparison solely on length.)
+	DistanceBitCost int
 
 	tables [][]uint32
 
@@ -42,6 +48,10 @@ func (q *MultiHash) Reset() {
 		}
 	}
 	q.history = q.history[:0]
+}
+
+func (q *MultiHash) score(m absoluteMatch) int {
+	return (m.End-m.Start)*256 + bits.LeadingZeros32(uint32(m.Start-m.Match))*q.DistanceBitCost
 }
 
 func (q *MultiHash) FindMatches(dst []Match, src []byte) []Match {
@@ -58,11 +68,6 @@ func (q *MultiHash) FindMatches(dst []Match, src []byte) []Match {
 		q.tables = make([][]uint32, len(q.HashLengths))
 		for i := range q.tables {
 			q.tables[i] = make([]uint32, 1<<q.TableBits)
-		}
-	}
-	if q.Score == nil {
-		q.Score = func(m AbsoluteMatch) int {
-			return m.End - m.Start
 		}
 	}
 	sort.Ints(q.HashLengths)
@@ -94,19 +99,19 @@ func (q *MultiHash) FindMatches(dst []Match, src []byte) []Match {
 
 	// matches stores the matches that have been found but not emitted,
 	// in reverse order. (matches[0] is the most recent one.)
-	var matches [3]AbsoluteMatch
+	var matches [3]absoluteMatch
 
 	candidates := make([]int, len(q.HashLengths))
 
 	for i := e.NextEmit; i < len(src)-maxHashLen; i++ {
-		if matches[0] != (AbsoluteMatch{}) && i >= matches[0].End {
+		if matches[0] != (absoluteMatch{}) && i >= matches[0].End {
 			// We have found some matches, and we're far enough along that we probably
 			// won't find overlapping matches, so we might as well emit them.
-			if matches[1] != (AbsoluteMatch{}) {
+			if matches[1] != (absoluteMatch{}) {
 				e.trim(matches[1], matches[0].Start, q.MinLength)
 			}
 			e.emit(matches[0])
-			matches = [3]AbsoluteMatch{}
+			matches = [3]absoluteMatch{}
 		}
 
 		// Calculate and store the hashes.
@@ -124,7 +129,7 @@ func (q *MultiHash) FindMatches(dst []Match, src []byte) []Match {
 		}
 
 		// Look for a match.
-		var currentMatch AbsoluteMatch
+		var currentMatch absoluteMatch
 
 		if i < matches[0].End {
 			// If we're looking for an overlapping match, we only need to check the
@@ -161,23 +166,23 @@ func (q *MultiHash) FindMatches(dst []Match, src []byte) []Match {
 					break
 				}
 				m := extendMatch2(src, i, candidate, e.NextEmit)
-				if m.End-m.Start > q.MinLength && q.Score(m) > q.Score(currentMatch) {
+				if m.End-m.Start > q.MinLength && q.score(m) > q.score(currentMatch) {
 					currentMatch = m
 				}
 			}
 		}
 
-		if currentMatch == (AbsoluteMatch{}) || q.Score(currentMatch) <= q.Score(matches[0]) {
+		if currentMatch == (absoluteMatch{}) || q.score(currentMatch) <= q.score(matches[0]) {
 			continue
 		}
 
-		matches = [3]AbsoluteMatch{
+		matches = [3]absoluteMatch{
 			currentMatch,
 			matches[0],
 			matches[1],
 		}
 
-		if matches[2] == (AbsoluteMatch{}) {
+		if matches[2] == (absoluteMatch{}) {
 			continue
 		}
 
@@ -185,34 +190,34 @@ func (q *MultiHash) FindMatches(dst []Match, src []byte) []Match {
 		switch {
 		case matches[0].Start < matches[2].End:
 			// The first and third matches overlap; discard the one in between.
-			matches = [3]AbsoluteMatch{
+			matches = [3]absoluteMatch{
 				matches[0],
 				matches[2],
-				AbsoluteMatch{},
+				absoluteMatch{},
 			}
 
 		case matches[0].Start < matches[2].End+q.MinLength:
 			// The first and third matches don't overlap, but there's no room for
 			// another match between them. Emit the first match and discard the second.
 			e.emit(matches[2])
-			matches = [3]AbsoluteMatch{
+			matches = [3]absoluteMatch{
 				matches[0],
-				AbsoluteMatch{},
-				AbsoluteMatch{},
+				absoluteMatch{},
+				absoluteMatch{},
 			}
 
 		default:
 			// Emit the first match, shortening it if necessary to avoid overlap with the second.
 			e.trim(matches[2], matches[1].Start, q.MinLength)
-			matches[2] = AbsoluteMatch{}
+			matches[2] = absoluteMatch{}
 		}
 	}
 
 	// We've found all the matches now; emit the remaining ones.
-	if matches[1] != (AbsoluteMatch{}) {
+	if matches[1] != (absoluteMatch{}) {
 		e.trim(matches[1], matches[0].Start, q.MinLength)
 	}
-	if matches[0] != (AbsoluteMatch{}) {
+	if matches[0] != (absoluteMatch{}) {
 		e.emit(matches[0])
 	}
 
