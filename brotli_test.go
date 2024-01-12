@@ -693,3 +693,19 @@ func BenchmarkEncodeM4Chain64(b *testing.B) {
 func BenchmarkEncodeM4Chain128(b *testing.B) {
 	benchmark(b, "testdata/Isaac.Newton-Opticks.txt", &matchfinder.M4{MaxDistance: 1 << 20, ChainLength: 128, HashLen: 5, DistanceBitCost: 57}, 1<<16)
 }
+
+func TestEncodeM0(t *testing.T) {
+	test(t, "testdata/Isaac.Newton-Opticks.txt", matchfinder.M0{}, 1<<16)
+}
+
+func BenchmarkEncodeM0(b *testing.B) {
+	benchmark(b, "testdata/Isaac.Newton-Opticks.txt", matchfinder.M0{}, 1<<16)
+}
+
+func TestEncodeM0Lazy(t *testing.T) {
+	test(t, "testdata/Isaac.Newton-Opticks.txt", matchfinder.M0{Lazy: true}, 1<<16)
+}
+
+func BenchmarkEncodeM0Lazy(b *testing.B) {
+	benchmark(b, "testdata/Isaac.Newton-Opticks.txt", matchfinder.M0{Lazy: true}, 1<<16)
+}
