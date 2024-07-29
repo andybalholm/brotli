@@ -14,10 +14,12 @@ import (
 	"math"
 	"math/rand"
 	"os"
+	"strconv"
 	"testing"
 	"time"
 
 	"github.com/andybalholm/brotli/matchfinder"
+	"github.com/xyproto/randomstring"
 )
 
 func checkCompressedData(compressedData, wantOriginalData []byte) error {
@@ -739,4 +741,46 @@ func TestEncodeM0Lazy(t *testing.T) {
 
 func BenchmarkEncodeM0Lazy(b *testing.B) {
 	benchmark(b, "testdata/Isaac.Newton-Opticks.txt", matchfinder.M0{Lazy: true}, 1<<16)
+}
+
+func TestIssue51(t *testing.T) {
+	for i := 65536; i <= 65536*4; i += 65536 {
+		t.Run("compress data length: "+strconv.Itoa(i)+"bytes", func(t *testing.T) {
+			dataStr := randomstring.HumanFriendlyString(i)
+			dataBytes := []byte(dataStr)
+			buf := bytes.Buffer{}
+			w := NewWriterV2(&buf, 4)
+
+			n, err := w.Write(dataBytes)
+			if err != nil {
+				t.Fatalf("Error while compressing data: %v", err)
+			}
+			if n != len(dataBytes) {
+				t.Fatalf("Bytes written (%d) != len(databytes) (%d)", n, len(dataBytes))
+			}
+			err = w.Close()
+			if err != nil {
+				t.Fatalf("Error closing writer: %v", err)
+			}
+
+			r := NewReader(&buf)
+			dst := make([]byte, len(dataBytes)+100)
+			p := dst
+			total := 0
+			for {
+				n1, err1 := r.Read(p)
+				if err1 != nil {
+					if err1 != io.EOF {
+						t.Fatal(err1)
+					}
+					break
+				}
+				total += n1
+				p = p[n1:]
+			}
+			if !bytes.Equal(dst[:total], dataBytes) {
+				t.Fatal("Decompressed bytes don't match")
+			}
+		})
+	}
 }
