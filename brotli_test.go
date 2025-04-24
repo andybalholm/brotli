@@ -784,3 +784,15 @@ func TestIssue51(t *testing.T) {
 		})
 	}
 }
+
+func TestIssue58(t *testing.T) {
+	content := []byte("---\nthis-is-not-brotli: \"it is actually yaml\"")
+	input := bytes.NewBuffer(content)
+
+	r := NewReader(input)
+
+	buf, err := io.ReadAll(r)
+	if err == nil {
+		t.Fatalf("expected error, got none and read:\n%x\n%s\n%v", buf, buf, buf)
+	}
+}
