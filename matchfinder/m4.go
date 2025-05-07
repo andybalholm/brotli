@@ -261,7 +261,7 @@ const hashMul64 = 0x1E35A7BD1E35A7BD
 //	0 <= i && i < j && j <= len(src)
 func extendMatch(src []byte, i, j int) int {
 	switch runtime.GOARCH {
-	case "amd64":
+	case "amd64", "arm64":
 		// As long as we are 8 or more bytes before the end of src, we can load and
 		// compare 8 bytes at a time. If those 8 bytes are equal, repeat.
 		for j+8 < len(src) {
