@@ -123,6 +123,18 @@ func (q *M4) FindMatches(dst []Match, src []byte) []Match {
 			matches = [3]absoluteMatch{}
 		}
 
+		// Look for a repeat match one byte after the current position.
+		if matches[0] == (absoluteMatch{}) && len(e.Dst) > 0 {
+			prevDistance := e.Dst[len(e.Dst)-1].Distance
+			if binary.LittleEndian.Uint32(src[i+1:]) == binary.LittleEndian.Uint32(src[i+1-prevDistance:]) {
+				// We have a 4-byte match.
+				m := extendMatch2(src, i+1, i+1-prevDistance, e.NextEmit+1)
+				if m.End-m.Start >= q.MinLength {
+					matches[0] = m
+				}
+			}
+		}
+
 		// Calculate and store the hash.
 		h := ((binary.LittleEndian.Uint64(src[i:]) & (1<<(8*q.HashLen) - 1)) * hashMul64) >> (64 - q.TableBits)
 		candidate := int(q.table[h])
