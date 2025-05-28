@@ -1,6 +1,7 @@
 package matchfinder
 
 import (
+	"bytes"
 	"encoding/binary"
 	"math/bits"
 	"runtime"
@@ -232,6 +233,25 @@ func (q *M4) FindMatches(dst []Match, src []byte) []Match {
 			// Emit the first match, shortening it if necessary to avoid overlap with the second.
 			if matches[2].End > matches[1].Start {
 				matches[2].End = matches[1].Start
+				if q.ChainLength > 0 && matches[2].End-matches[2].Start >= q.MinLength {
+					// Since the match length was trimmed, we may be able to find a closer match
+					// to replace it.
+					pos := matches[2].Start
+					for {
+						delta := int(q.chain[pos])
+						if delta == 0 {
+							break
+						}
+						pos -= delta
+						if pos <= matches[2].Match {
+							break
+						}
+						if bytes.Equal(src[matches[2].Start:matches[2].End], src[pos:pos+matches[2].End-matches[2].Start]) {
+							matches[2].Match = pos
+							break
+						}
+					}
+				}
 			}
 			if matches[2].End-matches[2].Start >= q.MinLength && q.score(matches[2]) > 0 {
 				e.emit(matches[2])
