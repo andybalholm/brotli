@@ -727,6 +727,58 @@ func BenchmarkEncodeM4Chain256(b *testing.B) {
 	benchmark(b, "testdata/Isaac.Newton-Opticks.txt", &matchfinder.M4{MaxDistance: 1 << 20, ChainLength: 256, HashLen: 5, DistanceBitCost: 66}, 1<<16)
 }
 
+func TestEncodePathfinder(t *testing.T) {
+	test(t, "testdata/Isaac.Newton-Opticks.txt", &matchfinder.Pathfinder{MaxDistance: 1 << 18}, 1<<16)
+}
+
+func TestEncodePathfinderChain256(t *testing.T) {
+	test(t, "testdata/Isaac.Newton-Opticks.txt", &matchfinder.Pathfinder{MaxDistance: 1 << 18, ChainLength: 256}, 1<<16)
+}
+
+func BenchmarkEncodePathfinder(b *testing.B) {
+	benchmark(b, "testdata/Isaac.Newton-Opticks.txt", &matchfinder.Pathfinder{MaxDistance: 1 << 20}, 1<<16)
+}
+
+func TestEncodePathfinderChain1(t *testing.T) {
+	test(t, "testdata/Isaac.Newton-Opticks.txt", &matchfinder.Pathfinder{MaxDistance: 1 << 18, ChainLength: 1}, 1<<16)
+}
+
+func BenchmarkEncodePathfinderChain1(b *testing.B) {
+	benchmark(b, "testdata/Isaac.Newton-Opticks.txt", &matchfinder.Pathfinder{MaxDistance: 1 << 20, ChainLength: 1}, 1<<16)
+}
+
+func BenchmarkEncodePathfinderChain2(b *testing.B) {
+	benchmark(b, "testdata/Isaac.Newton-Opticks.txt", &matchfinder.Pathfinder{MaxDistance: 1 << 20, ChainLength: 2}, 1<<16)
+}
+
+func BenchmarkEncodePathfinderChain4(b *testing.B) {
+	benchmark(b, "testdata/Isaac.Newton-Opticks.txt", &matchfinder.Pathfinder{MaxDistance: 1 << 20, ChainLength: 4}, 1<<16)
+}
+
+func BenchmarkEncodePathfinderChain8(b *testing.B) {
+	benchmark(b, "testdata/Isaac.Newton-Opticks.txt", &matchfinder.Pathfinder{MaxDistance: 1 << 20, ChainLength: 8, HashLen: 5}, 1<<16)
+}
+
+func BenchmarkEncodePathfinderChain16(b *testing.B) {
+	benchmark(b, "testdata/Isaac.Newton-Opticks.txt", &matchfinder.Pathfinder{MaxDistance: 1 << 20, ChainLength: 16, HashLen: 5}, 1<<16)
+}
+
+func BenchmarkEncodePathfinderChain32(b *testing.B) {
+	benchmark(b, "testdata/Isaac.Newton-Opticks.txt", &matchfinder.Pathfinder{MaxDistance: 1 << 20, ChainLength: 32, HashLen: 5}, 1<<16)
+}
+
+func BenchmarkEncodePathfinderChain64(b *testing.B) {
+	benchmark(b, "testdata/Isaac.Newton-Opticks.txt", &matchfinder.Pathfinder{MaxDistance: 1 << 20, ChainLength: 64, HashLen: 5}, 1<<16)
+}
+
+func BenchmarkEncodePathfinderChain128(b *testing.B) {
+	benchmark(b, "testdata/Isaac.Newton-Opticks.txt", &matchfinder.Pathfinder{MaxDistance: 1 << 20, ChainLength: 128, HashLen: 5}, 1<<16)
+}
+
+func BenchmarkEncodePathfinderChain256(b *testing.B) {
+	benchmark(b, "testdata/Isaac.Newton-Opticks.txt", &matchfinder.Pathfinder{MaxDistance: 1 << 20, ChainLength: 256, HashLen: 4}, 1<<16)
+}
+
 func TestEncodeM0(t *testing.T) {
 	test(t, "testdata/Isaac.Newton-Opticks.txt", matchfinder.M0{}, 1<<16)
 }
