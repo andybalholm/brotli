@@ -43,7 +43,7 @@ type M4 struct {
 	DistanceBitCost int
 
 	table []uint32
-	chain []uint16
+	chain []uint32
 
 	history []byte
 }
@@ -101,7 +101,7 @@ func (q *M4) FindMatches(dst []Match, src []byte) []Match {
 	e.NextEmit = len(q.history)
 	q.history = append(q.history, src...)
 	if q.ChainLength > 0 {
-		q.chain = append(q.chain, make([]uint16, len(src))...)
+		q.chain = append(q.chain, make([]uint32, len(src))...)
 	}
 	src = q.history
 
@@ -142,9 +142,7 @@ func (q *M4) FindMatches(dst []Match, src []byte) []Match {
 		q.table[h] = uint32(i)
 		if q.ChainLength > 0 && candidate != 0 {
 			delta := i - candidate
-			if delta < 1<<16 {
-				q.chain[i] = uint16(delta)
-			}
+			q.chain[i] = uint32(delta)
 		}
 
 		if i < matches[0].End && i != matches[0].End+2-q.HashLen {
