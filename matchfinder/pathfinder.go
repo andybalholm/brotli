@@ -31,7 +31,7 @@ type Pathfinder struct {
 	ChainLength int
 
 	table []uint32
-	chain []uint16
+	chain []uint32
 
 	history  []byte
 	arrivals []arrival
@@ -57,7 +57,7 @@ type arrival struct {
 }
 
 const (
-	baseMatchCost   float32 = 5
+	baseMatchCost   float32 = 4
 	repeatMatchCost float32 = 6
 )
 
@@ -106,9 +106,7 @@ func (q *Pathfinder) FindMatches(dst []Match, src []byte) []Match {
 		delta := len(q.history) - q.MaxDistance
 		copy(q.history, q.history[delta:])
 		q.history = q.history[:q.MaxDistance]
-		if q.ChainLength > 0 {
-			q.chain = q.chain[:q.MaxDistance]
-		}
+		q.chain = q.chain[:q.MaxDistance]
 
 		for i, v := range q.table {
 			newV := max(int(v)-delta, 0)
@@ -119,10 +117,19 @@ func (q *Pathfinder) FindMatches(dst []Match, src []byte) []Match {
 	// Append src to the history buffer.
 	historyLen := len(q.history)
 	q.history = append(q.history, src...)
-	if q.ChainLength > 0 {
-		q.chain = append(q.chain, make([]uint16, len(src))...)
-	}
+	q.chain = append(q.chain, make([]uint32, len(src))...)
 	src = q.history
+
+	// Calculate hashes and build the chain.
+	for i := historyLen; i < len(src)-7; i++ {
+		h := ((binary.LittleEndian.Uint64(src[i:]) & (1<<(8*q.HashLen) - 1)) * hashMul64) >> (64 - q.TableBits)
+		candidate := int(q.table[h])
+		q.table[h] = uint32(i)
+		if candidate != 0 {
+			delta := i - candidate
+			q.chain[i] = uint32(delta)
+		}
+	}
 
 	for i := historyLen; i < len(src); i++ {
 		var arrivedHere arrival
@@ -161,17 +168,12 @@ func (q *Pathfinder) FindMatches(dst []Match, src []byte) []Match {
 			}
 		}
 
-		// Calculate and store the hash.
-		h := ((binary.LittleEndian.Uint64(src[i:]) & (1<<(8*q.HashLen) - 1)) * hashMul64) >> (64 - q.TableBits)
-		candidate := int(q.table[h])
-		q.table[h] = uint32(i)
-		if q.ChainLength > 0 && candidate != 0 {
-			delta := i - candidate
-			if delta < 1<<16 {
-				q.chain[i] = uint16(delta)
-			}
+		delta := q.chain[i]
+		if delta == 0 {
+			continue
 		}
-		if candidate == 0 || i-candidate > q.MaxDistance {
+		candidate := i - int(delta)
+		if candidate <= 0 || i-candidate > q.MaxDistance {
 			continue
 		}
 
