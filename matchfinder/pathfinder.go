@@ -215,6 +215,7 @@ func (q *Pathfinder) FindMatches(dst []Match, src []byte) []Match {
 
 	slices.SortFunc(foundMatches, func(a, b absoluteMatch) int { return a.Start - b.Start })
 	matchIndex := 0
+	var pending absoluteMatch
 
 	for i := historyLen; i < len(src); i++ {
 		var arrivedHere arrival
@@ -234,6 +235,9 @@ func (q *Pathfinder) FindMatches(dst []Match, src []byte) []Match {
 		for matchIndex < len(foundMatches) && foundMatches[matchIndex].Start == i {
 			m := foundMatches[matchIndex]
 			matchIndex++
+			if m.End > pending.End {
+				pending = m
+			}
 			matchCost := baseMatchCost + float32(bits.Len(uint(m.Start-m.Match)))
 			if i > historyLen && arrivedHere.length == 0 && arrivedHere.distance == uint32(m.Start-m.Match) {
 				matchCost = repeatMatchCost
@@ -244,6 +248,23 @@ func (q *Pathfinder) FindMatches(dst []Match, src []byte) []Match {
 					*a = arrival{
 						length:   uint32(j - m.Start),
 						distance: uint32(m.Start - m.Match),
+						cost:     arrivedHere.cost + matchCost,
+					}
+				}
+			}
+		}
+
+		// If a match from an earlier position extends far enough past the current
+		// position, try using the tail of it, starting from here.
+		if pending.Start != i && pending.End >= i+q.MinLength &&
+			!(arrivedHere.length != 0 && arrivedHere.distance == uint32(pending.Start-pending.Match)) {
+			matchCost := baseMatchCost + float32(bits.Len(uint(pending.Start-pending.Match)))
+			for j := i + q.MinLength; j <= pending.End; j++ {
+				a := &arrivals[j-historyLen-1]
+				if a.cost == 0 || arrivedHere.cost+matchCost < a.cost {
+					*a = arrival{
+						length:   uint32(j - i),
+						distance: uint32(pending.Start - pending.Match),
 						cost:     arrivedHere.cost + matchCost,
 					}
 				}
