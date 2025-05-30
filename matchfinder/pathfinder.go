@@ -33,9 +33,13 @@ type Pathfinder struct {
 	table []uint32
 	chain []uint32
 
-	history  []byte
-	arrivals []arrival
-	matches  []Match
+	history []byte
+
+	// holding onto buffers to reduce allocations:
+
+	arrivals     []arrival
+	foundMatches []absoluteMatch
+	matches      []Match
 }
 
 func (q *Pathfinder) Reset() {
@@ -131,6 +135,87 @@ func (q *Pathfinder) FindMatches(dst []Match, src []byte) []Match {
 		}
 	}
 
+	// Look for matches, and collect them in foundMatches. Later we'll figure out
+	// which ones to actually use.
+	foundMatches := q.foundMatches[:0]
+	var prevMatch absoluteMatch
+	i := historyLen
+	for i < len(src)-7 {
+		delta := q.chain[i]
+		if delta == 0 {
+			i++
+			continue
+		}
+		candidate := i - int(delta)
+		if candidate <= 0 || i-candidate > q.MaxDistance {
+			i++
+			continue
+		}
+
+		var currentMatch absoluteMatch
+
+		if i >= prevMatch.End && prevMatch != (absoluteMatch{}) {
+			// Look for a repeat match at i+1.
+			prevDistance := prevMatch.Start - prevMatch.Match
+			if binary.LittleEndian.Uint32(src[i+1:]) == binary.LittleEndian.Uint32(src[i+1-prevDistance:]) {
+				m := extendMatch2(src, i+1, i+1-prevDistance, i+1)
+				if m.End-m.Start > q.MinLength {
+					currentMatch = m
+					foundMatches = append(foundMatches, m)
+				}
+			}
+		}
+
+		if binary.LittleEndian.Uint32(src[candidate:]) == binary.LittleEndian.Uint32(src[i:]) {
+			m := extendMatch2(src, i, candidate, max(historyLen, prevMatch.Start))
+			if m.End-m.Start > q.MinLength {
+				currentMatch = m
+				foundMatches = append(foundMatches, m)
+			}
+		}
+
+		for range q.ChainLength {
+			delta := q.chain[candidate]
+			if delta == 0 {
+				break
+			}
+			candidate -= int(delta)
+			if candidate <= 0 || i-candidate > q.MaxDistance {
+				break
+			}
+			if binary.LittleEndian.Uint32(src[candidate:]) == binary.LittleEndian.Uint32(src[i:]) {
+				m := extendMatch2(src, i, candidate, max(historyLen, prevMatch.Start))
+				if m.End-m.Start > q.MinLength && m.End-m.Start > currentMatch.End-currentMatch.Start {
+					currentMatch = m
+					foundMatches = append(foundMatches, m)
+				}
+			}
+		}
+
+		if i < prevMatch.End && currentMatch.End-currentMatch.Start <= prevMatch.End-prevMatch.Start {
+			// We were looking for an overlapping match, but we didn't find one longer
+			// than the previous match. So we'll go back to sequential search,
+			// starting right after the previous match.
+			i = prevMatch.End
+			continue
+		}
+
+		if currentMatch == (absoluteMatch{}) {
+			// No match found. Continue with sequential search.
+			i++
+			continue
+		}
+
+		// We've found a match; now look for matches overlapping the end of it.
+		prevMatch = currentMatch
+		i = currentMatch.End + 2 - q.HashLen
+	}
+
+	q.foundMatches = foundMatches
+
+	slices.SortFunc(foundMatches, func(a, b absoluteMatch) int { return a.Start - b.Start })
+	matchIndex := 0
+
 	for i := historyLen; i < len(src); i++ {
 		var arrivedHere arrival
 		if i > historyLen {
@@ -146,23 +231,20 @@ func (q *Pathfinder) FindMatches(dst []Match, src []byte) []Match {
 			}
 		}
 
-		if i > len(src)-8 {
-			continue
-		}
-
-		if arrivedHere.length == 0 && arrivedHere.distance != 0 {
-			// Look for a repeated match.
-			prevDistance := int(arrivedHere.distance)
-			if binary.LittleEndian.Uint32(src[i:]) == binary.LittleEndian.Uint32(src[i-prevDistance:]) {
-				length := extendMatch(src, i-prevDistance+4, i+4) - i
-				for j := q.MinLength; j <= length; j++ {
-					a := &arrivals[i-historyLen-1+j]
-					if a.cost == 0 || arrivedHere.cost+repeatMatchCost < a.cost {
-						*a = arrival{
-							length:   uint32(j),
-							distance: arrivedHere.distance,
-							cost:     arrivedHere.cost + repeatMatchCost,
-						}
+		for matchIndex < len(foundMatches) && foundMatches[matchIndex].Start == i {
+			m := foundMatches[matchIndex]
+			matchIndex++
+			matchCost := baseMatchCost + float32(bits.Len(uint(m.Start-m.Match)))
+			if i > historyLen && arrivedHere.length == 0 && arrivedHere.distance == uint32(m.Start-m.Match) {
+				matchCost = repeatMatchCost
+			}
+			for j := m.Start + q.MinLength; j <= m.End; j++ {
+				a := &arrivals[j-historyLen-1]
+				if a.cost == 0 || arrivedHere.cost+matchCost < a.cost {
+					*a = arrival{
+						length:   uint32(j - m.Start),
+						distance: uint32(m.Start - m.Match),
+						cost:     arrivedHere.cost + matchCost,
 					}
 				}
 			}
@@ -176,56 +258,11 @@ func (q *Pathfinder) FindMatches(dst []Match, src []byte) []Match {
 		if candidate <= 0 || i-candidate > q.MaxDistance {
 			continue
 		}
-
-		prevLength := 0
-		if binary.LittleEndian.Uint32(src[candidate:]) == binary.LittleEndian.Uint32(src[i:]) {
-			length := extendMatch(src, candidate+4, i+4) - i
-			matchCost := baseMatchCost + float32(bits.Len(uint(i-candidate)))
-			for j := q.MinLength; j <= length; j++ {
-				a := &arrivals[i-historyLen-1+j]
-				if a.cost == 0 || arrivedHere.cost+matchCost < a.cost {
-					*a = arrival{
-						length:   uint32(j),
-						distance: uint32(i - candidate),
-						cost:     arrivedHere.cost + matchCost,
-					}
-				}
-			}
-			prevLength = length
-		}
-
-		for range q.ChainLength {
-			delta := q.chain[candidate]
-			if delta == 0 {
-				break
-			}
-			candidate -= int(delta)
-			if candidate <= 0 || i-candidate > q.MaxDistance {
-				break
-			}
-			if binary.LittleEndian.Uint32(src[candidate:]) == binary.LittleEndian.Uint32(src[i:]) {
-				length := extendMatch(src, candidate+4, i+4) - i
-				if length > prevLength {
-					matchCost := baseMatchCost + float32(bits.Len(uint(i-candidate)))
-					for j := q.MinLength; j <= length; j++ {
-						a := &arrivals[i-historyLen-1+j]
-						if a.cost == 0 || arrivedHere.cost+matchCost < a.cost {
-							*a = arrival{
-								length:   uint32(j),
-								distance: uint32(i - candidate),
-								cost:     arrivedHere.cost + matchCost,
-							}
-						}
-					}
-					prevLength = length
-				}
-			}
-		}
 	}
 
 	// We've found the shortest path; now walk it backward and store the matches.
 	matches := q.matches[:0]
-	i := len(arrivals) - 1
+	i = len(arrivals) - 1
 	for i >= 0 {
 		a := arrivals[i]
 		if a.length > 0 {
