@@ -50,10 +50,10 @@ func (q *Pathfinder) Reset() {
 	q.chain = q.chain[:0]
 }
 
-// An arrival represents how we got to a certain byte position. If length==0,
-// it is a literal, otherwise it is a match. The cost is the total cost (in
-// bits) to get there from the beginning of the block. On literals, distance
-// is set to the previous match distance.
+// An arrival represents how we got to a certain byte position.
+// The cost is the total cost to get there from the beginning of the block.
+// If distance > 0, the arrival is with a match.
+// If distance == 0, the arrival is with a run of literals.
 type arrival struct {
 	length   uint32
 	distance uint32
@@ -223,12 +223,21 @@ func (q *Pathfinder) FindMatches(dst []Match, src []byte) []Match {
 			arrivedHere = arrivals[i-historyLen-1]
 		}
 
+		unmatched := 0
+		if arrivedHere.distance == 0 {
+			unmatched = int(arrivedHere.length)
+		}
+		prevDistance := 0
+		if i-unmatched > historyLen {
+			prevDistance = int(arrivals[i-historyLen-1-unmatched].distance)
+		}
+
 		literalCost := byteCost[src[i]]
 		nextArrival := &arrivals[i-historyLen]
 		if nextArrival.cost == 0 || arrivedHere.cost+literalCost < nextArrival.cost {
 			*nextArrival = arrival{
-				cost:     arrivedHere.cost + literalCost,
-				distance: arrivedHere.distance,
+				cost:   arrivedHere.cost + literalCost,
+				length: uint32(unmatched + 1),
 			}
 		}
 
@@ -239,7 +248,7 @@ func (q *Pathfinder) FindMatches(dst []Match, src []byte) []Match {
 				pending = m
 			}
 			matchCost := baseMatchCost + float32(bits.Len(uint(m.Start-m.Match)))
-			if i > historyLen && arrivedHere.length == 0 && arrivedHere.distance == uint32(m.Start-m.Match) {
+			if m.Start-m.Match == prevDistance {
 				matchCost = repeatMatchCost
 			}
 			for j := m.Start + q.MinLength; j <= m.End; j++ {
@@ -286,7 +295,7 @@ func (q *Pathfinder) FindMatches(dst []Match, src []byte) []Match {
 	i = len(arrivals) - 1
 	for i >= 0 {
 		a := arrivals[i]
-		if a.length > 0 {
+		if a.distance > 0 {
 			matches = append(matches, Match{
 				Length:   int(a.length),
 				Distance: int(a.distance),
@@ -296,8 +305,8 @@ func (q *Pathfinder) FindMatches(dst []Match, src []byte) []Match {
 			if len(matches) == 0 {
 				matches = append(matches, Match{})
 			}
-			matches[len(matches)-1].Unmatched++
-			i--
+			matches[len(matches)-1].Unmatched = int(a.length)
+			i -= int(a.length)
 		}
 	}
 	q.matches = matches
