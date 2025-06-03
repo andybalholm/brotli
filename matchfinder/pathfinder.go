@@ -61,8 +61,7 @@ type arrival struct {
 }
 
 const (
-	baseMatchCost   float32 = 4
-	repeatMatchCost float32 = 6
+	baseMatchCost float32 = 4
 )
 
 func (q *Pathfinder) FindMatches(dst []Match, src []byte) []Match {
@@ -247,17 +246,23 @@ func (q *Pathfinder) FindMatches(dst []Match, src []byte) []Match {
 			if m.End > pending.End {
 				pending = m
 			}
-			matchCost := baseMatchCost + float32(bits.Len(uint(m.Start-m.Match)))
-			if m.Start-m.Match == prevDistance {
-				matchCost = repeatMatchCost
+			matchCost := baseMatchCost + float32(bits.Len(uint(unmatched)))
+			if m.Start-m.Match != prevDistance {
+				matchCost += float32(bits.Len(uint(m.Start - m.Match)))
 			}
 			for j := m.Start + q.MinLength; j <= m.End; j++ {
+				adjustedCost := matchCost
+				if j-m.Start < 6 {
+					// Matches shorter than 6 are comparatively rare, and therefore
+					// have longer codes.
+					adjustedCost += float32(6-(j-m.Start)) * 2
+				}
 				a := &arrivals[j-historyLen-1]
-				if a.cost == 0 || arrivedHere.cost+matchCost < a.cost {
+				if a.cost == 0 || arrivedHere.cost+adjustedCost < a.cost {
 					*a = arrival{
 						length:   uint32(j - m.Start),
 						distance: uint32(m.Start - m.Match),
-						cost:     arrivedHere.cost + matchCost,
+						cost:     arrivedHere.cost + adjustedCost,
 					}
 				}
 			}
@@ -265,16 +270,22 @@ func (q *Pathfinder) FindMatches(dst []Match, src []byte) []Match {
 
 		// If a match from an earlier position extends far enough past the current
 		// position, try using the tail of it, starting from here.
-		if pending.Start != i && pending.End >= i+q.MinLength &&
+		if unmatched == 0 && pending.Start != i && pending.End >= i+q.MinLength &&
 			!(arrivedHere.length != 0 && arrivedHere.distance == uint32(pending.Start-pending.Match)) {
 			matchCost := baseMatchCost + float32(bits.Len(uint(pending.Start-pending.Match)))
 			for j := i + q.MinLength; j <= pending.End; j++ {
+				adjustedCost := matchCost
+				if j-i < 6 {
+					// Matches shorter than 6 are comparatively rare, and therefore
+					// have longer codes.
+					adjustedCost += float32(6-(j-i)) * 2
+				}
 				a := &arrivals[j-historyLen-1]
-				if a.cost == 0 || arrivedHere.cost+matchCost < a.cost {
+				if a.cost == 0 || arrivedHere.cost+adjustedCost < a.cost {
 					*a = arrival{
 						length:   uint32(j - i),
 						distance: uint32(pending.Start - pending.Match),
-						cost:     arrivedHere.cost + matchCost,
+						cost:     arrivedHere.cost + adjustedCost,
 					}
 				}
 			}

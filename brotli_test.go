@@ -583,7 +583,7 @@ func BenchmarkEncodeLevelsResetV2(b *testing.B) {
 		b.Fatal(err)
 	}
 
-	for level := BestSpeed; level <= 7; level++ {
+	for level := BestSpeed; level <= 9; level++ {
 		buf := new(bytes.Buffer)
 		w := NewWriterV2(buf, level)
 		w.Write(opticks)
@@ -776,7 +776,7 @@ func BenchmarkEncodePathfinderChain128(b *testing.B) {
 }
 
 func BenchmarkEncodePathfinderChain256(b *testing.B) {
-	benchmark(b, "testdata/Isaac.Newton-Opticks.txt", &matchfinder.Pathfinder{MaxDistance: 1 << 20, ChainLength: 256, HashLen: 4}, 1<<16)
+	benchmark(b, "testdata/Isaac.Newton-Opticks.txt", &matchfinder.Pathfinder{MaxDistance: 1 << 20, ChainLength: 256, HashLen: 4, MinLength: 3}, 1<<16)
 }
 
 func TestEncodeM0(t *testing.T) {
