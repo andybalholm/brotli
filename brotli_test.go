@@ -675,6 +675,58 @@ func benchmark(b *testing.B, filename string, m matchfinder.MatchFinder, blockSi
 	}
 }
 
+func testFastEncoder(t *testing.T, filename string, m matchfinder.MatchFinder, blockSize int) {
+	data, err := os.ReadFile(filename)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b := new(bytes.Buffer)
+	w := &matchfinder.Writer{
+		Dest:        b,
+		MatchFinder: m,
+		Encoder:     &FastEncoder{},
+		BlockSize:   blockSize,
+	}
+	w.Write(data)
+	w.Close()
+	compressed := b.Bytes()
+	sr := NewReader(bytes.NewReader(compressed))
+	decompressed, err := io.ReadAll(sr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(decompressed, data) {
+		t.Fatal("decompressed output doesn't match")
+	}
+}
+
+func benchmarkFastEncoder(b *testing.B, filename string, m matchfinder.MatchFinder, blockSize int) {
+	b.StopTimer()
+	b.ReportAllocs()
+	data, err := os.ReadFile(filename)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	b.SetBytes(int64(len(data)))
+	buf := new(bytes.Buffer)
+	w := &matchfinder.Writer{
+		Dest:        buf,
+		MatchFinder: m,
+		Encoder:     &FastEncoder{},
+		BlockSize:   blockSize,
+	}
+	w.Write(data)
+	w.Close()
+	b.ReportMetric(float64(len(data))/float64(buf.Len()), "ratio")
+	b.StartTimer()
+	for i := 0; i < b.N; i++ {
+		w.Reset(io.Discard)
+		w.Write(data)
+		w.Close()
+	}
+}
+
 func TestEncodeM4(t *testing.T) {
 	test(t, "testdata/Isaac.Newton-Opticks.txt", &matchfinder.M4{MaxDistance: 1 << 18, DistanceBitCost: 66}, 1<<16)
 }
@@ -785,6 +837,14 @@ func TestEncodeM0(t *testing.T) {
 
 func BenchmarkEncodeM0(b *testing.B) {
 	benchmark(b, "testdata/Isaac.Newton-Opticks.txt", matchfinder.M0{}, 1<<16)
+}
+
+func TestEncodeM0Fast(t *testing.T) {
+	testFastEncoder(t, "testdata/Isaac.Newton-Opticks.txt", matchfinder.M0{}, 1<<16)
+}
+
+func BenchmarkEncodeM0Fast(b *testing.B) {
+	benchmarkFastEncoder(b, "testdata/Isaac.Newton-Opticks.txt", matchfinder.M0{}, 1<<16)
 }
 
 func TestEncodeM0Lazy(t *testing.T) {
