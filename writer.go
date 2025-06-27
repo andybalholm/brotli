@@ -165,10 +165,14 @@ func NewWriterV2(dst io.Writer, level int) *matchfinder.Writer {
 		}
 	}
 
-	return &matchfinder.Writer{
+	w := &matchfinder.Writer{
 		Dest:        dst,
 		MatchFinder: mf,
 		Encoder:     &Encoder{},
 		BlockSize:   1 << 16,
 	}
+	if level < 1 {
+		w.Encoder = &FastEncoder{}
+	}
+	return w
 }
