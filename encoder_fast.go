@@ -48,6 +48,15 @@ func (e *FastEncoder) Encode(dst []byte, src []byte, matches []matchfinder.Match
 			e.commandHisto[combineLengthCodes(0, uint16(i), i < 16)] = uint32(800 / i)
 		}
 
+		// Fill in the combined codes for short insert and copy lengths.
+		for insertCode := range 6 {
+			copyCode := 2
+			e.commandHisto[128+insertCode<<3+copyCode] = uint32(100 / (insertCode + 1) / (insertCode + 1) / copyCode)
+			for copyCode := 3; copyCode < 8; copyCode++ {
+				e.commandHisto[128+insertCode<<3+copyCode] = uint32(343 / (insertCode + 1) / (insertCode + 1) / copyCode)
+			}
+		}
+
 		// Fill e.distanceHisto with a normal distribution.
 		e.distanceHisto[0] = 100
 		for i := 16; i < 64; i++ {
@@ -99,6 +108,11 @@ func (e *FastEncoder) Encode(dst []byte, src []byte, matches []matchfinder.Match
 	for i := range 24 {
 		e.commandHisto[combineLengthCodes(0, uint16(i), i < 16)] = 1
 	}
+	for insertCode := range 6 {
+		for copyCode := 2; copyCode < 8; copyCode++ {
+			e.commandHisto[128+insertCode<<3+copyCode] = 1
+		}
+	}
 	e.distanceHisto[0] = 1
 	for i := 16; i < 64; i++ {
 		e.distanceHisto[i] = 1
@@ -106,9 +120,17 @@ func (e *FastEncoder) Encode(dst []byte, src []byte, matches []matchfinder.Match
 
 	pos := 0
 	for i, m := range matches {
+		lengthFinished := false
 		// Write a command with the appropriate insert length, and a copy length of 2.
 		if m.Unmatched < 6 {
-			command := m.Unmatched<<3 + 128
+			var command int
+			if m.Length < 10 && m.Length != 0 {
+				// We can use a combined insert/copy code with no extra bits.
+				command = m.Unmatched<<3 + m.Length - 2 + 128
+				lengthFinished = true
+			} else {
+				command = m.Unmatched<<3 + 128
+			}
 			e.bw.writeBits(uint(commandDepths[command]), uint64(commandBits[command]))
 			e.commandHisto[command]++
 		} else {
@@ -141,6 +163,8 @@ func (e *FastEncoder) Encode(dst []byte, src []byte, matches []matchfinder.Match
 			// Write a command for the remainder of the match (after the first two bytes
 			// from before), using the previous distance.
 			switch {
+			case lengthFinished:
+				// We don't need to finish the length.
 			case m.Length < 12:
 				command := m.Length - 4
 				e.bw.writeBits(uint(commandDepths[command]), uint64(commandBits[command]))
