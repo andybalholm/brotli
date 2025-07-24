@@ -843,6 +843,22 @@ func TestEncodeM0Fast(t *testing.T) {
 	testFastEncoder(t, "testdata/Isaac.Newton-Opticks.txt", matchfinder.M0{}, 1<<16)
 }
 
+func TestEncodeZFast(t *testing.T) {
+	test(t, "testdata/Isaac.Newton-Opticks.txt", &matchfinder.ZFast{MaxDistance: 1 << 20}, 1<<16)
+}
+
+func BenchmarkEncodeZFast(b *testing.B) {
+	benchmark(b, "testdata/Isaac.Newton-Opticks.txt", &matchfinder.ZFast{MaxDistance: 1 << 20}, 1<<16)
+}
+
+func BenchmarkEncodeZFastFast(b *testing.B) {
+	benchmarkFastEncoder(b, "testdata/Isaac.Newton-Opticks.txt", &matchfinder.ZFast{MaxDistance: 1 << 20}, 1<<16)
+}
+
+func TestEncodeZFastFast(t *testing.T) {
+	testFastEncoder(t, "testdata/Isaac.Newton-Opticks.txt", &matchfinder.ZFast{MaxDistance: 1 << 20}, 1<<16)
+}
+
 func BenchmarkEncodeM0Fast(b *testing.B) {
 	benchmarkFastEncoder(b, "testdata/Isaac.Newton-Opticks.txt", matchfinder.M0{}, 1<<16)
 }

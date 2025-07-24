@@ -126,7 +126,7 @@ func (nopCloser) Close() error { return nil }
 func NewWriterV2(dst io.Writer, level int) *matchfinder.Writer {
 	var mf matchfinder.MatchFinder
 	if level < 2 {
-		mf = matchfinder.M0{Lazy: level == 1}
+		mf = &matchfinder.ZFast{MaxDistance: 1 << 20}
 	} else if level < 8 {
 		hashLen := 6
 		if level >= 6 {

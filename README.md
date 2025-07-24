@@ -13,7 +13,7 @@ in the matchfinder package.
 You can use them with the NewWriterV2 function.
 Currently they give better results than the old implementation
 (at least for compressing my test file, Newton’s *Opticks*) 
-on levels 2 to 8.
+on levels 0 to 8.
 
 The new APIs are currently considered experimental,
 and are not covered by any SemVer compatibility guarantees.
