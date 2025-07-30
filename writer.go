@@ -129,6 +129,8 @@ func NewWriterV2(dst io.Writer, level int) *matchfinder.Writer {
 		mf = &matchfinder.ZFast{MaxDistance: 1 << 20}
 	} else if level == 2 {
 		mf = &matchfinder.ZDFast{MaxDistance: 1 << 20}
+	} else if level == 3 {
+		mf = &matchfinder.ZM{MaxDistance: 1 << 20}
 	} else if level < 8 {
 		hashLen := 6
 		if level >= 6 {
@@ -136,10 +138,8 @@ func NewWriterV2(dst io.Writer, level int) *matchfinder.Writer {
 		}
 		chainLen := 16
 		switch level {
-		case 3:
-			chainLen = 1
 		case 4:
-			chainLen = 2
+			chainLen = 1
 		case 5:
 			chainLen = 4
 		case 6:
