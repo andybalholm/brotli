@@ -131,24 +131,20 @@ func NewWriterV2(dst io.Writer, level int) *matchfinder.Writer {
 		mf = &matchfinder.ZDFast{MaxDistance: 1 << 20}
 	} else if level == 3 {
 		mf = &matchfinder.ZM{MaxDistance: 1 << 20}
+	} else if level == 4 {
+		mf = &matchfinder.Trio{MaxDistance: 1 << 20}
 	} else if level < 8 {
-		hashLen := 6
-		if level >= 6 {
-			hashLen = 5
-		}
-		chainLen := 16
+		chainLen := 32
 		switch level {
-		case 4:
-			chainLen = 1
 		case 5:
-			chainLen = 4
-		case 6:
 			chainLen = 8
+		case 6:
+			chainLen = 16
 		}
 		mf = &matchfinder.M4{
 			MaxDistance:     1 << 20,
 			ChainLength:     chainLen,
-			HashLen:         hashLen,
+			HashLen:         5,
 			DistanceBitCost: 66,
 		}
 	} else {

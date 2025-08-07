@@ -875,6 +875,14 @@ func TestEncodeZMFast(t *testing.T) {
 	testFastEncoder(t, "testdata/Isaac.Newton-Opticks.txt", &matchfinder.ZM{MaxDistance: 1 << 20}, 1<<16)
 }
 
+func TestEncodeTrio(t *testing.T) {
+	test(t, "testdata/Isaac.Newton-Opticks.txt", &matchfinder.Trio{MaxDistance: 1 << 20}, 1<<16)
+}
+
+func BenchmarkEncodeTrio(b *testing.B) {
+	benchmark(b, "testdata/Isaac.Newton-Opticks.txt", &matchfinder.Trio{MaxDistance: 1 << 20}, 1<<16)
+}
+
 func TestEncodeZDFast(t *testing.T) {
 	test(t, "testdata/Isaac.Newton-Opticks.txt", &matchfinder.ZDFast{MaxDistance: 1 << 20}, 1<<16)
 }
