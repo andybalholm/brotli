@@ -12,6 +12,10 @@ import (
 // WriteCloser that implements that compression. The Close method must be called
 // before the current HTTP handler returns.
 func HTTPCompressor(w http.ResponseWriter, r *http.Request) io.WriteCloser {
+	return HTTPCompressorWithCustomLevel(w, r, DefaultCompression)
+}
+
+func HTTPCompressorWithCustomLevel(w http.ResponseWriter, r *http.Request, level int) io.WriteCloser {
 	if w.Header().Get("Vary") == "" {
 		w.Header().Set("Vary", "Accept-Encoding")
 	}
@@ -20,7 +24,7 @@ func HTTPCompressor(w http.ResponseWriter, r *http.Request) io.WriteCloser {
 	switch encoding {
 	case "br":
 		w.Header().Set("Content-Encoding", "br")
-		return NewWriterV2(w, DefaultCompression)
+		return NewWriterV2(w, level)
 	case "gzip":
 		w.Header().Set("Content-Encoding", "gzip")
 		return gzip.NewWriter(w)
