@@ -10,7 +10,7 @@ func gaussianProbability(x, mean, stdDev float64) float64 {
 	return math.Exp(-(x-mean)*(x-mean)/(2*stdDev*stdDev)) / math.Sqrt(2*math.Pi*stdDev*stdDev)
 }
 
-// An FastEncoder implements the matchfinder.Encoder interface, writing in Brotli
+// A FastEncoder implements the matchfinder.Encoder interface, writing in Brotli
 // format. It uses a simplified encoding (like level 0 in the reference
 // implementation) to save time.
 type FastEncoder struct {
