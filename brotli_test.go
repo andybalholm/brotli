@@ -899,6 +899,22 @@ func BenchmarkEncodeBargain2Skip(b *testing.B) {
 	benchmark(b, "testdata/Isaac.Newton-Opticks.txt", &matchfinder.Bargain2{MaxDistance: 1 << 20, Skip: true}, 1<<16)
 }
 
+func TestEncodeBargain1(t *testing.T) {
+	test(t, "testdata/Isaac.Newton-Opticks.txt", &matchfinder.Bargain1{MaxDistance: 1 << 20}, 1<<16)
+}
+
+func BenchmarkEncodeBargain1(b *testing.B) {
+	benchmark(b, "testdata/Isaac.Newton-Opticks.txt", &matchfinder.Bargain1{MaxDistance: 1 << 20}, 1<<16)
+}
+
+func TestEncodeBargain1Skip(t *testing.T) {
+	test(t, "testdata/Isaac.Newton-Opticks.txt", &matchfinder.Bargain1{MaxDistance: 1 << 20, Skip: true}, 1<<16)
+}
+
+func BenchmarkEncodeBargain1Skip(b *testing.B) {
+	benchmark(b, "testdata/Isaac.Newton-Opticks.txt", &matchfinder.Bargain1{MaxDistance: 1 << 20, Skip: true}, 1<<16)
+}
+
 func TestEncodeZDFast(t *testing.T) {
 	test(t, "testdata/Isaac.Newton-Opticks.txt", &matchfinder.ZDFast{MaxDistance: 1 << 20}, 1<<16)
 }
