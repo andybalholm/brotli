@@ -139,21 +139,7 @@ func NewWriterV2(dst io.Writer, level int) *matchfinder.Writer {
 		mf = &matchfinder.ZM{MaxDistance: 1 << 20}
 	case 4:
 		mf = &matchfinder.Trio{MaxDistance: 1 << 20}
-	case 5, 6:
-		chainLen := 32
-		switch level {
-		case 5:
-			chainLen = 8
-		case 6:
-			chainLen = 16
-		}
-		mf = &matchfinder.M4{
-			MaxDistance:     1 << 20,
-			ChainLength:     chainLen,
-			HashLen:         5,
-			DistanceBitCost: 66,
-		}
-	case 7:
+	case 5, 6, 7:
 		mf = &matchfinder.Bargain1{MaxDistance: 1 << 20}
 	case 8:
 		mf = &matchfinder.Bargain2{MaxDistance: 1 << 20, Skip: true}

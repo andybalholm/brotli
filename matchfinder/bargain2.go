@@ -118,6 +118,8 @@ func (z *Bargain2) FindMatches(dst []Match, src []byte) []Match {
 		}
 	}
 
+	var nextOverlapSearch int
+
 	for i := historyLen; i < len(src); i++ {
 		var arrivedHere arrival
 		if i > historyLen {
@@ -168,15 +170,15 @@ func (z *Bargain2) FindMatches(dst []Match, src []byte) []Match {
 			}
 		}
 
-		if z.Skip && i%2 != 0 {
-			continue
+		if z.Skip {
+			if i%2 != 0 {
+				continue
+			}
 		}
 
-		// We want to look for a new match if the hash crosses the end of a match.
-		edgeWithin5 := arrivals[i-historyLen-1+5].length < arrivedHere.length+5
-		edgeWithin8 := arrivals[i-historyLen-1+8].length < arrivedHere.length+8
+		nextByteIsUnmatched := arrivals[i-historyLen-1+1].distance == 0
 
-		if unmatched > 0 || edgeWithin5 {
+		if unmatched > 0 || i >= nextOverlapSearch || nextByteIsUnmatched {
 			if int(candidate5.offset) < i && i-int(candidate5.offset) < z.MaxDistance && uint32(cv) == candidate5.val {
 				m := extendMatch2(src, i, int(candidate5.offset), historyLen)
 				delta := i - m.Start
@@ -189,10 +191,9 @@ func (z *Bargain2) FindMatches(dst []Match, src []byte) []Match {
 					m.Match += delta
 					addMatch(m, unmatched, false)
 				}
+				nextOverlapSearch = max(nextOverlapSearch, m.Start+1, m.End-6)
 			}
-		}
 
-		if unmatched > 0 || edgeWithin8 {
 			if int(candidate8.offset) < i && i-int(candidate8.offset) < z.MaxDistance && uint32(cv) == candidate8.val {
 				m := extendMatch2(src, i, int(candidate8.offset), historyLen)
 				delta := i - m.Start
@@ -205,6 +206,7 @@ func (z *Bargain2) FindMatches(dst []Match, src []byte) []Match {
 					m.Match += delta
 					addMatch(m, unmatched, false)
 				}
+				nextOverlapSearch = max(nextOverlapSearch, m.Start+1, m.End-6)
 			}
 		}
 	}
