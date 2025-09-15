@@ -2,25 +2,20 @@ package matchfinder
 
 import "encoding/binary"
 
-const (
-	trioTableBits = 17
-	trioTableSize = 1 << trioTableBits
-)
-
 // Trio is a MatchFinder that uses 3 different hash lengths, and
 // overlap parsing.
 type Trio struct {
 	MaxDistance int
 	history     []byte
-	table5      [trioTableSize]tableEntry
-	table8      [trioTableSize]tableEntry
-	table12     [trioTableSize]tableEntry
+	table5      [1 << 16]tableEntry
+	table8      [1 << 17]tableEntry
+	table12     [1 << 18]tableEntry
 }
 
 func (z *Trio) Reset() {
-	z.table5 = [trioTableSize]tableEntry{}
-	z.table8 = [trioTableSize]tableEntry{}
-	z.table12 = [trioTableSize]tableEntry{}
+	z.table5 = [len(z.table5)]tableEntry{}
+	z.table8 = [len(z.table8)]tableEntry{}
+	z.table12 = [len(z.table12)]tableEntry{}
 	z.history = z.history[:0]
 }
 
@@ -312,13 +307,13 @@ mainLoop:
 }
 
 func (z *Trio) hash5(u uint64) uint32 {
-	return uint32(((u << 24) * 889523592379) >> (64 - trioTableBits))
+	return uint32(((u << 24) * 889523592379) >> (64 - 16))
 }
 
 func (z *Trio) hash8(u uint64) uint32 {
-	return uint32((u * 0xcf1bbcdcb7a56463) >> (64 - trioTableBits))
+	return uint32((u * 0xcf1bbcdcb7a56463) >> (64 - 17))
 }
 
 func (z *Trio) hash12(u uint64, e uint32) uint32 {
-	return uint32((u*0xcf1bbcdcb7a56463 + uint64(e)*(2654435761<<32)) >> (64 - trioTableBits))
+	return uint32((u*0xcf1bbcdcb7a56463 + uint64(e)*(2654435761<<32)) >> (64 - 18))
 }
