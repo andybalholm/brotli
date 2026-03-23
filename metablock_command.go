@@ -44,9 +44,6 @@ func initBlockSplitterCommand(self *blockSplitterCommand, alphabet_size uint, mi
 	brotli_ensure_capacity_uint32_t(&split.lengths, &split.lengths_alloc_size, max_num_blocks)
 	self.split_.num_blocks = max_num_blocks
 	*histograms_size = max_num_types
-	if histograms == nil {
-		histograms = new([]histogramCommand)
-	}
 	if cap(*histograms) < int(*histograms_size) {
 		*histograms = make([]histogramCommand, (*histograms_size))
 	} else {
