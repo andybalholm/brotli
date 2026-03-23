@@ -163,7 +163,8 @@ func (z *Bargain1) FindMatches(dst []Match, src []byte) []Match {
 		nextByteIsUnmatched := arrivals[i-historyLen-1+1].distance == 0
 
 		if unmatched > 0 || i >= nextOverlapSearch || nextByteIsUnmatched {
-			if int(candidate6.offset) < i && i-int(candidate6.offset) < z.MaxDistance && uint32(cv) == candidate6.val {
+			if int(candidate6.offset) < i && i-int(candidate6.offset) < z.MaxDistance && uint32(cv) == candidate6.val &&
+				binary.LittleEndian.Uint32(src[candidate6.offset:]) == uint32(cv) {
 				m := extendMatch2(src, i, int(candidate6.offset), historyLen)
 				delta := i - m.Start
 				if delta == 0 {

@@ -189,7 +189,8 @@ func (z *Bargain3) FindMatches(dst []Match, src []byte) []Match {
 		nextByteIsUnmatched := arrivals[i-historyLen-1+1].distance == 0
 
 		if unmatched > 0 || i >= nextOverlapSearch || nextByteIsUnmatched {
-			if int(candidate5.offset) < i && i-int(candidate5.offset) < z.MaxDistance && uint32(cv) == candidate5.val {
+			if int(candidate5.offset) < i && i-int(candidate5.offset) < z.MaxDistance && uint32(cv) == candidate5.val &&
+				binary.LittleEndian.Uint32(src[candidate5.offset:]) == uint32(cv) {
 				m := extendMatch2(src, i, int(candidate5.offset), historyLen)
 				delta := i - m.Start
 				if delta == 0 {
@@ -204,7 +205,8 @@ func (z *Bargain3) FindMatches(dst []Match, src []byte) []Match {
 				nextOverlapSearch = max(nextOverlapSearch, m.Start+1, m.End-6)
 			}
 
-			if int(candidate8.offset) < i && i-int(candidate8.offset) < z.MaxDistance && uint32(cv) == candidate8.val {
+			if int(candidate8.offset) < i && i-int(candidate8.offset) < z.MaxDistance && uint32(cv) == candidate8.val &&
+				binary.LittleEndian.Uint32(src[candidate8.offset:]) == uint32(cv) {
 				m := extendMatch2(src, i, int(candidate8.offset), historyLen)
 				delta := i - m.Start
 				if delta == 0 {
@@ -219,7 +221,8 @@ func (z *Bargain3) FindMatches(dst []Match, src []byte) []Match {
 				nextOverlapSearch = max(nextOverlapSearch, m.Start+1, m.End-6)
 			}
 
-			if int(candidate12.offset) < i && i-int(candidate12.offset) < z.MaxDistance && uint32(cv) == candidate12.val {
+			if int(candidate12.offset) < i && i-int(candidate12.offset) < z.MaxDistance && uint32(cv) == candidate12.val &&
+				binary.LittleEndian.Uint32(src[candidate12.offset:]) == uint32(cv) {
 				m := extendMatch2(src, i, int(candidate12.offset), historyLen)
 				delta := i - m.Start
 				if delta == 0 {

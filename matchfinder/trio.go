@@ -119,18 +119,21 @@ mainLoop:
 				}
 			}
 
-			if candidate12.offset < s && s-candidate12.offset < int32(z.MaxDistance) && uint32(cv) == candidate12.val {
+			if candidate12.offset < s && s-candidate12.offset < int32(z.MaxDistance) && uint32(cv) == candidate12.val &&
+				binary.LittleEndian.Uint32(src[candidate12.offset:]) == uint32(cv) {
 				// There is a 12-byte match at s.
 				t = candidate12.offset
 				hashLengthFound = 12
 				break
 			}
-			if candidate8.offset < s && s-candidate8.offset < int32(z.MaxDistance) && uint32(cv) == candidate8.val {
+			if candidate8.offset < s && s-candidate8.offset < int32(z.MaxDistance) && uint32(cv) == candidate8.val &&
+				binary.LittleEndian.Uint32(src[candidate8.offset:]) == uint32(cv) {
 				t = candidate8.offset
 				hashLengthFound = 8
 				break
 			}
-			if candidate5.offset < s && s-candidate5.offset < int32(z.MaxDistance) && uint32(cv) == candidate5.val {
+			if candidate5.offset < s && s-candidate5.offset < int32(z.MaxDistance) && uint32(cv) == candidate5.val &&
+				binary.LittleEndian.Uint32(src[candidate5.offset:]) == uint32(cv) {
 				t = candidate5.offset
 				hashLengthFound = 5
 				break
@@ -157,10 +160,12 @@ mainLoop:
 			entry := tableEntry{offset: s + 1, val: uint32(cv)}
 			z.table12[nextHash12] = entry
 			z.table8[nextHash8] = entry
-			if candidate12.offset < s+1 && coffset12 < int32(z.MaxDistance) && uint32(cv) == candidate12.val {
+			if candidate12.offset < s+1 && coffset12 < int32(z.MaxDistance) && uint32(cv) == candidate12.val &&
+				binary.LittleEndian.Uint32(src[candidate12.offset:]) == uint32(cv) {
 				t = candidate12.offset
 				s++
-			} else if hashLengthFound < 8 && candidate8.offset < s+1 && coffset8 < int32(z.MaxDistance) && uint32(cv) == candidate8.val {
+			} else if hashLengthFound < 8 && candidate8.offset < s+1 && coffset8 < int32(z.MaxDistance) && uint32(cv) == candidate8.val &&
+				binary.LittleEndian.Uint32(src[candidate8.offset:]) == uint32(cv) {
 				t = candidate8.offset
 				s++
 			}
@@ -206,10 +211,12 @@ mainLoop:
 			z.table5[nextHash5] = entry
 
 			t = -1
-			if candidate12.offset < s && s-candidate12.offset < int32(z.MaxDistance) && uint32(cv) == candidate12.val {
+			if candidate12.offset < s && s-candidate12.offset < int32(z.MaxDistance) && uint32(cv) == candidate12.val &&
+				binary.LittleEndian.Uint32(src[candidate12.offset:]) == uint32(cv) {
 				// There is a 12-byte match at s.
 				t = candidate12.offset
-			} else if candidate8.offset < s && s-candidate8.offset < int32(z.MaxDistance) && uint32(cv) == candidate8.val {
+			} else if candidate8.offset < s && s-candidate8.offset < int32(z.MaxDistance) && uint32(cv) == candidate8.val &&
+				binary.LittleEndian.Uint32(src[candidate8.offset:]) == uint32(cv) {
 				// There is a long match at s.
 				t = candidate8.offset
 			}

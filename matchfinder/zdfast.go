@@ -133,11 +133,17 @@ mainLoop:
 			coffsetL := s - (candidateL.offset - z.current)
 			coffsetS := s - (candidateS.offset - z.current)
 			if coffsetL < int32(z.MaxDistance) && uint32(cv) == candidateL.val {
-				// found a long match (likely at least 8 bytes)
 				t = candidateL.offset - z.current
-				break
+				if binary.LittleEndian.Uint32(src[t:]) == uint32(cv) {
+					// found a long match (likely at least 8 bytes)
+					break
+				}
 			}
 			if coffsetS < int32(z.MaxDistance) && uint32(cv) == candidateS.val {
+				t = candidateS.offset - z.current
+				if binary.LittleEndian.Uint32(src[t:]) != uint32(cv) {
+					goto noMatch
+				}
 				// Found a regular match.
 				// See if we can find a long match at s+1
 				cv := binary.LittleEndian.Uint64(src[s+1:])
@@ -146,16 +152,19 @@ mainLoop:
 				coffsetL = s - (candidateL.offset - z.current) + 1
 				z.longTable[nextHashL] = tableEntry{offset: s + 1 + z.current, val: uint32(cv)}
 				if coffsetL < int32(z.MaxDistance) && uint32(cv) == candidateL.val {
-					// We found a long match at s+1, so we'll use that instead
-					// of the regular match at s.
 					t = candidateL.offset - z.current
-					s++
-					break
+					if binary.LittleEndian.Uint32(src[t:]) == uint32(cv) {
+						// We found a long match at s+1, so we'll use that instead
+						// of the regular match at s.
+						s++
+						break
+					}
 				}
 
 				t = candidateS.offset - z.current
 				break
 			}
+		noMatch:
 
 			s += stepSize + ((s - nextEmit) >> 7)
 			if s > sLimit {
