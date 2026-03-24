@@ -110,12 +110,14 @@ mainLoop:
 				}
 			}
 
-			if candidateL.offset < s && s-candidateL.offset < int32(z.MaxDistance) && uint32(cv) == candidateL.val {
+			if candidateL.offset < s && s-candidateL.offset < int32(z.MaxDistance) && uint32(cv) == candidateL.val &&
+				binary.LittleEndian.Uint32(src[candidateL.offset:]) == uint32(cv) {
 				// There is a long match at s.
 				t = candidateL.offset
 				break
 			}
-			if candidateS.offset < s && s-candidateS.offset < int32(z.MaxDistance) && uint32(cv) == candidateS.val {
+			if candidateS.offset < s && s-candidateS.offset < int32(z.MaxDistance) && uint32(cv) == candidateS.val &&
+				binary.LittleEndian.Uint32(src[candidateS.offset:]) == uint32(cv) {
 				// There is a regular match at s.
 				// See if we can find a long match at s+1.
 				cv := binary.LittleEndian.Uint64(src[s+1:])
@@ -123,7 +125,8 @@ mainLoop:
 				candidateL = z.longTable[nextHashL]
 				coffsetL := s - candidateL.offset + 1
 				z.longTable[nextHashL] = tableEntry{offset: s + 1, val: uint32(cv)}
-				if candidateL.offset < s+1 && coffsetL < int32(z.MaxDistance) && uint32(cv) == candidateL.val {
+				if candidateL.offset < s+1 && coffsetL < int32(z.MaxDistance) && uint32(cv) == candidateL.val &&
+					binary.LittleEndian.Uint32(src[candidateL.offset:]) == uint32(cv) {
 					// We found a long match at s+1, so we'll use that instead
 					// of the regular match at s.
 					t = candidateL.offset
@@ -175,10 +178,12 @@ mainLoop:
 			z.table[nextHashS] = entry
 
 			t = -1
-			if candidateL.offset < s && s-candidateL.offset < int32(z.MaxDistance) && uint32(cv) == candidateL.val {
+			if candidateL.offset < s && s-candidateL.offset < int32(z.MaxDistance) && uint32(cv) == candidateL.val &&
+				binary.LittleEndian.Uint32(src[candidateL.offset:]) == uint32(cv) {
 				// There is a long match at s.
 				t = candidateL.offset
-			} else if candidateS.offset < s && s-candidateS.offset < int32(z.MaxDistance) && uint32(cv) == candidateS.val {
+			} else if candidateS.offset < s && s-candidateS.offset < int32(z.MaxDistance) && uint32(cv) == candidateS.val &&
+				binary.LittleEndian.Uint32(src[candidateS.offset:]) == uint32(cv) {
 				// There is a regular match at s.
 				t = candidateS.offset
 				// See if we can find a long match at s+1.
@@ -187,7 +192,8 @@ mainLoop:
 				candidateL = z.longTable[nextHashL]
 				coffsetL := s - candidateL.offset + 1
 				z.longTable[nextHashL] = tableEntry{offset: s + 1, val: uint32(cv)}
-				if candidateL.offset < s+1 && coffsetL < int32(z.MaxDistance) && uint32(cv) == candidateL.val {
+				if candidateL.offset < s+1 && coffsetL < int32(z.MaxDistance) && uint32(cv) == candidateL.val &&
+					binary.LittleEndian.Uint32(src[candidateL.offset:]) == uint32(cv) {
 					// We found a long match at s+1, so we'll use that instead
 					// of the regular match at s.
 					t = candidateL.offset

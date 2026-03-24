@@ -1012,3 +1012,28 @@ func TestIssue58(t *testing.T) {
 		t.Fatalf("expected error, got none and read:\n%x\n%s\n%v", buf, buf, buf)
 	}
 }
+
+func TestV2FalseMatchZeroVal(t *testing.T) {
+	// Minimal reproducer: 7 non-zero bytes followed by 7 zero bytes.
+	// The zero bytes hash to a bucket with an uninitialized entry (val=0),
+	// causing a false match that corrupts the output.
+	data := []byte{
+		0x0a, 0x0c, 0x0e, 0x15, 0x1c, 0x23, 0x2a,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	}
+
+	for level := 0; level <= 9; level++ {
+		var buf bytes.Buffer
+		w := NewWriterV2(&buf, level)
+		w.Write(data)
+		w.Close()
+
+		decompressed, err := io.ReadAll(NewReader(bytes.NewReader(buf.Bytes())))
+		if err != nil {
+			t.Fatalf("level %d: decompress error: %v", level, err)
+		}
+		if !bytes.Equal(data, decompressed) {
+			t.Fatalf("level %d: decompressed data doesn't match", level)
+		}
+	}
+}

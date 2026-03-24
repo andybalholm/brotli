@@ -127,14 +127,18 @@ mainLoop:
 			coffset0 := s - (candidate.offset - z.current)
 			coffset1 := s - (candidate2.offset - z.current) + 1
 			if coffset0 < int32(z.MaxDistance) && uint32(cv) == candidate.val {
-				// found a regular match
 				t = candidate.offset - z.current
-				break
+				if binary.LittleEndian.Uint32(src[t:]) == uint32(cv) {
+					// found a regular match
+					break
+				}
 			}
 			if coffset1 < int32(z.MaxDistance) && uint32(cv>>8) == candidate2.val {
 				t = candidate2.offset - z.current
-				s++
-				break
+				if binary.LittleEndian.Uint32(src[t:]) == uint32(cv>>8) {
+					s++
+					break
+				}
 			}
 
 			s += stepSize + ((s - nextEmit) >> 5)
