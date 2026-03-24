@@ -58,12 +58,10 @@ func initBlockSplitterCommand(self *blockSplitterCommand, alphabet_size uint, mi
 	self.last_histogram_ix_[0] = self.last_histogram_ix_[1]
 }
 
-/*
-Does either of three things:
-
-	(1) emits the current block with a new block type;
-	(2) emits the current block with the type of the second last block;
-	(3) merges the current block with the last block.
+/* Does either of three things:
+   (1) emits the current block with a new block type;
+   (2) emits the current block with the type of the second last block;
+   (3) merges the current block with the last block.
 */
 func blockSplitterFinishBlockCommand(self *blockSplitterCommand, is_final bool) {
 	var split *blockSplit = self.split_
