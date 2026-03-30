@@ -120,7 +120,7 @@ func (q *Pathfinder) FindMatches(dst []Match, src []byte) []Match {
 	// Append src to the history buffer.
 	historyLen := len(q.history)
 	q.history = append(q.history, src...)
-	q.chain = append(q.chain, make([]uint32, len(src))...)
+	q.chain = growClearUint32(q.chain, len(src))
 	src = q.history
 
 	// Calculate hashes and build the chain.

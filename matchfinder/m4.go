@@ -102,7 +102,7 @@ func (q *M4) FindMatches(dst []Match, src []byte) []Match {
 	e.NextEmit = len(q.history)
 	q.history = append(q.history, src...)
 	if q.ChainLength > 0 {
-		q.chain = append(q.chain, make([]uint32, len(src))...)
+		q.chain = growClearUint32(q.chain, len(src))
 	}
 	src = q.history
 
