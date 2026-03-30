@@ -52,6 +52,7 @@ type Writer struct {
 
 	err     error
 	inBuf   []byte
+	inStart int
 	outBuf  []byte
 	matches []Match
 }
@@ -65,14 +66,20 @@ func (w *Writer) Write(p []byte) (n int, err error) {
 		return w.writeBlock(p, false)
 	}
 
-	w.inBuf = append(w.inBuf, p...)
-	var pos int
-	for pos = 0; pos+w.BlockSize <= len(w.inBuf) && w.err == nil; pos += w.BlockSize {
-		w.writeBlock(w.inBuf[pos:pos+w.BlockSize], false)
-	}
-	if pos > 0 {
-		n := copy(w.inBuf, w.inBuf[pos:])
+	if w.inStart > 0 && len(w.inBuf)+len(p) > cap(w.inBuf) {
+		n := copy(w.inBuf, w.inBuf[w.inStart:])
 		w.inBuf = w.inBuf[:n]
+		w.inStart = 0
+	}
+
+	w.inBuf = append(w.inBuf, p...)
+	for w.inStart+w.BlockSize <= len(w.inBuf) && w.err == nil {
+		w.writeBlock(w.inBuf[w.inStart:w.inStart+w.BlockSize], false)
+		w.inStart += w.BlockSize
+	}
+	if w.inStart == len(w.inBuf) {
+		w.inBuf = w.inBuf[:0]
+		w.inStart = 0
 	}
 
 	return len(p), w.err
@@ -87,8 +94,9 @@ func (w *Writer) writeBlock(p []byte, lastBlock bool) (n int, err error) {
 }
 
 func (w *Writer) Close() error {
-	w.writeBlock(w.inBuf, true)
+	w.writeBlock(w.inBuf[w.inStart:], true)
 	w.inBuf = w.inBuf[:0]
+	w.inStart = 0
 	return w.err
 }
 
@@ -97,6 +105,7 @@ func (w *Writer) Reset(newDest io.Writer) {
 	w.Encoder.Reset()
 	w.err = nil
 	w.inBuf = w.inBuf[:0]
+	w.inStart = 0
 	w.outBuf = w.outBuf[:0]
 	w.matches = w.matches[:0]
 	w.Dest = newDest
