@@ -2175,12 +2175,9 @@ func decoderDecompressStream(s *Reader, available_in *uint, next_in *[]byte, ava
 		case stateInitialize:
 			s.max_backward_distance = (1 << s.window_bits) - windowGap
 
-			/* Allocate memory for both block_type_trees and block_len_trees. */
-			s.block_type_trees = make([]huffmanCode, (3 * (huffmanMaxSize258 + huffmanMaxSize26)))
-
 			if s.block_type_trees == nil {
-				result = decoderErrorAllocBlockTypeTrees
-				break
+				/* Allocate memory for both block_type_trees and block_len_trees. */
+				s.block_type_trees = make([]huffmanCode, (3 * (huffmanMaxSize258 + huffmanMaxSize26)))
 			}
 
 			s.block_len_trees = s.block_type_trees[3*huffmanMaxSize258:]

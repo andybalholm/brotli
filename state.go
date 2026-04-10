@@ -198,7 +198,7 @@ func decoderStateInit(s *Reader) bool {
 	s.rb_roundtrips = 0
 	s.partial_pos_out = 0
 
-	s.block_type_trees = nil
+	clear(s.block_type_trees)
 	s.block_len_trees = nil
 	s.ringbuffer_size = 0
 	s.new_ringbuffer_size = 0
@@ -232,7 +232,7 @@ func decoderStateInit(s *Reader) bool {
 	s.dist_rb[2] = 11
 	s.dist_rb[3] = 4
 	s.dist_rb_idx = 0
-	s.block_type_trees = nil
+	clear(s.block_type_trees)
 	s.block_len_trees = nil
 
 	s.symbol_lists.storage = s.symbols_lists_array[:]

@@ -34,7 +34,10 @@ func (r *Reader) Reset(src io.Reader) error {
 	if r.error_code < 0 {
 		// There was an unrecoverable error, leaving the Reader's state
 		// undefined. Clear out everything but the buffer.
-		*r = Reader{buf: r.buf}
+		*r = Reader{
+			buf:              r.buf,
+			block_type_trees: r.block_type_trees,
+		}
 	}
 
 	decoderStateInit(r)
