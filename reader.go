@@ -33,10 +33,22 @@ func NewReader(src io.Reader) *Reader {
 func (r *Reader) Reset(src io.Reader) error {
 	if r.error_code < 0 {
 		// There was an unrecoverable error, leaving the Reader's state
-		// undefined. Clear out everything but the buffer.
+		// undefined. Clear out everything but the buffers.
 		*r = Reader{
 			buf:              r.buf,
 			block_type_trees: r.block_type_trees,
+			literal_hgroup: huffmanTreeGroup{
+				htrees: r.literal_hgroup.htrees,
+				codes:  r.literal_hgroup.codes,
+			},
+			distance_hgroup: huffmanTreeGroup{
+				htrees: r.distance_hgroup.htrees,
+				codes:  r.distance_hgroup.codes,
+			},
+			insert_copy_hgroup: huffmanTreeGroup{
+				htrees: r.insert_copy_hgroup.htrees,
+				codes:  r.insert_copy_hgroup.codes,
+			},
 		}
 	}
 
