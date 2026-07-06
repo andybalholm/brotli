@@ -1,7 +1,5 @@
 package matchfinder
 
-import "encoding/binary"
-
 // Trio is a MatchFinder that uses 3 different hash lengths, and
 // overlap parsing.
 type Trio struct {
@@ -89,8 +87,8 @@ mainLoop:
 		var t int32
 		var hashLengthFound int
 
-		cv := binary.LittleEndian.Uint64(src[s:])
-		extra := binary.LittleEndian.Uint32(src[s+8:])
+		cv := loadU64LE(src, uint(s))
+		extra := loadU32LE(src, uint(s+8))
 
 		for {
 			nextHash12 := z.hash12(cv, extra)
@@ -110,7 +108,7 @@ mainLoop:
 				prevDistance := int32(e.Dst[len(e.Dst)-1].Distance)
 				if prevDistance != 0 {
 					repIndex := s - prevDistance + 1
-					if repIndex >= 0 && binary.LittleEndian.Uint32(src[repIndex:]) == uint32(cv>>8) {
+					if repIndex >= 0 && loadU32LE(src, uint(repIndex)) == uint32(cv>>8) {
 						// There is a repeated match at s+2.
 						s++
 						t = repIndex
@@ -120,20 +118,20 @@ mainLoop:
 			}
 
 			if candidate12.offset < s && s-candidate12.offset < int32(z.MaxDistance) && uint32(cv) == candidate12.val &&
-				binary.LittleEndian.Uint32(src[candidate12.offset:]) == uint32(cv) {
+				loadU32LE(src, uint(candidate12.offset)) == uint32(cv) {
 				// There is a 12-byte match at s.
 				t = candidate12.offset
 				hashLengthFound = 12
 				break
 			}
 			if candidate8.offset < s && s-candidate8.offset < int32(z.MaxDistance) && uint32(cv) == candidate8.val &&
-				binary.LittleEndian.Uint32(src[candidate8.offset:]) == uint32(cv) {
+				loadU32LE(src, uint(candidate8.offset)) == uint32(cv) {
 				t = candidate8.offset
 				hashLengthFound = 8
 				break
 			}
 			if candidate5.offset < s && s-candidate5.offset < int32(z.MaxDistance) && uint32(cv) == candidate5.val &&
-				binary.LittleEndian.Uint32(src[candidate5.offset:]) == uint32(cv) {
+				loadU32LE(src, uint(candidate5.offset)) == uint32(cv) {
 				t = candidate5.offset
 				hashLengthFound = 5
 				break
@@ -143,14 +141,14 @@ mainLoop:
 			if s > sLimit {
 				break mainLoop
 			}
-			cv = binary.LittleEndian.Uint64(src[s:])
-			extra = binary.LittleEndian.Uint32(src[s+8:])
+			cv = loadU64LE(src, uint(s))
+			extra = loadU32LE(src, uint(s+8))
 		}
 
 		if hashLengthFound != 0 && hashLengthFound < 12 {
 			// Look for a "lazy" match with a longer hash at s+1.
-			cv := binary.LittleEndian.Uint64(src[s+1:])
-			extra := binary.LittleEndian.Uint32(src[s+9:])
+			cv := loadU64LE(src, uint(s+1))
+			extra := loadU32LE(src, uint(s+9))
 			nextHash12 := z.hash12(cv, extra)
 			nextHash8 := z.hash8(cv)
 			candidate12 := z.table12[nextHash12]
@@ -161,11 +159,11 @@ mainLoop:
 			z.table12[nextHash12] = entry
 			z.table8[nextHash8] = entry
 			if candidate12.offset < s+1 && coffset12 < int32(z.MaxDistance) && uint32(cv) == candidate12.val &&
-				binary.LittleEndian.Uint32(src[candidate12.offset:]) == uint32(cv) {
+				loadU32LE(src, uint(candidate12.offset)) == uint32(cv) {
 				t = candidate12.offset
 				s++
 			} else if hashLengthFound < 8 && candidate8.offset < s+1 && coffset8 < int32(z.MaxDistance) && uint32(cv) == candidate8.val &&
-				binary.LittleEndian.Uint32(src[candidate8.offset:]) == uint32(cv) {
+				loadU32LE(src, uint(candidate8.offset)) == uint32(cv) {
 				t = candidate8.offset
 				s++
 			}
@@ -187,8 +185,8 @@ mainLoop:
 
 			// Store some entries that haven't been indexed yet.
 			for index0 < s-1 {
-				cv0 := binary.LittleEndian.Uint64(src[index0:])
-				extra0 := binary.LittleEndian.Uint32(src[index0+8:])
+				cv0 := loadU64LE(src, uint(index0))
+				extra0 := loadU32LE(src, uint(index0+8))
 				te0 := tableEntry{offset: index0, val: uint32(cv0)}
 				z.table5[z.hash5(cv0)] = te0
 				z.table8[z.hash8(cv0)] = te0
@@ -196,8 +194,8 @@ mainLoop:
 				index0++
 			}
 
-			cv = binary.LittleEndian.Uint64(src[s:])
-			extra = binary.LittleEndian.Uint32(src[s+8:])
+			cv = loadU64LE(src, uint(s))
+			extra = loadU32LE(src, uint(s+8))
 
 			nextHash12 := z.hash12(cv, extra)
 			nextHash8 := z.hash8(cv)
@@ -212,11 +210,11 @@ mainLoop:
 
 			t = -1
 			if candidate12.offset < s && s-candidate12.offset < int32(z.MaxDistance) && uint32(cv) == candidate12.val &&
-				binary.LittleEndian.Uint32(src[candidate12.offset:]) == uint32(cv) {
+				loadU32LE(src, uint(candidate12.offset)) == uint32(cv) {
 				// There is a 12-byte match at s.
 				t = candidate12.offset
 			} else if candidate8.offset < s && s-candidate8.offset < int32(z.MaxDistance) && uint32(cv) == candidate8.val &&
-				binary.LittleEndian.Uint32(src[candidate8.offset:]) == uint32(cv) {
+				loadU32LE(src, uint(candidate8.offset)) == uint32(cv) {
 				// There is a long match at s.
 				t = candidate8.offset
 			}
@@ -280,8 +278,8 @@ mainLoop:
 
 		// Store some entries up to the end of the last match.
 		for index0 < int32(matches[0].End) && index0 < sLimit {
-			cv0 := binary.LittleEndian.Uint64(src[index0:])
-			extra0 := binary.LittleEndian.Uint32(src[index0+8:])
+			cv0 := loadU64LE(src, uint(index0))
+			extra0 := loadU32LE(src, uint(index0+8))
 			te0 := tableEntry{offset: index0, val: uint32(cv0)}
 			z.table5[z.hash5(cv0)] = te0
 			z.table8[z.hash8(cv0)] = te0
