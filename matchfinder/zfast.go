@@ -126,14 +126,14 @@ mainLoop:
 
 			coffset0 := s - (candidate.offset - z.current)
 			coffset1 := s - (candidate2.offset - z.current) + 1
-			if coffset0 < int32(z.MaxDistance) && uint32(cv) == candidate.val {
+			if candidate.offset != 0 && coffset0 < int32(z.MaxDistance) && uint32(cv) == candidate.val {
 				t = candidate.offset - z.current
 				if binary.LittleEndian.Uint32(src[t:]) == uint32(cv) {
 					// found a regular match
 					break
 				}
 			}
-			if coffset1 < int32(z.MaxDistance) && uint32(cv>>8) == candidate2.val {
+			if candidate2.offset != 0 && coffset1 < int32(z.MaxDistance) && uint32(cv>>8) == candidate2.val {
 				t = candidate2.offset - z.current
 				if binary.LittleEndian.Uint32(src[t:]) == uint32(cv>>8) {
 					s++
