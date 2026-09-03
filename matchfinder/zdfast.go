@@ -63,12 +63,17 @@ func (z *ZDFast) FindMatches(dst []Match, src []byte) []Match {
 		if cap(z.history) == 0 {
 			historySize := max(2*z.MaxDistance, 1<<20, len(src))
 			z.history = make([]byte, 0, historySize)
-		} else {
+		} else if len(z.history) > z.MaxDistance {
 			// Move down
 			offset := len(z.history) - z.MaxDistance
 			copy(z.history[:z.MaxDistance], z.history[offset:])
 			z.current += int32(offset)
 			z.history = z.history[:z.MaxDistance]
+		} else {
+			// There is less than MaxDistance of history, so nothing may be dropped yet.
+			grown := make([]byte, len(z.history), max(2*z.MaxDistance, 1<<20, len(z.history)+len(src)))
+			copy(grown, z.history)
+			z.history = grown
 		}
 	}
 	s := int32(len(z.history))
