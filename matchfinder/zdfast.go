@@ -69,11 +69,6 @@ func (z *ZDFast) FindMatches(dst []Match, src []byte) []Match {
 			copy(z.history[:z.MaxDistance], z.history[offset:])
 			z.current += int32(offset)
 			z.history = z.history[:z.MaxDistance]
-		} else {
-			// There is less than MaxDistance of history, so nothing may be dropped yet.
-			grown := make([]byte, len(z.history), max(2*z.MaxDistance, 1<<20, len(z.history)+len(src)))
-			copy(grown, z.history)
-			z.history = grown
 		}
 	}
 	s := int32(len(z.history))
