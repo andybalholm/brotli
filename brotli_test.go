@@ -935,6 +935,42 @@ func TestEncodeZDFast(t *testing.T) {
 	test(t, "testdata/Isaac.Newton-Opticks.txt", &matchfinder.ZDFast{MaxDistance: 1 << 20}, 1<<16)
 }
 
+// A block that outgrows the history buffer while less than MaxDistance has been
+// written must not try to drop older history.
+func TestEncodeUnevenBlocks(t *testing.T) {
+	opticks, err := ioutil.ReadFile("testdata/Isaac.Newton-Opticks.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	data := append(append([]byte{}, opticks...), opticks...)
+
+	for _, tc := range []struct {
+		name string
+		m    matchfinder.MatchFinder
+	}{
+		{"ZFast", &matchfinder.ZFast{}},
+		{"ZDFast", &matchfinder.ZDFast{}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			b := new(bytes.Buffer)
+			w := &matchfinder.Writer{Dest: b, MatchFinder: tc.m, Encoder: &Encoder{}}
+			// Writer.BlockSize is zero, so each Write is one block. The second
+			// block has to outgrow the history buffer's initial 1<<20 capacity.
+			w.Write(data[:100])
+			w.Write(data[100:])
+			w.Close()
+
+			decompressed, err := ioutil.ReadAll(NewReader(bytes.NewReader(b.Bytes())))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !bytes.Equal(decompressed, data) {
+				t.Fatal("decompressed output doesn't match")
+			}
+		})
+	}
+}
+
 func BenchmarkEncodeZDFast(b *testing.B) {
 	benchmark(b, "testdata/Isaac.Newton-Opticks.txt", &matchfinder.ZDFast{MaxDistance: 1 << 20}, 1<<16)
 }
