@@ -53,7 +53,7 @@ func main() {
 			log.Fatalf("Error compressing %s: %v", filename, err)
 		}
 		if err := bw.Close(); err != nil {
-			log.Fatalf("Error closing compressor for %s: %v", err)
+			log.Fatalf("Error closing compressor for %s: %v", filename, err)
 		}
 		elapsed := time.Now().Sub(start)
 		compressedSize := dest.Len()
@@ -65,7 +65,7 @@ func main() {
 			log.Fatalf("Error compressing %s: %v", filename, err)
 		}
 		if !bytes.Equal(data, decompressed) {
-			log.Fatal("Decompressed data for %s doesn't match", filename)
+			log.Fatalf("Decompressed data for %s doesn't match", filename)
 		}
 
 		fmt.Fprintf(tw, "%s\t%d\t%d\t%0.3f\t%v\t%0.2f\n",
