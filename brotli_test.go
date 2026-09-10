@@ -1073,3 +1073,28 @@ func TestV2FalseMatchZeroVal(t *testing.T) {
 		}
 	}
 }
+
+// Four zero bytes at the very start of the stream also match the zero-initialized
+// hash table entries, but there the candidate offset is the current position, so
+// the reported match has a distance of zero.
+func TestV2FalseMatchZeroValAtStart(t *testing.T) {
+	data := make([]byte, 64)
+	for i := 4; i < len(data); i++ {
+		data[i] = byte(i*7 + 1)
+	}
+
+	for level := 0; level <= 9; level++ {
+		var buf bytes.Buffer
+		w := NewWriterV2(&buf, level)
+		w.Write(data)
+		w.Close()
+
+		decompressed, err := io.ReadAll(NewReader(bytes.NewReader(buf.Bytes())))
+		if err != nil {
+			t.Fatalf("level %d: decompress error: %v", level, err)
+		}
+		if !bytes.Equal(data, decompressed) {
+			t.Fatalf("level %d: decompressed data doesn't match", level)
+		}
+	}
+}
