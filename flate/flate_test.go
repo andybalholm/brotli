@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"slices"
 	"testing"
 
 	"github.com/andybalholm/brotli/matchfinder"
@@ -87,6 +88,75 @@ func TestGZIPWriterLevels(t *testing.T) {
 		if !bytes.Equal(decompressed, data) {
 			t.Fatalf("decompressed output doesn't match on level %d", i)
 		}
+	}
+}
+
+func TestLongMatches(t *testing.T) {
+	// DEFLATE can't encode a match longer than 258 bytes.
+	inputs := [][]byte{
+		make([]byte, 259),
+		make([]byte, 260),
+		make([]byte, 1<<17),
+		bytes.Repeat([]byte("the quick brown fox jumps over the lazy dog. "), 8),
+	}
+
+	for _, data := range inputs {
+		for i := 1; i < 10; i++ {
+			b := new(bytes.Buffer)
+			w := NewWriter(b, i)
+			w.Write(data)
+			w.Close()
+			decompressed, err := io.ReadAll(flate.NewReader(b))
+			if err != nil {
+				t.Fatalf("error decompressing %d bytes on level %d: %v", len(data), i, err)
+			}
+			if !bytes.Equal(decompressed, data) {
+				t.Fatalf("decompressed output doesn't match for %d bytes on level %d", len(data), i)
+			}
+
+			b.Reset()
+			w = NewGZIPWriter(b, i)
+			w.Write(data)
+			w.Close()
+			sr, err := gzip.NewReader(b)
+			if err != nil {
+				t.Fatalf("error creating gzip reader: %v", err)
+			}
+			decompressed, err = io.ReadAll(sr)
+			if err != nil {
+				t.Fatalf("error decompressing gzip, %d bytes on level %d: %v", len(data), i, err)
+			}
+			if !bytes.Equal(decompressed, data) {
+				t.Fatalf("decompressed gzip output doesn't match for %d bytes on level %d", len(data), i)
+			}
+		}
+	}
+}
+
+func TestSplitLongMatches(t *testing.T) {
+	in := []matchfinder.Match{
+		{Unmatched: 1, Length: 258, Distance: 1},
+		{Unmatched: 2, Length: 259, Distance: 1},
+		{Length: 260, Distance: 2},
+		{Unmatched: 3, Length: 258, Distance: 3},
+		{Length: 517, Distance: 4},
+		{Unmatched: 5},
+	}
+	want := []matchfinder.Match{
+		{Unmatched: 1, Length: 258, Distance: 1},
+		{Unmatched: 2, Length: 256, Distance: 1},
+		{Length: 3, Distance: 1},
+		{Length: 257, Distance: 2},
+		{Length: 3, Distance: 2},
+		{Unmatched: 3, Length: 258, Distance: 3},
+		{Length: 258, Distance: 4},
+		{Length: 256, Distance: 4},
+		{Length: 3, Distance: 4},
+		{Unmatched: 5},
+	}
+	got := NewEncoder().(*huffmanBitWriter).splitLongMatches(in)
+	if !slices.Equal(got, want) {
+		t.Fatalf("got %v, want %v", got, want)
 	}
 }
 

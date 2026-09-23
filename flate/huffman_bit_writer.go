@@ -26,6 +26,9 @@ const (
 	maxStoreBlockSize = 65535
 	baseMatchLength   = 3 // The smallest match length per the RFC section 3.2.5
 	baseMatchOffset   = 1 // The smallest match offset
+
+	// The largest match length per the RFC section 3.2.5
+	maxMatchLength = 258
 )
 
 // The number of extra bits needed by length code X - LENGTH_CODES_START.
@@ -75,6 +78,7 @@ type huffmanBitWriter struct {
 	literalEncoding *huffmanEncoder
 	offsetEncoding  *huffmanEncoder
 	codegenEncoding *huffmanEncoder
+	splitMatches    []matchfinder.Match
 }
 
 func NewEncoder() matchfinder.Encoder {
@@ -359,6 +363,7 @@ func (w *huffmanBitWriter) writeFixedHeader(isEof bool) {
 
 // writeBlock will write a block of tokens with the smallest encoding.
 func (w *huffmanBitWriter) writeBlock(matches []matchfinder.Match, eof bool, input []byte) {
+	matches = w.splitLongMatches(matches)
 	numLiterals, numOffsets := w.makeStatistics(matches, input)
 
 	var extraBits int
@@ -416,6 +421,40 @@ func (w *huffmanBitWriter) writeBlock(matches []matchfinder.Match, eof bool, inp
 	// Write the tokens.
 	w.writeTokens(matches, input, literalEncoding.codes, offsetEncoding.codes)
 	w.writeCode(literalEncoding.codes[endBlockMarker])
+}
+
+// splitLongMatches returns matches with each match longer than maxMatchLength
+// split into several matches at the same distance, since DEFLATE can't encode
+// longer ones. If no match is too long, matches is returned unchanged.
+func (w *huffmanBitWriter) splitLongMatches(matches []matchfinder.Match) []matchfinder.Match {
+	i := 0
+	for i < len(matches) && matches[i].Length <= maxMatchLength {
+		i++
+	}
+	if i == len(matches) {
+		return matches
+	}
+
+	split := append(w.splitMatches[:0], matches[:i]...)
+	for _, m := range matches[i:] {
+		for m.Length > maxMatchLength {
+			n := maxMatchLength
+			if m.Length-n < baseMatchLength {
+				// Leave enough for the last piece to be a valid match.
+				n = m.Length - baseMatchLength
+			}
+			split = append(split, matchfinder.Match{
+				Unmatched: m.Unmatched,
+				Length:    n,
+				Distance:  m.Distance,
+			})
+			m.Unmatched = 0
+			m.Length -= n
+		}
+		split = append(split, m)
+	}
+	w.splitMatches = split
+	return split
 }
 
 // makeStatistics indexes a slice of tokens, and updates
