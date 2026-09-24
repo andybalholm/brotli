@@ -78,7 +78,6 @@ type huffmanBitWriter struct {
 	literalEncoding *huffmanEncoder
 	offsetEncoding  *huffmanEncoder
 	codegenEncoding *huffmanEncoder
-	splitMatches    []matchfinder.Match
 }
 
 func NewEncoder() matchfinder.Encoder {
@@ -363,7 +362,6 @@ func (w *huffmanBitWriter) writeFixedHeader(isEof bool) {
 
 // writeBlock will write a block of tokens with the smallest encoding.
 func (w *huffmanBitWriter) writeBlock(matches []matchfinder.Match, eof bool, input []byte) {
-	matches = w.splitLongMatches(matches)
 	numLiterals, numOffsets := w.makeStatistics(matches, input)
 
 	var extraBits int
@@ -423,38 +421,18 @@ func (w *huffmanBitWriter) writeBlock(matches []matchfinder.Match, eof bool, inp
 	w.writeCode(literalEncoding.codes[endBlockMarker])
 }
 
-// splitLongMatches returns matches with each match longer than maxMatchLength
-// split into several matches at the same distance, since DEFLATE can't encode
-// longer ones. If no match is too long, matches is returned unchanged.
-func (w *huffmanBitWriter) splitLongMatches(matches []matchfinder.Match) []matchfinder.Match {
-	i := 0
-	for i < len(matches) && matches[i].Length <= maxMatchLength {
-		i++
+// matchPiece returns the length of the next piece to encode of a match of the
+// given length. DEFLATE can't encode a match longer than maxMatchLength, so a
+// longer one is encoded as several matches at the same distance.
+func matchPiece(length int) int {
+	if length <= maxMatchLength {
+		return length
 	}
-	if i == len(matches) {
-		return matches
+	if length-maxMatchLength < baseMatchLength {
+		// Leave enough for the last piece to be a valid match.
+		return length - baseMatchLength
 	}
-
-	split := append(w.splitMatches[:0], matches[:i]...)
-	for _, m := range matches[i:] {
-		for m.Length > maxMatchLength {
-			n := maxMatchLength
-			if m.Length-n < baseMatchLength {
-				// Leave enough for the last piece to be a valid match.
-				n = m.Length - baseMatchLength
-			}
-			split = append(split, matchfinder.Match{
-				Unmatched: m.Unmatched,
-				Length:    n,
-				Distance:  m.Distance,
-			})
-			m.Unmatched = 0
-			m.Length -= n
-		}
-		split = append(split, m)
-	}
-	w.splitMatches = split
-	return split
+	return maxMatchLength
 }
 
 // makeStatistics indexes a slice of tokens, and updates
@@ -479,8 +457,12 @@ func (w *huffmanBitWriter) makeStatistics(matches []matchfinder.Match, input []b
 		if m.Length == 0 {
 			continue
 		}
-		w.literalFreq[lengthCodesStart+lengthCode(m.Length)]++
-		w.offsetFreq[offsetCode(m.Distance)]++
+		for length := m.Length; length > 0; {
+			n := matchPiece(length)
+			w.literalFreq[lengthCodesStart+lengthCode(n)]++
+			w.offsetFreq[offsetCode(m.Distance)]++
+			length -= n
+		}
 		pos += m.Length
 	}
 	w.literalFreq[endBlockMarker]++
@@ -516,27 +498,27 @@ func (w *huffmanBitWriter) writeTokens(matches []matchfinder.Match, input []byte
 		}
 		pos += m.Unmatched
 
-		// Write the length
-		length := m.Length
-		if length == 0 {
-			continue
-		}
-		lengthCode := lengthCode(length)
-		w.writeCode(leCodes[lengthCode+lengthCodesStart])
-		extraLengthBits := uint(lengthExtraBits[lengthCode])
-		if extraLengthBits > 0 {
-			extraLength := int32(length - baseMatchLength - lengthBase[lengthCode])
-			w.writeBits(extraLength, extraLengthBits)
-		}
+		for remaining := m.Length; remaining > 0; {
+			// Write the length
+			length := matchPiece(remaining)
+			remaining -= length
+			lengthCode := lengthCode(length)
+			w.writeCode(leCodes[lengthCode+lengthCodesStart])
+			extraLengthBits := uint(lengthExtraBits[lengthCode])
+			if extraLengthBits > 0 {
+				extraLength := int32(length - baseMatchLength - lengthBase[lengthCode])
+				w.writeBits(extraLength, extraLengthBits)
+			}
 
-		// Write the offset
-		offset := m.Distance
-		offsetCode := offsetCode(offset)
-		w.writeCode(oeCodes[offsetCode])
-		extraOffsetBits := uint(offsetExtraBits[offsetCode])
-		if extraOffsetBits > 0 {
-			extraOffset := int32(offset - baseMatchOffset - offsetBase[offsetCode])
-			w.writeBits(extraOffset, extraOffsetBits)
+			// Write the offset
+			offset := m.Distance
+			offsetCode := offsetCode(offset)
+			w.writeCode(oeCodes[offsetCode])
+			extraOffsetBits := uint(offsetExtraBits[offsetCode])
+			if extraOffsetBits > 0 {
+				extraOffset := int32(offset - baseMatchOffset - offsetBase[offsetCode])
+				w.writeBits(extraOffset, extraOffsetBits)
+			}
 		}
 		pos += m.Length
 	}

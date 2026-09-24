@@ -133,30 +133,30 @@ func TestLongMatches(t *testing.T) {
 	}
 }
 
-func TestSplitLongMatches(t *testing.T) {
-	in := []matchfinder.Match{
-		{Unmatched: 1, Length: 258, Distance: 1},
-		{Unmatched: 2, Length: 259, Distance: 1},
-		{Length: 260, Distance: 2},
+func TestEncodeLongMatches(t *testing.T) {
+	// A match longer than 258 bytes is encoded as several matches at the
+	// same distance, with the last piece at least 3 bytes long.
+	src := make([]byte, 1+517+2+260+3+258)
+	long := []matchfinder.Match{
+		{Unmatched: 1, Length: 517, Distance: 1},
+		{Unmatched: 2, Length: 260, Distance: 2},
 		{Unmatched: 3, Length: 258, Distance: 3},
-		{Length: 517, Distance: 4},
-		{Unmatched: 5},
 	}
-	want := []matchfinder.Match{
+	split := []matchfinder.Match{
 		{Unmatched: 1, Length: 258, Distance: 1},
-		{Unmatched: 2, Length: 256, Distance: 1},
+		{Length: 256, Distance: 1},
 		{Length: 3, Distance: 1},
-		{Length: 257, Distance: 2},
+		{Unmatched: 2, Length: 257, Distance: 2},
 		{Length: 3, Distance: 2},
 		{Unmatched: 3, Length: 258, Distance: 3},
-		{Length: 258, Distance: 4},
-		{Length: 256, Distance: 4},
-		{Length: 3, Distance: 4},
-		{Unmatched: 5},
 	}
-	got := NewEncoder().(*huffmanBitWriter).splitLongMatches(in)
-	if !slices.Equal(got, want) {
-		t.Fatalf("got %v, want %v", got, want)
+	got := NewEncoder().(*huffmanBitWriter)
+	want := NewEncoder().(*huffmanBitWriter)
+	if !bytes.Equal(got.Encode(nil, src, long, true), want.Encode(nil, src, split, true)) {
+		t.Error("output differs from encoding the split matches")
+	}
+	if !slices.Equal(got.literalFreq, want.literalFreq) || !slices.Equal(got.offsetFreq, want.offsetFreq) {
+		t.Error("statistics differ from encoding the split matches")
 	}
 }
 
