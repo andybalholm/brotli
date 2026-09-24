@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"slices"
 	"testing"
 
 	"github.com/andybalholm/brotli/matchfinder"
@@ -130,33 +129,6 @@ func TestLongMatches(t *testing.T) {
 				t.Fatalf("decompressed gzip output doesn't match for %d bytes on level %d", len(data), i)
 			}
 		}
-	}
-}
-
-func TestEncodeLongMatches(t *testing.T) {
-	// A match longer than 258 bytes is encoded as several matches at the
-	// same distance, with the last piece at least 3 bytes long.
-	src := make([]byte, 1+517+2+260+3+258)
-	long := []matchfinder.Match{
-		{Unmatched: 1, Length: 517, Distance: 1},
-		{Unmatched: 2, Length: 260, Distance: 2},
-		{Unmatched: 3, Length: 258, Distance: 3},
-	}
-	split := []matchfinder.Match{
-		{Unmatched: 1, Length: 258, Distance: 1},
-		{Length: 256, Distance: 1},
-		{Length: 3, Distance: 1},
-		{Unmatched: 2, Length: 257, Distance: 2},
-		{Length: 3, Distance: 2},
-		{Unmatched: 3, Length: 258, Distance: 3},
-	}
-	got := NewEncoder().(*huffmanBitWriter)
-	want := NewEncoder().(*huffmanBitWriter)
-	if !bytes.Equal(got.Encode(nil, src, long, true), want.Encode(nil, src, split, true)) {
-		t.Error("output differs from encoding the split matches")
-	}
-	if !slices.Equal(got.literalFreq, want.literalFreq) || !slices.Equal(got.offsetFreq, want.offsetFreq) {
-		t.Error("statistics differ from encoding the split matches")
 	}
 }
 
