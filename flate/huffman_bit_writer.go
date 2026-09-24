@@ -457,11 +457,11 @@ func (w *huffmanBitWriter) makeStatistics(matches []matchfinder.Match, input []b
 		if m.Length == 0 {
 			continue
 		}
-		for length := m.Length; length > 0; {
-			n := matchPiece(length)
-			w.literalFreq[lengthCodesStart+lengthCode(n)]++
+		for remaining := m.Length; remaining > 0; {
+			length := matchPiece(remaining)
+			remaining -= length
+			w.literalFreq[lengthCodesStart+lengthCode(length)]++
 			w.offsetFreq[offsetCode(m.Distance)]++
-			length -= n
 		}
 		pos += m.Length
 	}
