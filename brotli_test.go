@@ -1098,3 +1098,24 @@ func TestV2FalseMatchZeroValAtStart(t *testing.T) {
 		}
 	}
 }
+
+func TestResetReaderAfterTrailingDataRecovers(t *testing.T) {
+	data := bytes.Repeat([]byte("hello world "), 20)
+	var buf bytes.Buffer
+	w := NewWriterLevel(&buf, 5)
+	w.Write(data)
+	w.Close()
+	good := buf.Bytes()
+	withTrailer := append(append([]byte(nil), good...), 1, 2, 3)
+	r := NewReader(bytes.NewReader(withTrailer))
+	if _, err := io.ReadAll(r); err == nil {
+		t.Fatalf("trailing bytes were not reported")
+	}
+	if err := r.Reset(bytes.NewReader(good)); err != nil {
+		t.Fatalf("Reset: %v", err)
+	}
+	got, err := io.ReadAll(r)
+	if err != nil || !bytes.Equal(got, data) {
+		t.Fatalf("after trailing data and Reset, a good stream decodes to %d bytes, %v; want %d (Reset is documented to make the Reader equivalent to a new one)", len(got), err, len(data))
+	}
+}
