@@ -1119,3 +1119,25 @@ func TestResetReaderAfterTrailingDataRecovers(t *testing.T) {
 		t.Fatalf("after trailing data and Reset, a good stream decodes to %d bytes, %v; want %d (Reset is documented to make the Reader equivalent to a new one)", len(got), err, len(data))
 	}
 }
+
+func TestSpuriousRepeatMatch(t *testing.T) {
+	block := []byte("abcdefghij") // no repeats: no match is possible
+	for _, f := range []struct {
+		name string
+		mf   matchfinder.MatchFinder
+	}{{"M4", &matchfinder.M4{}}, {"Trio", &matchfinder.Trio{}}, {"ZM", &matchfinder.ZM{}}} {
+		// Accumulating the matches of two blocks in one slice, as the
+		// interface's "appends them to dst" invites.
+		dst := f.mf.FindMatches(nil, []byte("first block, nothing repeats"))
+		n := len(dst)
+		got := f.mf.FindMatches(dst, block)
+		for _, m := range got[n:] {
+			if m.Length > 0 {
+				t.Errorf("%s: a match in a block without repeats: %+v", f.name, m)
+			}
+			if m.Length > 0 && m.Distance <= 0 {
+				t.Errorf("%s: match with distance %d", f.name, m.Distance)
+			}
+		}
+	}
+}
