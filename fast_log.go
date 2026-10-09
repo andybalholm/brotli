@@ -21,7 +21,7 @@ func log2FloorNonZero(n uint) uint32 {
    computation.
 
    ", ".join(["%.16ff" % x for x in [0.0]+[log2(x) for x in range(1, 256)]]) */
-var kLog2Table = []float32{
+var kLog2Table = [256]float32{
 	0.0000000000000000,
 	0.0000000000000000,
 	1.0000000000000000,
@@ -282,7 +282,7 @@ var kLog2Table = []float32{
 
 /* Faster logarithm for small integers, with the property of log2(0) == 0. */
 func fastLog2(v uint) float64 {
-	if v < uint(len(kLog2Table)) {
+	if v < 256 {
 		return float64(kLog2Table[v])
 	}
 

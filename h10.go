@@ -77,9 +77,10 @@ func storeAndFindMatchesH10(self *h10, data []byte, cur_ix uint, ring_buffer_mas
 	var should_reroot_tree bool = (max_length >= 128)
 	var key uint32 = hashBytesH10(data[cur_ix_masked:])
 	var forest []uint32 = self.forest
+	window_mask := self.window_mask_
 	var prev_ix uint = uint(self.buckets_[key])
-	var node_left uint = leftChildIndexH10(self, cur_ix)
-	var node_right uint = rightChildIndexH10(self, cur_ix)
+	var node_left uint = 2 * (cur_ix & window_mask)
+	var node_right uint = node_left + 1
 	var best_len_left uint = 0
 	var best_len_right uint = 0
 	var depth_remaining uint
@@ -122,8 +123,8 @@ func storeAndFindMatchesH10(self *h10, data []byte, cur_ix uint, ring_buffer_mas
 
 			if len >= max_comp_len {
 				if should_reroot_tree {
-					forest[node_left] = forest[leftChildIndexH10(self, prev_ix)]
-					forest[node_right] = forest[rightChildIndexH10(self, prev_ix)]
+					forest[node_left] = forest[2*(prev_ix&window_mask)]
+					forest[node_right] = forest[2*(prev_ix&window_mask)+1]
 				}
 
 				break
@@ -135,7 +136,7 @@ func storeAndFindMatchesH10(self *h10, data []byte, cur_ix uint, ring_buffer_mas
 					forest[node_left] = uint32(prev_ix)
 				}
 
-				node_left = rightChildIndexH10(self, prev_ix)
+				node_left = 2*(prev_ix&window_mask) + 1
 				prev_ix = uint(forest[node_left])
 			} else {
 				best_len_right = uint(len)
@@ -143,7 +144,7 @@ func storeAndFindMatchesH10(self *h10, data []byte, cur_ix uint, ring_buffer_mas
 					forest[node_right] = uint32(prev_ix)
 				}
 
-				node_right = leftChildIndexH10(self, prev_ix)
+				node_right = 2 * (prev_ix & window_mask)
 				prev_ix = uint(forest[node_right])
 			}
 		}
@@ -175,6 +176,8 @@ func findAllMatchesH10(handle *h10, dictionary *encoderDictionary, data []byte, 
 	if cur_ix < short_match_max_backward {
 		stop = 0
 	}
+	var b0 byte = data[cur_ix_masked]
+	var b1 byte = data[cur_ix_masked+1]
 	for i = cur_ix - 1; i > stop && best_len <= 2; i-- {
 		var prev_ix uint = i
 		var backward uint = cur_ix - prev_ix
@@ -183,7 +186,7 @@ func findAllMatchesH10(handle *h10, dictionary *encoderDictionary, data []byte, 
 		}
 
 		prev_ix &= ring_buffer_mask
-		if data[cur_ix_masked] != data[prev_ix] || data[cur_ix_masked+1] != data[prev_ix+1] {
+		if data[prev_ix] != b0 || data[prev_ix+1] != b1 {
 			continue
 		}
 		{
@@ -200,21 +203,23 @@ func findAllMatchesH10(handle *h10, dictionary *encoderDictionary, data []byte, 
 		matches = storeAndFindMatchesH10(handle, data, cur_ix, ring_buffer_mask, max_length, max_backward, &best_len, matches)
 	}
 
-	for i = 0; i <= maxStaticDictionaryMatchLen; i++ {
-		dict_matches[i] = kInvalidMatch
-	}
-	{
-		var minlen uint = brotli_max_size_t(4, best_len+1)
-		if findAllStaticDictionaryMatches(dictionary, data[cur_ix_masked:], minlen, max_length, dict_matches[0:]) {
-			var maxlen uint = brotli_min_size_t(maxStaticDictionaryMatchLen, max_length)
-			var l uint
-			for l = minlen; l <= maxlen; l++ {
-				var dict_id uint32 = dict_matches[l]
-				if dict_id < kInvalidMatch {
-					var distance uint = max_backward + gap + uint(dict_id>>5) + 1
-					if distance <= params.dist.max_distance {
-						initDictionaryBackwardMatch(&matches[0], distance, l, uint(dict_id&31))
-						matches = matches[1:]
+	if best_len < maxStaticDictionaryMatchLen {
+		for i = 0; i <= maxStaticDictionaryMatchLen; i++ {
+			dict_matches[i] = kInvalidMatch
+		}
+		{
+			var minlen uint = brotli_max_size_t(4, best_len+1)
+			if findAllStaticDictionaryMatches(dictionary, data[cur_ix_masked:], minlen, max_length, dict_matches[0:]) {
+				var maxlen uint = brotli_min_size_t(maxStaticDictionaryMatchLen, max_length)
+				var l uint
+				for l = minlen; l <= maxlen; l++ {
+					var dict_id uint32 = dict_matches[l]
+					if dict_id < kInvalidMatch {
+						var distance uint = max_backward + gap + uint(dict_id>>5) + 1
+						if distance <= params.dist.max_distance {
+							initDictionaryBackwardMatch(&matches[0], distance, l, uint(dict_id&31))
+							matches = matches[1:]
+						}
 					}
 				}
 			}
