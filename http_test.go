@@ -18,6 +18,11 @@ var acceptEncodingCases = []struct {
 	{"gzip", "gzip"},
 	{"gzip,br", "br"},
 	{"gzip,BR", "br"},
+	{"*;q=0.5, br;q=0", "gzip"},
+	{"*, br;q=0", "gzip"},
+	{"*;q=0.5, br", "br"},
+	{"*;q=0.1, gzip;q=0.5", "gzip"},
+	{"*, br;q=0, gzip;q=0", ""},
 }
 
 func TestNegotiateContentEncoding(t *testing.T) {
