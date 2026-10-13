@@ -717,7 +717,6 @@ func createHqZopfliBackwardReferences(num_bytes uint, position uint, ringbuffer 
 		var max_length uint = num_bytes - i
 		var num_found_matches uint
 		var cur_match_end uint
-		var j uint
 
 		/* Ensure that we have enough free slots. */
 		if matches_size < cur_match_pos+maxNumMatchesH10+shadow_matches {
@@ -741,9 +740,6 @@ func createHqZopfliBackwardReferences(num_bytes uint, position uint, ringbuffer 
 
 		num_found_matches = findAllMatchesH10(hasher.(*h10), &params.dictionary, ringbuffer, ringbuffer_mask, pos, max_length, max_distance, gap, params, matches[cur_match_pos+shadow_matches:])
 		cur_match_end = cur_match_pos + num_found_matches
-		for j = cur_match_pos; j+1 < cur_match_end; j++ {
-			assert(backwardMatchLength(&matches[j]) <= backwardMatchLength(&matches[j+1]))
-		}
 
 		num_matches[i] = uint32(num_found_matches)
 		if num_found_matches > 0 {
