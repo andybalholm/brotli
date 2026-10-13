@@ -78,8 +78,10 @@ func storeAndFindMatchesH10(self *h10, data []byte, cur_ix uint, ring_buffer_mas
 	var key uint32 = hashBytesH10(data[cur_ix_masked:])
 	var forest []uint32 = self.forest
 	var prev_ix uint = uint(self.buckets_[key])
-	var node_left uint = leftChildIndexH10(self, cur_ix)
-	var node_right uint = rightChildIndexH10(self, cur_ix)
+	var window_mask uint = self.window_mask_
+	var invalid_pos uint32 = self.invalid_pos_
+	var node_left uint = 2 * (cur_ix & window_mask)
+	var node_right uint = node_left + 1
 	var best_len_left uint = 0
 	var best_len_right uint = 0
 	var depth_remaining uint
@@ -103,8 +105,8 @@ func storeAndFindMatchesH10(self *h10, data []byte, cur_ix uint, ring_buffer_mas
 		var prev_ix_masked uint = prev_ix & ring_buffer_mask
 		if backward == 0 || backward > max_backward || depth_remaining == 0 {
 			if should_reroot_tree {
-				forest[node_left] = self.invalid_pos_
-				forest[node_right] = self.invalid_pos_
+				forest[node_left] = invalid_pos
+				forest[node_right] = invalid_pos
 			}
 
 			break
@@ -112,7 +114,6 @@ func storeAndFindMatchesH10(self *h10, data []byte, cur_ix uint, ring_buffer_mas
 		{
 			var cur_len uint = brotli_min_size_t(best_len_left, best_len_right)
 			var len uint
-			assert(cur_len <= 128)
 			len = cur_len + findMatchLengthWithLimit(data[cur_ix_masked+cur_len:], data[prev_ix_masked+cur_len:], max_length-cur_len)
 			if matches != nil && len > *best_len {
 				*best_len = uint(len)
@@ -122,20 +123,22 @@ func storeAndFindMatchesH10(self *h10, data []byte, cur_ix uint, ring_buffer_mas
 
 			if len >= max_comp_len {
 				if should_reroot_tree {
-					forest[node_left] = forest[leftChildIndexH10(self, prev_ix)]
-					forest[node_right] = forest[rightChildIndexH10(self, prev_ix)]
+					var prev_node uint = 2 * (prev_ix & window_mask)
+					forest[node_left] = forest[prev_node]
+					forest[node_right] = forest[prev_node+1]
 				}
 
 				break
 			}
 
+			var prev_node uint = 2 * (prev_ix & window_mask)
 			if data[cur_ix_masked+len] > data[prev_ix_masked+len] {
 				best_len_left = uint(len)
 				if should_reroot_tree {
 					forest[node_left] = uint32(prev_ix)
 				}
 
-				node_left = rightChildIndexH10(self, prev_ix)
+				node_left = prev_node + 1
 				prev_ix = uint(forest[node_left])
 			} else {
 				best_len_right = uint(len)
@@ -143,7 +146,7 @@ func storeAndFindMatchesH10(self *h10, data []byte, cur_ix uint, ring_buffer_mas
 					forest[node_right] = uint32(prev_ix)
 				}
 
-				node_right = leftChildIndexH10(self, prev_ix)
+				node_right = prev_node
 				prev_ix = uint(forest[node_right])
 			}
 		}
@@ -175,6 +178,8 @@ func findAllMatchesH10(handle *h10, dictionary *encoderDictionary, data []byte, 
 	if cur_ix < short_match_max_backward {
 		stop = 0
 	}
+	c0 := data[cur_ix_masked]
+	c1 := data[cur_ix_masked+1]
 	for i = cur_ix - 1; i > stop && best_len <= 2; i-- {
 		var prev_ix uint = i
 		var backward uint = cur_ix - prev_ix
@@ -183,7 +188,7 @@ func findAllMatchesH10(handle *h10, dictionary *encoderDictionary, data []byte, 
 		}
 
 		prev_ix &= ring_buffer_mask
-		if data[cur_ix_masked] != data[prev_ix] || data[cur_ix_masked+1] != data[prev_ix+1] {
+		if data[prev_ix] != c0 || data[prev_ix+1] != c1 {
 			continue
 		}
 		{
