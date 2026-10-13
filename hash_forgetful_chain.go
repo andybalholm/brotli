@@ -22,7 +22,7 @@ func (h *hashForgetfulChain) HashBytes(data []byte) uint {
 
 	/* The higher bits contain more mixture from the multiplication,
 	   so we take our results from there. */
-	return uint(hash >> (32 - h.bucketBits))
+	return uint(hash >> h.hash_shift)
 }
 
 type slot struct {
@@ -44,6 +44,10 @@ type hashForgetfulChain struct {
 	bankBits                uint
 	numLastDistancesToCheck int
 
+	hash_shift     uint
+	bank_mask      uint
+	num_banks_mask uint
+
 	addr          []uint32
 	head          []uint16
 	tiny_hash     [65536]byte
@@ -60,6 +64,9 @@ func (h *hashForgetfulChain) Initialize(params *encoderParams) {
 		q = 8
 	}
 	h.max_hops = q << uint(params.quality-4)
+	h.hash_shift = 32 - h.bucketBits
+	h.bank_mask = (1 << h.bankBits) - 1
+	h.num_banks_mask = h.numBanks - 1
 
 	bankSize := 1 << h.bankBits
 	bucketSize := 1 << h.bucketBits
@@ -109,8 +116,8 @@ func (h *hashForgetfulChain) Prepare(one_shot bool, input_size uint, data []byte
    node to corresponding chain; also update tiny_hash for current position. */
 func (h *hashForgetfulChain) Store(data []byte, mask uint, ix uint) {
 	var key uint = h.HashBytes(data[ix&mask:])
-	var bank uint = key & (h.numBanks - 1)
-	idx := uint(h.free_slot_idx[bank]) & ((1 << h.bankBits) - 1)
+	var bank uint = key & h.num_banks_mask
+	idx := uint(h.free_slot_idx[bank]) & h.bank_mask
 	h.free_slot_idx[bank]++
 	var delta uint = ix - uint(h.addr[key])
 	h.tiny_hash[uint16(ix)] = byte(key)
@@ -202,7 +209,7 @@ func (h *hashForgetfulChain) FindLongestMatch(dictionary *encoderDictionary, dat
 		}
 	}
 	{
-		var bank uint = key & (h.numBanks - 1)
+		var bank uint = key & h.num_banks_mask
 		var backward uint = 0
 		var hops uint = h.max_hops
 		var delta uint = cur_ix - uint(h.addr[key])

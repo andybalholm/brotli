@@ -24,11 +24,11 @@ func (*hashLongestMatchQuickly) StoreLookahead() uint {
    the address in. The HashLongestMatch and hashLongestMatchQuickly
    classes have separate, different implementations of hashing. */
 func (h *hashLongestMatchQuickly) HashBytes(data []byte) uint32 {
-	var hash uint64 = ((binary.LittleEndian.Uint64(data) << (64 - 8*h.hashLen)) * kHashMul64)
+	var hash uint64 = (binary.LittleEndian.Uint64(data) << h.hash_shift_left) * kHashMul64
 
 	/* The higher bits contain more mixture from the multiplication,
 	   so we take our results from there. */
-	return uint32(hash >> (64 - h.bucketBits))
+	return uint32(hash >> h.hash_shift_right)
 }
 
 /* A (forgetful) hash table to the data seen by the compressor, to
@@ -44,10 +44,17 @@ type hashLongestMatchQuickly struct {
 	hashLen       uint
 	useDictionary bool
 
+	hash_shift_left  uint
+	hash_shift_right uint
+	sweep_mask       uint32
+
 	buckets []uint32
 }
 
 func (h *hashLongestMatchQuickly) Initialize(params *encoderParams) {
+	h.hash_shift_left = 64 - 8*h.hashLen
+	h.hash_shift_right = 64 - h.bucketBits
+	h.sweep_mask = uint32(h.bucketSweep - 1)
 	h.buckets = make([]uint32, 1<<h.bucketBits+h.bucketSweep)
 }
 
@@ -78,7 +85,7 @@ func (h *hashLongestMatchQuickly) Prepare(one_shot bool, input_size uint, data [
    [ix .. ix+3]. */
 func (h *hashLongestMatchQuickly) Store(data []byte, mask uint, ix uint) {
 	var key uint32 = h.HashBytes(data[ix&mask:])
-	var off uint32 = uint32(ix>>3) % uint32(h.bucketSweep)
+	var off uint32 = uint32(ix>>3) & h.sweep_mask
 	/* Wiggle the value with the bucket sweep range. */
 	h.buckets[key+off] = uint32(ix)
 }
