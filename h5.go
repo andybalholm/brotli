@@ -35,6 +35,7 @@ type h5 struct {
 	hasherCommon
 	bucket_size_ uint
 	block_size_  uint
+	block_bits   uint
 	hash_shift_  int
 	block_mask_  uint32
 	num          []uint16
@@ -42,9 +43,10 @@ type h5 struct {
 }
 
 func (h *h5) Initialize(params *encoderParams) {
+	h.block_bits = uint(h.params.block_bits)
 	h.hash_shift_ = 32 - h.params.bucket_bits
 	h.bucket_size_ = uint(1) << uint(h.params.bucket_bits)
-	h.block_size_ = uint(1) << uint(h.params.block_bits)
+	h.block_size_ = uint(1) << h.block_bits
 	h.block_mask_ = uint32(h.block_size_ - 1)
 	h.num = make([]uint16, h.bucket_size_)
 	h.buckets = make([]uint32, h.block_size_*h.bucket_size_)
@@ -73,7 +75,7 @@ func (h *h5) Store(data []byte, mask uint, ix uint) {
 	var num []uint16 = h.num
 	var key uint32 = hashBytesH5(data[ix&mask:], h.hash_shift_)
 	var minor_ix uint = uint(num[key]) & uint(h.block_mask_)
-	var offset uint = minor_ix + uint(key<<uint(h.params.block_bits))
+	var offset uint = minor_ix + uint(key<<h.block_bits)
 	h.buckets[offset] = uint32(ix)
 	num[key]++
 }
@@ -166,7 +168,7 @@ func (h *h5) FindLongestMatch(dictionary *encoderDictionary, data []byte, ring_b
 	}
 	{
 		var key uint32 = hashBytesH5(data[cur_ix_masked:], h.hash_shift_)
-		bucket = buckets[key<<uint(h.params.block_bits):]
+		bucket = buckets[key<<h.block_bits:]
 		var down uint
 		if uint(num[key]) > h.block_size_ {
 			down = uint(num[key]) - h.block_size_
