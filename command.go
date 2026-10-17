@@ -1,6 +1,6 @@
 package brotli
 
-var kInsBase = []uint32{
+var kInsBase = [24]uint32{
 	0,
 	1,
 	2,
@@ -27,7 +27,7 @@ var kInsBase = []uint32{
 	22594,
 }
 
-var kInsExtra = []uint32{
+var kInsExtra = [24]uint32{
 	0,
 	0,
 	0,
@@ -54,7 +54,7 @@ var kInsExtra = []uint32{
 	24,
 }
 
-var kCopyBase = []uint32{
+var kCopyBase = [24]uint32{
 	2,
 	3,
 	4,
@@ -81,7 +81,7 @@ var kCopyBase = []uint32{
 	2118,
 }
 
-var kCopyExtra = []uint32{
+var kCopyExtra = [24]uint32{
 	0,
 	0,
 	0,

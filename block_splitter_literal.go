@@ -103,6 +103,8 @@ func findBlocksLiteral(data []byte, length uint, block_switch_bitcost float64, n
 		var min_cost float64 = 1e99
 		var block_switch_cost float64 = block_switch_bitcost
 		var k uint
+		_ = cost[num_histograms-1]
+		_ = insert_cost[insert_cost_ix+num_histograms-1]
 		for k = 0; k < num_histograms; k++ {
 			/* We are coding the symbol in data[byte_ix] with entropy code k. */
 			cost[k] += insert_cost[insert_cost_ix+k]
@@ -123,7 +125,6 @@ func findBlocksLiteral(data []byte, length uint, block_switch_bitcost float64, n
 			if cost[k] >= block_switch_cost {
 				var mask byte = byte(1 << (k & 7))
 				cost[k] = block_switch_cost
-				assert(k>>3 < bitmaplen)
 				switch_signal[ix+(k>>3)] |= mask
 				/* Trace back from the last position and switch at the marked places. */
 			}
@@ -135,7 +136,6 @@ func findBlocksLiteral(data []byte, length uint, block_switch_bitcost float64, n
 		var cur_id byte = block_id[byte_ix]
 		for byte_ix > 0 {
 			var mask byte = byte(1 << (cur_id & 7))
-			assert(uint(cur_id)>>3 < bitmaplen)
 			byte_ix--
 			ix -= bitmaplen
 			if switch_signal[ix+uint(cur_id>>3)]&mask != 0 {

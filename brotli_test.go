@@ -1141,3 +1141,86 @@ func TestSpuriousRepeatMatch(t *testing.T) {
 		}
 	}
 }
+
+func TestLevel11Compression(t *testing.T) {
+	testCases := []struct {
+		name string
+		data []byte
+	}{
+		{"empty", []byte{}},
+		{"single_byte", []byte("x")},
+		{"short", []byte("hello world")},
+		{"repeated", bytes.Repeat([]byte("The quick brown fox jumps over the lazy dog. "), 500)},
+		{"issue63_sample_size", func() []byte {
+			data := make([]byte, 63009)
+			for i := range data {
+				data[i] = byte((i*31 + 17) % 251)
+			}
+			return data
+		}()},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			var buf bytes.Buffer
+			w := NewWriterLevel(&buf, BestCompression)
+			if _, err := w.Write(tc.data); err != nil {
+				t.Fatalf("Write failed: %v", err)
+			}
+			if err := w.Close(); err != nil {
+				t.Fatalf("Close failed: %v", err)
+			}
+
+			decompressed, err := Decode(buf.Bytes())
+			if err != nil {
+				t.Fatalf("Decode failed: %v", err)
+			}
+			if !bytes.Equal(decompressed, tc.data) {
+				t.Fatalf("decompressed mismatch: got %d bytes, want %d bytes", len(decompressed), len(tc.data))
+			}
+		})
+	}
+}
+
+func TestLevel11StreamingAndReset(t *testing.T) {
+	data := bytes.Repeat([]byte("streaming test payload with recurring phrases 1234567890\n"), 100)
+	var buf bytes.Buffer
+	w := NewWriterLevel(&buf, BestCompression)
+	chunkSize := 128
+	for i := 0; i < len(data); i += chunkSize {
+		end := i + chunkSize
+		if end > len(data) {
+			end = len(data)
+		}
+		if _, err := w.Write(data[i:end]); err != nil {
+			t.Fatalf("Write chunk failed: %v", err)
+		}
+	}
+	if err := w.Close(); err != nil {
+		t.Fatalf("Close failed: %v", err)
+	}
+
+	decompressed, err := Decode(buf.Bytes())
+	if err != nil {
+		t.Fatalf("Decode failed: %v", err)
+	}
+	if !bytes.Equal(decompressed, data) {
+		t.Fatalf("decompressed mismatch")
+	}
+
+	buf.Reset()
+	w.Reset(&buf)
+	if _, err := w.Write(data); err != nil {
+		t.Fatalf("Write after Reset failed: %v", err)
+	}
+	if err := w.Close(); err != nil {
+		t.Fatalf("Close after Reset failed: %v", err)
+	}
+	decompressed, err = Decode(buf.Bytes())
+	if err != nil {
+		t.Fatalf("Decode failed after Reset: %v", err)
+	}
+	if !bytes.Equal(decompressed, data) {
+		t.Fatalf("decompressed mismatch after Reset")
+	}
+}
