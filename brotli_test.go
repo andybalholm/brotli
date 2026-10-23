@@ -517,6 +517,50 @@ func TestErrorReset(t *testing.T) {
 	}
 }
 
+// Node's public regression input for CVE-2026-111497. A patched decoder
+// rejects it as an invalid block switch instead of continuing.
+var invalidBlockSwitch = []byte{
+	0x20, 0x00, 0x10, 0x41, 0x41, 0x41, 0xfc, 0xff,
+	0xff, 0x07, 0x00, 0x22, 0x28, 0xf0, 0x0b, 0x60,
+	0xf7, 0xf4, 0x1f, 0x00, 0x00, 0x00,
+}
+
+func TestInvalidBlockSwitch(t *testing.T) {
+	check := func(t *testing.T, src io.Reader) {
+		t.Helper()
+		out, err := io.ReadAll(NewReader(src))
+		if err == nil {
+			t.Fatalf("decoded %d bytes, want block-switch error", len(out))
+		}
+		if err.Error() != "brotli: BLOCK_SWITCH" {
+			t.Fatalf("error = %v, want brotli: BLOCK_SWITCH (decoded %d bytes)", err, len(out))
+		}
+	}
+
+	t.Run("one-shot", func(t *testing.T) {
+		check(t, bytes.NewReader(invalidBlockSwitch))
+	})
+	t.Run("byte-at-a-time", func(t *testing.T) {
+		check(t, &oneByteReader{rest: append([]byte(nil), invalidBlockSwitch...)})
+	})
+}
+
+type oneByteReader struct {
+	rest []byte
+}
+
+func (r *oneByteReader) Read(p []byte) (int, error) {
+	if len(r.rest) == 0 {
+		return 0, io.EOF
+	}
+	if len(p) == 0 {
+		return 0, nil
+	}
+	p[0] = r.rest[0]
+	r.rest = r.rest[1:]
+	return 1, nil
+}
+
 // Encode returns content encoded with Brotli.
 func Encode(content []byte, options WriterOptions) ([]byte, error) {
 	var buf bytes.Buffer
