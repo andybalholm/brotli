@@ -1141,3 +1141,28 @@ func TestSpuriousRepeatMatch(t *testing.T) {
 		}
 	}
 }
+
+type oneByteReader struct {
+	data  string
+	index int
+}
+
+func (r *oneByteReader) Read(p []byte) (int, error) {
+	if r.index >= len(r.data) {
+		return 0, io.EOF
+	}
+	p[0] = r.data[r.index]
+	r.index++
+	return 1, nil
+}
+
+func TestDecodeByteAtATimeWithExcessiveInput(t *testing.T) {
+	source := &oneByteReader{
+		data: "\x1b*\x00\x88\x9c\t6N\xa8w7\xbc$00K01\xbc20K012\x98\xc8\x81C[\xa0\xf7\xde$X.\xe91A0Z1$\xe0Y07000\xab#x\xf6\xda%2\x1e",
+	}
+	r := NewReader(source)
+	_, err := io.ReadAll(r)
+	if err != errExcessiveInput {
+		t.Errorf("expected excessive input error, got %v", err)
+	}
+}
