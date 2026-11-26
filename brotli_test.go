@@ -1166,3 +1166,79 @@ func TestDecodeByteAtATimeWithExcessiveInput(t *testing.T) {
 		t.Errorf("expected excessive input error, got %v", err)
 	}
 }
+
+type failOnceDest struct {
+	writes int
+	failAt int
+	err    error
+}
+
+func (w *failOnceDest) Write(p []byte) (int, error) {
+	w.writes++
+	if w.writes == w.failAt {
+		return 0, w.err
+	}
+	return len(p), nil
+}
+
+func TestWriterV2CloseAndStickyError(t *testing.T) {
+	t.Run("write_and_close_after_close", func(t *testing.T) {
+		var buf bytes.Buffer
+		w := NewWriterV2(&buf, 4)
+		payload := []byte("hello matchfinder writer")
+		if _, err := w.Write(payload); err != nil {
+			t.Fatalf("Write: %v", err)
+		}
+		if err := w.Close(); err != nil {
+			t.Fatalf("Close: %v", err)
+		}
+		closedLen := buf.Len()
+
+		if n, err := w.Write([]byte("trailing")); err == nil || n != 0 {
+			t.Fatalf("Write after Close: n=%d err=%v, want 0 and non-nil error", n, err)
+		}
+		if err := w.Close(); err == nil {
+			t.Fatal("second Close: got nil, want error")
+		}
+		if buf.Len() != closedLen {
+			t.Fatalf("closed writer appended %d bytes", buf.Len()-closedLen)
+		}
+		if err := checkCompressedData(buf.Bytes(), payload); err != nil {
+			t.Fatalf("compressed stream corrupted: %v", err)
+		}
+
+		// Reset makes the writer usable again.
+		buf.Reset()
+		w.Reset(&buf)
+		if _, err := w.Write(payload); err != nil {
+			t.Fatalf("Write after Reset: %v", err)
+		}
+		if err := w.Close(); err != nil {
+			t.Fatalf("Close after Reset: %v", err)
+		}
+		if err := checkCompressedData(buf.Bytes(), payload); err != nil {
+			t.Fatalf("compressed stream after Reset corrupted: %v", err)
+		}
+	})
+
+	t.Run("sticky_error_in_close", func(t *testing.T) {
+		errBoom := fmt.Errorf("simulated write error")
+		dst := &failOnceDest{failAt: 1, err: errBoom}
+		w := NewWriterV2(dst, 4)
+		// Exceed the 64 KiB BlockSize so Write flushes a block and triggers dst.Write.
+		data := bytes.Repeat([]byte("abcd1234"), 10000)
+		if _, err := w.Write(data); err != errBoom {
+			t.Fatalf("Write: got %v, want %v", err, errBoom)
+		}
+		writesAfterFail := dst.writes
+		if err := w.Close(); err != errBoom {
+			t.Fatalf("Close after failed Write: got %v, want %v", err, errBoom)
+		}
+		if dst.writes != writesAfterFail {
+			t.Fatalf("Close wrote %d extra times after sticky error", dst.writes-writesAfterFail)
+		}
+		if err := w.Close(); err == nil {
+			t.Fatal("second Close after error: got nil, want error")
+		}
+	})
+}

@@ -10,7 +10,12 @@
 // representation to allow mixing and matching compression components.
 package matchfinder
 
-import "io"
+import (
+	"errors"
+	"io"
+)
+
+var errWriterClosed = errors.New("matchfinder: Writer is closed")
 
 // A Match is the basic unit of LZ77 compression.
 type Match struct {
@@ -51,12 +56,16 @@ type Writer struct {
 	BlockSize int
 
 	err     error
+	closed  bool
 	inBuf   []byte
 	outBuf  []byte
 	matches []Match
 }
 
 func (w *Writer) Write(p []byte) (n int, err error) {
+	if w.closed {
+		return 0, errWriterClosed
+	}
 	if w.err != nil {
 		return 0, w.err
 	}
@@ -87,6 +96,13 @@ func (w *Writer) writeBlock(p []byte, lastBlock bool) (n int, err error) {
 }
 
 func (w *Writer) Close() error {
+	if w.closed {
+		return errWriterClosed
+	}
+	w.closed = true
+	if w.err != nil {
+		return w.err
+	}
 	w.writeBlock(w.inBuf, true)
 	w.inBuf = w.inBuf[:0]
 	return w.err
@@ -96,6 +112,7 @@ func (w *Writer) Reset(newDest io.Writer) {
 	w.MatchFinder.Reset()
 	w.Encoder.Reset()
 	w.err = nil
+	w.closed = false
 	w.inBuf = w.inBuf[:0]
 	w.outBuf = w.outBuf[:0]
 	w.matches = w.matches[:0]
